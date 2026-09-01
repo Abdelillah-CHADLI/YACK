@@ -6,7 +6,6 @@ import 'package:yack/logic/cubits/auth/confirm_state.dart';
 import 'package:yack/logic/utils/platform.dart';
 import 'package:yack/presentation/widgets/titleWidget.dart';
 import 'package:yack/presentation/widgets/hrefTextWidget.dart';
-import 'package:yack/logic/cubits/auth/auth_cubit.dart';
 import 'package:yack/logic/services/snackBarHandler.dart';
 import 'package:yack/presentation/widgets/primaryActionButton.dart';
 import 'package:yack/logic/services/translation_handler.dart';

@@ -83,9 +83,26 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
+                  Container(
+                    width: 28,
+                    height: 28,
+                    decoration: BoxDecoration(
+                      color: theme.colorScheme.primary,
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: const Icon(
+                      Icons.lock_outline,
+                      size: 18,
+                      color: Colors.white,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
                   Text(
                     TranslationHandler.get('app_name'),
-                    style: theme.textTheme.titleMedium
+                    style: theme.textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.w800,
+                      letterSpacing: 0.5,
+                    ),
                   ),
                 ],
               ),
@@ -171,7 +188,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
             width: 200,
             height: 200,
             decoration: BoxDecoration(
-              color: page.color.withOpacity(0.1),
+              color: page.color.withValues(alpha: 0.1),
               shape: BoxShape.circle,
             ),
             child: Center(
@@ -179,7 +196,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                 width: 120,
                 height: 120,
                 decoration: BoxDecoration(
-                  color: page.color.withOpacity(0.2),
+                  color: page.color.withValues(alpha: 0.2),
                   shape: BoxShape.circle,
                 ),
                 child: Icon(

@@ -69,7 +69,6 @@ class _ForgetPasswordState extends State<ForgetPassword> {
                             Navigator.pushReplacementNamed(context, '/login');
                           }
                           else if (state is PasswordResetError) {
-                            print (state.messageKey);
                             SnackBarHandler.showError(context, TranslationHandler.get(state.messageKey));
                           }
 
