@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:hive_flutter/hive_flutter.dart';
 import 'package:yack/logic/services/translation_handler.dart';
 import 'package:yack/presentation/widgets/profile/contract_status_summary.dart';
 import 'package:yack/presentation/widgets/profile/user_info_header.dart';
@@ -22,14 +21,18 @@ class ProfileScreen extends StatelessWidget {
         ),
       ),
       body: SingleChildScrollView(
+        child: Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 640),
             child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 32),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   SectionHeader(
                     title: TranslationHandler.get('profile_information'),
                     color: theme.colorScheme.primary,
+                    icon: Icons.person_outline,
                   ),
                   const SizedBox(height: 8),
                   const UserInfoHeader(),
@@ -37,13 +40,16 @@ class ProfileScreen extends StatelessWidget {
                   SectionHeader(
                     title: TranslationHandler.get('contracts_summary'),
                     color: theme.colorScheme.primary,
+                    icon: Icons.assessment_outlined,
                   ),
                   const SizedBox(height: 8),
                   const ContractStatusSummary(),
                 ],
               ),
             ),
-          )
+          ),
+        ),
+      ),
     );
   }
 }

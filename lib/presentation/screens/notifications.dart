@@ -3,6 +3,7 @@ import 'package:isar/isar.dart';
 import 'package:yack/main.dart';
 import 'package:yack/data/db/models/notification.dart';
 import 'package:yack/logic/services/translation_handler.dart';
+import 'package:yack/presentation/theme/theme.dart';
 
 class NotificationsPage extends StatefulWidget {
   const NotificationsPage({super.key});
@@ -154,48 +155,95 @@ class _NotificationsPageState extends State<NotificationsPage> {
                           _markAsRead(n);
                         }
                       },
-                      child: Card(
-                        color: isSelected
-                            ? color.primaryContainer
-                            : (n.isRead ? color.surface : color.surfaceVariant),
-                        elevation: 2,
-                        margin: const EdgeInsets.symmetric(vertical: 8),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                          side: isSelected
-                              ? BorderSide(color: color.primary, width: 2)
-                              : BorderSide.none,
+                      child: AnimatedContainer(
+                        duration: AppTheme.normal,
+                        curve: Curves.easeOut,
+                        margin: const EdgeInsets.symmetric(vertical: 5),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 14,
                         ),
-                        child: ListTile(
-                          leading: isSelected
-                              ? Icon(Icons.check_circle, color: color.primary)
-                              : Icon(
-                                  n.isRead
-                                      ? Icons.notifications_none
-                                      : Icons.notifications_active,
-                                  color: n.isRead
-                                      ? color.onSurface.withOpacity(0.5)
-                                      : color.primary,
-                                ),
-                          title: Text(
-                            n.title,
-                            style: theme.textTheme.titleSmall?.copyWith(
-                              fontWeight: n.isRead
-                                  ? FontWeight.normal
-                                  : FontWeight.bold,
+                        decoration: BoxDecoration(
+                          color: isSelected
+                              ? color.primaryContainer
+                              : color.surface,
+                          borderRadius: BorderRadius.circular(AppTheme.radiusLg),
+                          border: Border.all(
+                            color: isSelected
+                                ? color.primary
+                                : color.outlineVariant.withValues(alpha: 0.6),
+                            width: isSelected ? 1.5 : 1,
+                          ),
+                          boxShadow: isSelected ? null : AppTheme.cardShadow,
+                        ),
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Container(
+                              width: 40,
+                              height: 40,
+                              decoration: BoxDecoration(
+                                color: n.isRead
+                                    ? color.surfaceContainerHighest
+                                    : color.primary.withValues(alpha: 0.12),
+                                shape: BoxShape.circle,
+                              ),
+                              child: Icon(
+                                isSelected
+                                    ? Icons.check_circle
+                                    : n.isRead
+                                        ? Icons.notifications_none
+                                        : Icons.notifications_active,
+                                size: 20,
+                                color: isSelected
+                                    ? color.primary
+                                    : n.isRead
+                                        ? color.onSurfaceVariant
+                                        : color.primary,
+                              ),
                             ),
-                          ),
-                          subtitle: Text(
-                            n.body,
-                            style: theme.textTheme.bodySmall,
-                          ),
-                          trailing: Text(
-                            _formatDate(n.createdAt),
-                            style: TextStyle(
-                              fontSize: 12,
-                              color: color.onSurface.withOpacity(0.6),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Row(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Expanded(
+                                        child: Text(
+                                          n.title,
+                                          style: theme.textTheme.titleSmall
+                                              ?.copyWith(
+                                            fontWeight: n.isRead
+                                                ? FontWeight.w600
+                                                : FontWeight.w700,
+                                            color: color.onSurface,
+                                          ),
+                                        ),
+                                      ),
+                                      const SizedBox(width: 8),
+                                      Text(
+                                        _formatDate(n.createdAt),
+                                        style: theme.textTheme.labelSmall
+                                            ?.copyWith(
+                                          color: color.onSurfaceVariant,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    n.body,
+                                    style: theme.textTheme.bodyMedium?.copyWith(
+                                      color: color.onSurfaceVariant,
+                                    ),
+                                  ),
+                                ],
+                              ),
                             ),
-                          ),
+                          ],
                         ),
                       ),
                     );
@@ -226,18 +274,36 @@ class _NotificationsPageState extends State<NotificationsPage> {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(
-            Icons.notifications_off_rounded,
-            size: 80,
-            color: color.onSurface.withOpacity(0.4),
+          Container(
+            width: 110,
+            height: 110,
+            decoration: BoxDecoration(
+              color: color.primary.withValues(alpha: 0.07),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(
+              Icons.notifications_off_outlined,
+              size: 48,
+              color: color.primary.withValues(alpha: 0.5),
+            ),
           ),
-          const SizedBox(height: 20),
+          const SizedBox(height: 22),
           Text(
             TranslationHandler.get('no_notifications'),
-            style: TextStyle(
-              color: color.onSurface.withOpacity(0.6),
-              fontSize: 18,
-              fontWeight: FontWeight.w500,
+            style: theme.textTheme.titleLarge?.copyWith(
+              fontWeight: FontWeight.w700,
+              color: color.onSurface,
+            ),
+          ),
+          const SizedBox(height: 6),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 40),
+            child: Text(
+              TranslationHandler.get('no_notifications_desc'),
+              textAlign: TextAlign.center,
+              style: theme.textTheme.bodyMedium?.copyWith(
+                color: color.onSurfaceVariant,
+              ),
             ),
           ),
         ],

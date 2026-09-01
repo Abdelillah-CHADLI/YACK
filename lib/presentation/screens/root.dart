@@ -4,6 +4,7 @@ import 'package:yack/presentation/screens/home.dart';
 import 'package:yack/presentation/screens/notifications.dart';
 import 'package:yack/presentation/screens/scan_contract.dart';
 import 'package:yack/presentation/screens/settings.dart';
+import 'package:yack/presentation/theme/theme.dart';
 
 
 
@@ -17,7 +18,6 @@ class BottomNavBar extends StatefulWidget {
 
 class _BottomNavBarState extends State<BottomNavBar> {
   late PersistentTabController _controller;
-  static const double iconSize = 23.0;
 
   @override
   void initState() {
@@ -41,23 +41,23 @@ class _BottomNavBarState extends State<BottomNavBar> {
 
     final items = [
       PersistentBottomNavBarItem(
-        icon: Icon(Icons.home, size: iconSize),
+        icon: const Icon(Icons.home_outlined),
         activeColorPrimary: colorScheme.primary,
         inactiveColorPrimary: colorScheme.onSurfaceVariant,
       ),
       PersistentBottomNavBarItem(
-        icon: Icon(Icons.qr_code_scanner, size: iconSize),
-        activeColorPrimary: Colors.tealAccent,
+        icon: const Icon(Icons.qr_code_scanner),
+        activeColorPrimary: AppTheme.yackGreen,
         inactiveColorPrimary: colorScheme.onSurfaceVariant,
       ),
       PersistentBottomNavBarItem(
-        icon: Icon(Icons.notifications, size: iconSize + 2),
-        activeColorPrimary: Colors.orangeAccent,
+        icon: const Icon(Icons.notifications_outlined),
+        activeColorPrimary: colorScheme.primary,
         inactiveColorPrimary: colorScheme.onSurfaceVariant,
       ),
       PersistentBottomNavBarItem(
-        icon: Icon(Icons.settings, size: iconSize),
-        activeColorPrimary: Colors.indigoAccent,
+        icon: const Icon(Icons.settings_outlined),
+        activeColorPrimary: colorScheme.primary,
         inactiveColorPrimary: colorScheme.onSurfaceVariant,
       ),
     ];
@@ -67,9 +67,6 @@ class _BottomNavBarState extends State<BottomNavBar> {
 
   @override
   Widget build(BuildContext context) {
-    // return ValueListenableBuilder(
-    //   valueListenable: TranslationHandler.languageNotifier,
-    //   builder: (context, language, _) {
         return Scaffold(
           body: PersistentTabView(
             context,
@@ -79,15 +76,23 @@ class _BottomNavBarState extends State<BottomNavBar> {
             items: _navBarsItems(context),
             navBarStyle: NavBarStyle.style3, // change style here
             backgroundColor: Theme.of(context).colorScheme.surface,
-            // decoration: const NavBarDecoration(
-            //   borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
-            // ),
+            decoration: NavBarDecoration(
+              borderRadius: const BorderRadius.vertical(
+                top: Radius.circular(0),
+              ),
+              colorBehindNavBar: Colors.transparent,
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.06),
+                  blurRadius: 12,
+                  offset: const Offset(0, -2),
+                ),
+              ],
+            ),
             resizeToAvoidBottomInset: true,
             hideNavigationBarWhenKeyboardAppears: true,
             popBehaviorOnSelectedNavBarItemPress: PopBehavior.once,
           ),
         );
-      // },
-    // );
   }
 }
