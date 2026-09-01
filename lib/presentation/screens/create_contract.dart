@@ -10,6 +10,9 @@ import 'package:yack/presentation/screens/scan_contract.dart';
 import 'package:yack/presentation/screens/shareContract.dart';
 import 'package:yack/logic/services/translation_handler.dart';
 import 'package:yack/logic/services/snackBarHandler.dart';
+import 'package:yack/presentation/theme/theme.dart';
+import 'package:yack/presentation/widgets/primaryActionButton.dart';
+import 'package:yack/presentation/widgets/secondaryActionButton.dart';
 
 class CreateContractScreen extends StatefulWidget {
   const CreateContractScreen({super.key});
@@ -19,6 +22,7 @@ class CreateContractScreen extends StatefulWidget {
 }
 
 class _CreateContractScreenState extends State<CreateContractScreen> {
+  final _formKey = GlobalKey<FormState>();
   final _titleController = TextEditingController();
   final _descriptionController = TextEditingController();
   final _priceController = TextEditingController();
@@ -31,7 +35,6 @@ class _CreateContractScreenState extends State<CreateContractScreen> {
     super.dispose();
   }
 
-  /// Generate SHA256 hash of contract details for verification
   String _generateDetailsHash(String title, String description, String price) {
     final combined = '$title|$description|$price';
     final bytes = utf8.encode(combined);
@@ -39,7 +42,6 @@ class _CreateContractScreenState extends State<CreateContractScreen> {
     return digest.toString();
   }
 
-  /// Get user's public key from Hive cache
   Future<String?> _getUserPublicKey() async {
     try {
       final box = await Hive.openBox('user');
@@ -50,35 +52,26 @@ class _CreateContractScreenState extends State<CreateContractScreen> {
   }
 
   void _onCreateContract() async {
-    // Validate title
-    if (_titleController.text.trim().isEmpty) {
-      SnackBarHandler.showError(context, TranslationHandler.get('title_required'));
-      return;
-    }
-
-    // Validate price is a valid number
-    final priceText = _priceController.text.trim();
-    final price = double.tryParse(priceText);
-    if (priceText.isEmpty || price == null || price < 0) {
-      SnackBarHandler.showError(context, TranslationHandler.get('invalid_price'));
-      return;
-    }
+    if (!_formKey.currentState!.validate()) return;
 
     final title = _titleController.text.trim();
     final description = _descriptionController.text.trim();
+    final priceText = _priceController.text.trim();
+    final price = double.tryParse(priceText);
+    if (price == null || price < 0) {
+      SnackBarHandler.showError(context, TranslationHandler.get('invalid_price'));
+      return;
+    }
     final priceStr = price.toStringAsFixed(2);
 
-    // Get user's public key
     final publicKey = await _getUserPublicKey();
     if (publicKey == null || publicKey.isEmpty) {
       SnackBarHandler.showError(context, TranslationHandler.get('missing_public_key'));
       return;
     }
 
-    // Generate details hash for verification
     final detailsHash = _generateDetailsHash(title, description, priceStr);
 
-    // Encrypt fields for user A (creator) using their own public key
     final titleUserA = CryptoService.encryptWithPublicKey(
       plaintext: title,
       publicKeyBase64: publicKey,
@@ -92,7 +85,6 @@ class _CreateContractScreenState extends State<CreateContractScreen> {
       publicKeyBase64: publicKey,
     );
 
-    // Create temp contract on backend
     context.read<TempContractCubit>().create(
       titleUserA: titleUserA,
       descriptionUserA: descriptionUserA,
@@ -104,11 +96,11 @@ class _CreateContractScreenState extends State<CreateContractScreen> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final colors = theme.colorScheme;
 
     return BlocListener<TempContractCubit, TempContractState>(
       listener: (context, state) {
         if (state is TempContractSuccess) {
-          // Navigate to share screen with the temp contract
           Navigator.push(
             context,
             MaterialPageRoute(
@@ -127,193 +119,198 @@ class _CreateContractScreenState extends State<CreateContractScreen> {
       child: Scaffold(
         backgroundColor: theme.scaffoldBackgroundColor,
         appBar: AppBar(
-          backgroundColor: theme.colorScheme.surface,
+          backgroundColor: colors.surface,
           elevation: 0,
-          title: Text(TranslationHandler.get('new_contract'),
-              style: theme.textTheme.titleMedium),
+          surfaceTintColor: Colors.transparent,
+          title: Text(
+            TranslationHandler.get('new_contract'),
+            style: theme.textTheme.titleMedium?.copyWith(
+              fontWeight: FontWeight.w700,
+            ),
+          ),
           centerTitle: true,
           leading: IconButton(
-            icon: Icon(Icons.arrow_back, color: theme.iconTheme.color),
+            icon: const Icon(Icons.arrow_back_rounded),
             onPressed: () => Navigator.of(context).pop(),
           ),
         ),
-        body: ListView(
-          padding: const EdgeInsets.all(16.0),
-          children: [
-            const SizedBox(height: 20),
-            Text(
-              TranslationHandler.get('title'),
-              style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.w300,
-                color: theme.textTheme.titleMedium?.color,
-              ),
-            ),
-            const SizedBox(height: 8.0),
-            TextField(
-              controller: _titleController,
-              maxLines: 1,
-              textAlign: TextAlign.start,
-              decoration: InputDecoration(
-                hintText: TranslationHandler.get('title_hint'),
-                filled: true,
-                fillColor: theme.colorScheme.surface,
-                border: OutlineInputBorder(
-                  borderRadius: const BorderRadius.all(Radius.circular(4.0)),
-                  borderSide: BorderSide(
-                    color: theme.dividerTheme.color ?? Colors.grey,
+        body: Form(
+          key: _formKey,
+          child: ListView(
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+            children: [
+              // --- Header ---
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: colors.primaryContainer.withValues(alpha: 0.3),
+                  borderRadius: BorderRadius.circular(AppTheme.radiusLg),
+                  border: Border.all(
+                    color: colors.primary.withValues(alpha: 0.15),
                   ),
                 ),
-                focusedBorder: OutlineInputBorder(
-                  borderRadius: const BorderRadius.all(Radius.circular(4.0)),
-                  borderSide: BorderSide(
-                    color: theme.colorScheme.primary,
-                    width: 1.5,
-                  ),
+                child: Row(
+                  children: [
+                    Icon(
+                      Icons.edit_note_rounded,
+                      color: colors.primary,
+                      size: 28,
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Text(
+                        TranslationHandler.get('create_contract_desc'),
+                        style: theme.textTheme.bodyMedium?.copyWith(
+                          color: colors.onSurface.withValues(alpha: 0.7),
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ),
-            ),
-            const SizedBox(height: 24),
-            Text(
-              TranslationHandler.get('description'),
-              style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.w300,
-                color: theme.textTheme.titleMedium?.color,
+              const SizedBox(height: 24),
+
+              // --- Title ---
+              _buildFieldLabel(
+                context,
+                TranslationHandler.get('title'),
+                Icons.title_rounded,
               ),
-            ),
-            const SizedBox(height: 8.0),
-            TextField(
-              controller: _descriptionController,
-              maxLines: 5,
-              textAlign: TextAlign.start,
-              decoration: InputDecoration(
-                hintText: TranslationHandler.get('description_hint'),
-                filled: true,
-                fillColor: theme.colorScheme.surface,
-                border: OutlineInputBorder(
-                  borderRadius: const BorderRadius.all(Radius.circular(4.0)),
-                  borderSide: BorderSide(
-                    color: theme.dividerTheme.color ?? Colors.grey,
-                  ),
-                ),
-                focusedBorder: OutlineInputBorder(
-                  borderRadius: const BorderRadius.all(Radius.circular(4.0)),
-                  borderSide: BorderSide(
-                    color: theme.colorScheme.primary,
-                    width: 1.5,
+              const SizedBox(height: 8),
+              TextFormField(
+                controller: _titleController,
+                maxLines: 1,
+                textInputAction: TextInputAction.next,
+                style: theme.textTheme.bodyLarge,
+                validator: (v) => (v == null || v.trim().isEmpty)
+                    ? TranslationHandler.get('title_required')
+                    : null,
+                decoration: InputDecoration(
+                  hintText: TranslationHandler.get('title_hint'),
+                  prefixIcon: Icon(
+                    Icons.short_text_rounded,
+                    color: colors.onSurfaceVariant,
+                    size: 20,
                   ),
                 ),
               ),
-            ),
-            const SizedBox(height: 24),
-            Text(
-              TranslationHandler.get('price'),
-              style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.w300,
-                color: theme.textTheme.titleMedium?.color,
+              const SizedBox(height: 20),
+
+              // --- Description ---
+              _buildFieldLabel(
+                context,
+                TranslationHandler.get('description'),
+                Icons.description_outlined,
               ),
-            ),
-            const SizedBox(height: 8.0),
-            TextField(
-              controller: _priceController,
-              keyboardType: const TextInputType.numberWithOptions(decimal: true),
-              decoration: InputDecoration(
-                hintText: TranslationHandler.get('price_hint'),
-                filled: true,
-                fillColor: theme.colorScheme.surface,
-                prefixIcon: Padding(
-                  padding: const EdgeInsets.only(left: 15, right: 8),
-                  child: Text(
-                    TranslationHandler.get('currency'),
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w500,
-                      color: theme.textTheme.bodyMedium?.color,
+              const SizedBox(height: 8),
+              TextFormField(
+                controller: _descriptionController,
+                maxLines: 5,
+                textInputAction: TextInputAction.newline,
+                style: theme.textTheme.bodyLarge,
+                decoration: InputDecoration(
+                  hintText: TranslationHandler.get('description_hint'),
+                  prefixIcon: Padding(
+                    padding: const EdgeInsets.only(left: 16, right: 8, top: 12),
+                    child: Icon(
+                      Icons.notes_rounded,
+                      color: colors.onSurfaceVariant,
+                      size: 20,
                     ),
                   ),
-                ),
-                prefixIconConstraints: const BoxConstraints(
-                  minWidth: 0,
-                  minHeight: 0,
-                ),
-                border: OutlineInputBorder(
-                  borderRadius: const BorderRadius.all(Radius.circular(4.0)),
-                  borderSide: BorderSide(
-                    color: theme.dividerTheme.color ?? Colors.grey,
-                  ),
-                ),
-                focusedBorder: OutlineInputBorder(
-                  borderRadius: const BorderRadius.all(Radius.circular(4.0)),
-                  borderSide: BorderSide(
-                    color: theme.colorScheme.primary,
-                    width: 1.5,
-                  ),
+                  prefixIconConstraints: const BoxConstraints(minWidth: 0, minHeight: 0),
+                  alignLabelWithHint: true,
                 ),
               ),
-            ),
+              const SizedBox(height: 20),
 
-            // Add spacing to push buttons down
-            SizedBox(height: MediaQuery.of(context).size.height * 0.15),
-
-            // Buttons at the bottom of ListView
-            BlocBuilder<TempContractCubit, TempContractState>(
-              builder: (context, state) {
-                final isLoading = state is TempContractLoading;
-                return SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton.icon(
-                    onPressed: isLoading ? null : _onCreateContract,
-                    icon: isLoading
-                        ? const SizedBox(
-                            width: 20,
-                            height: 20,
-                            child: CircularProgressIndicator(strokeWidth: 2),
-                          )
-                        : const Icon(Icons.add, size: 20),
-                    label: Text(TranslationHandler.get('add_contract')),
-                    style: ElevatedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(vertical: 14),
-                      textStyle: const TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
+              // --- Price ---
+              _buildFieldLabel(
+                context,
+                TranslationHandler.get('price'),
+                Icons.attach_money_rounded,
+              ),
+              const SizedBox(height: 8),
+              TextFormField(
+                controller: _priceController,
+                keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                textInputAction: TextInputAction.done,
+                style: theme.textTheme.bodyLarge,
+                decoration: InputDecoration(
+                  hintText: TranslationHandler.get('price_hint'),
+                  prefixIcon: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 14),
+                    decoration: BoxDecoration(
+                      color: colors.primaryContainer.withValues(alpha: 0.4),
+                      borderRadius: BorderRadius.only(
+                        topLeft: Radius.circular(AppTheme.radiusMd),
+                        bottomLeft: Radius.circular(AppTheme.radiusMd),
+                      ),
+                    ),
+                    child: Text(
+                      TranslationHandler.get('currency'),
+                      style: TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w700,
+                        color: colors.primary,
                       ),
                     ),
                   ),
-                );
-              },
-            ),
-            const SizedBox(height: 12.0),
-            SizedBox(
-              width: double.infinity,
-              child: OutlinedButton.icon(
-                onPressed: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => const ScanContractScreen(),
-                    ),
-                  );
-                },
-                icon: const Icon(Icons.qr_code_scanner, size: 22),
-                label: Text(TranslationHandler.get('scan_contract_qr')),
-                style: OutlinedButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(vertical: 14),
-                  textStyle: const TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w500,
-                  ),
-                  side: BorderSide(
-                    color: Theme.of(context).colorScheme.primary,
-                  ),
+                  prefixIconConstraints: const BoxConstraints(minWidth: 0, minHeight: 0),
                 ),
               ),
-            ),
-            const SizedBox(height: 16),
-          ],
+
+              const SizedBox(height: 32),
+
+              // --- Actions ---
+              BlocBuilder<TempContractCubit, TempContractState>(
+                builder: (context, state) {
+                  final isLoading = state is TempContractLoading;
+                  return Column(
+                    children: [
+                      PrimaryActionButton(
+                        isLoading: isLoading,
+                        onClick: isLoading ? null : _onCreateContract,
+                        action: TranslationHandler.get('add_contract'),
+                      ),
+                      const SizedBox(height: 12),
+                      SecondaryActionButton(
+                        onClick: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => const ScanContractScreen(),
+                            ),
+                          );
+                        },
+                        action: TranslationHandler.get('scan_contract_qr'),
+                      ),
+                    ],
+                  );
+                },
+              ),
+              const SizedBox(height: 16),
+            ],
+          ),
         ),
       ),
+    );
+  }
+
+  Widget _buildFieldLabel(BuildContext context, String text, IconData icon) {
+    final theme = Theme.of(context);
+    return Row(
+      children: [
+        Icon(icon, size: 16, color: theme.colorScheme.primary),
+        const SizedBox(width: 6),
+        Text(
+          text,
+          style: theme.textTheme.titleSmall?.copyWith(
+            fontWeight: FontWeight.w600,
+            letterSpacing: 0.2,
+          ),
+        ),
+      ],
     );
   }
 }

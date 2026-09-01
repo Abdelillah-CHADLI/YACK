@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:yack/logic/services/translation_handler.dart';
 import 'package:yack/presentation/theme/theme.dart';
+import 'package:yack/presentation/widgets/primaryActionButton.dart';
 
 class SubscriptionScreen extends StatefulWidget {
   const SubscriptionScreen({super.key});
@@ -124,13 +125,13 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                     textAlign: TextAlign.center,
                   ),
                   const SizedBox(height: 8),
-                  Text(
-                    TranslationHandler.get('unlock_premium_features'),
-                    style: theme.textTheme.bodyMedium?.copyWith(
-                      color: colors.onSurface.withOpacity(0.7),
+                    Text(
+                      TranslationHandler.get('unlock_premium_features'),
+                      style: theme.textTheme.bodyMedium?.copyWith(
+                        color: colors.onSurface.withValues(alpha: 0.7),
+                      ),
+                      textAlign: TextAlign.center,
                     ),
-                    textAlign: TextAlign.center,
-                  ),
                 ],
               ),
             ),
@@ -152,17 +153,17 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                         color: isSelected
                             ? colors.primaryContainer
                             : colors.surface,
-                        borderRadius: BorderRadius.circular(16),
+                        borderRadius: BorderRadius.circular(AppTheme.radiusLg),
                         border: Border.all(
                           color: isSelected
                               ? colors.primary
-                              : colors.outline.withOpacity(0.3),
+                              : colors.outline.withValues(alpha: 0.3),
                           width: isSelected ? 2 : 1,
                         ),
                         boxShadow: isSelected
                             ? [
                                 BoxShadow(
-                                  color: colors.primary.withOpacity(0.2),
+                                  color: colors.primary.withValues(alpha: 0.2),
                                   blurRadius: 12,
                                   offset: const Offset(0, 4),
                                 ),
@@ -240,9 +241,9 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                                               ?.copyWith(
                                             color: isSelected
                                                 ? colors.onPrimaryContainer
-                                                    .withOpacity(0.7)
+                                                    .withValues(alpha: 0.7)
                                                 : colors.onSurface
-                                                    .withOpacity(0.7),
+                                                    .withValues(alpha: 0.7),
                                           ),
                                         ),
                                       ),
@@ -290,13 +291,13 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                                   vertical: 4,
                                 ),
                                 decoration: BoxDecoration(
-                                  color: AppTheme.yackGreen,
-                                  borderRadius: BorderRadius.circular(12),
+                                  color: colors.primary,
+                                  borderRadius: BorderRadius.circular(AppTheme.radiusSm),
                                 ),
                                 child: Text(
                                   TranslationHandler.get('popular'),
-                                  style: const TextStyle(
-                                    color: Colors.white,
+                                  style: TextStyle(
+                                    color: colors.onPrimary,
                                     fontSize: 12,
                                     fontWeight: FontWeight.bold,
                                   ),
@@ -316,32 +317,15 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
               padding: const EdgeInsets.all(24),
               child: Column(
                 children: [
-                  SizedBox(
-                    width: double.infinity,
-                    child: ElevatedButton(
-                      onPressed: _simulateSubscription,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppTheme.yackGreen,
-                        foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(vertical: 16),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                      ),
-                      child: Text(
-                        TranslationHandler.get('subscribe_now'),
-                        style: const TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ),
+                  PrimaryActionButton(
+                    action: TranslationHandler.get('subscribe_now'),
+                    onClick: _simulateSubscription,
                   ),
                   const SizedBox(height: 12),
                   Text(
                     TranslationHandler.get('cancel_anytime'),
                     style: theme.textTheme.bodySmall?.copyWith(
-                      color: colors.onSurface.withOpacity(0.5),
+                      color: colors.onSurface.withValues(alpha: 0.5),
                     ),
                   ),
                 ],

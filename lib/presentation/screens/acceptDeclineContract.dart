@@ -3,6 +3,7 @@ import 'package:yack/presentation/widgets/primaryActionButtonAutoLoading.dart';
 import 'package:yack/logic/services/snackBarHandler.dart';
 import 'package:yack/presentation/widgets/secondaryActionButtonAutoLoading.dart';
 import 'package:yack/logic/services/translation_handler.dart';
+import 'package:yack/presentation/theme/theme.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 
@@ -124,15 +125,9 @@ class _AcceptDeclineContractScreenState
                     color: color.outline.withValues(alpha: 0.5),
                     width: 1.5,
                   ),
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: BorderRadius.circular(AppTheme.radiusMd),
                   color: color.surface,
-                  boxShadow: [
-                    BoxShadow(
-                      color: color.shadow.withValues(alpha: 0.08),
-                      blurRadius: 6,
-                      offset: const Offset(0, 3),
-                    ),
-                  ],
+                  boxShadow: AppTheme.cardShadow,
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -154,7 +149,7 @@ class _AcceptDeclineContractScreenState
                         ),
                       ],
                     ),
-                    const Divider(height: 25, thickness: 1),
+                    Divider(height: 25, thickness: 1, color: color.outline.withValues(alpha: 0.3)),
 
                     // Contract Title
                     Center(
@@ -167,7 +162,7 @@ class _AcceptDeclineContractScreenState
                         ),
                       ),
                     ),
-                    const Divider(height: 25, thickness: 1),
+                    Divider(height: 25, thickness: 1, color: color.outline.withValues(alpha: 0.3)),
 
                     // Description
                     Expanded(
@@ -208,7 +203,7 @@ class _AcceptDeclineContractScreenState
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
               decoration: BoxDecoration(
                 color: color.errorContainer.withValues(alpha: 0.15),
-                borderRadius: BorderRadius.circular(8),
+                borderRadius: BorderRadius.circular(AppTheme.radiusSm),
                 border: Border.all(color: color.error.withValues(alpha: 0.4)),
               ),
               child: Row(

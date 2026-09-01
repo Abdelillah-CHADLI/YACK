@@ -14,6 +14,8 @@ import 'package:yack/logic/services/notification/notification_service.dart';
 import 'package:yack/logic/services/snackBarHandler.dart';
 import 'package:yack/logic/services/translation_handler.dart';
 import 'package:yack/presentation/screens/acceptDeclineContract.dart';
+import 'package:yack/presentation/theme/theme.dart';
+import 'package:yack/presentation/widgets/secondaryActionButton.dart';
 
 /// Screen for sharing a temp contract via QR code or text link
 /// User A creates the contract and shares it with User B
@@ -80,12 +82,10 @@ class _ShareContractScreenState extends State<ShareContractScreen> {
       final tempId = data['tempId']?.toString();
       // Only handle notifications for our temp contract
       if (tempId != widget.tempContract.tempId) {
-        print('[DEBUG ShareContract] tempId mismatch: got $tempId, expected ${widget.tempContract.tempId}');
         return;
       }
 
       final type = data['type']?.toString() ?? '';
-      print('[DEBUG ShareContract] Handling notification type: $type');
 
       if (type == 'contractJoin') {
         _handleUserBJoined(data['username']?.toString() ?? '');
@@ -94,7 +94,6 @@ class _ShareContractScreenState extends State<ShareContractScreen> {
       }
     });
 
-    print('[DEBUG ShareContract] Notification listeners set up for tempId: ${widget.tempContract.tempId}');
   }
 
   /// Handle contract notification event from handler
@@ -127,8 +126,6 @@ class _ShareContractScreenState extends State<ShareContractScreen> {
 
   /// Handle when User B signs the contract
   void _handleUserBSigned(String? contractId) {
-    print('[DEBUG ShareContract] _handleUserBSigned called with contractId: $contractId, _isWaitingForSign: $_isWaitingForSign');
-
     if (!mounted) return;
 
     setState(() {
@@ -186,22 +183,6 @@ class _ShareContractScreenState extends State<ShareContractScreen> {
     }
   }
 
-  /// Called when both users have signed and contract is complete
-  Future<void> _onContractComplete(String? contractId) async {
-    if (contractId != null) {
-      // Sync contracts from backend to get the finalized contract
-      context.read<ContractSyncCubit>().sync();
-    }
-
-    if (mounted) {
-      SnackBarHandler.showSuccess(
-        context,
-        TranslationHandler.get('contract_saved_successfully'),
-      );
-      Navigator.of(context).popUntil((route) => route.isFirst);
-    }
-  }
-
   void _generateShareData() {
     // Create shareable data with tempId and contract preview info
     final shareData = {
@@ -241,10 +222,8 @@ class _ShareContractScreenState extends State<ShareContractScreen> {
 
     return BlocListener<TempContractCubit, TempContractState>(
       listener: (context, state) async {
-        print('[DEBUG ShareContract] BlocListener received state: $state');
 
         if (state is TempContractSignSuccess) {
-          print('[DEBUG ShareContract] TempContractSignSuccess - contractId: ${state.contractId}');
 
           setState(() {
             _userASigned = true;
@@ -252,15 +231,12 @@ class _ShareContractScreenState extends State<ShareContractScreen> {
 
           if (state.contractId != null && state.contractId!.isNotEmpty) {
             // Both users signed - contract is finalized, sync from backend
-            print('[DEBUG ShareContract] Contract finalized from backend');
             _completeContract();
           } else if (_userASigned && _userBSigned) {
             // Both users signed locally - complete the contract
-            print('[DEBUG ShareContract] Both users signed locally');
             _completeContract();
           } else {
             // Only this user signed - waiting for other user
-            print('[DEBUG ShareContract] Waiting for other user to sign...');
             setState(() => _isWaitingForSign = true);
             SnackBarHandler.showMessage(
               context,
@@ -268,7 +244,6 @@ class _ShareContractScreenState extends State<ShareContractScreen> {
             );
           }
         } else if (state is TempContractError) {
-          print('[DEBUG ShareContract] TempContractError: ${state.message}');
           setState(() => _isWaitingForSign = false);
           SnackBarHandler.showError(context, state.message);
         }
@@ -305,15 +280,9 @@ class _ShareContractScreenState extends State<ShareContractScreen> {
                       color: color.outline.withValues(alpha: 0.5),
                       width: 1.5,
                     ),
-                    borderRadius: BorderRadius.circular(12),
+                    borderRadius: BorderRadius.circular(AppTheme.radiusMd),
                     color: color.surface,
-                    boxShadow: [
-                      BoxShadow(
-                        color: color.shadow.withValues(alpha: 0.08),
-                        blurRadius: 6,
-                        offset: const Offset(0, 3),
-                      ),
-                    ],
+                    boxShadow: AppTheme.cardShadow,
                   ),
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
@@ -342,14 +311,14 @@ class _ShareContractScreenState extends State<ShareContractScreen> {
                         Container(
                           padding: const EdgeInsets.all(12),
                           decoration: BoxDecoration(
-                            color: Colors.white,
-                            borderRadius: BorderRadius.circular(12),
+                            color: color.surface,
+                            borderRadius: BorderRadius.circular(AppTheme.radiusMd),
                           ),
                           child: QrImageView(
                             data: _qrData,
                             version: QrVersions.auto,
                             size: 180,
-                            backgroundColor: Colors.white,
+                            backgroundColor: color.surface,
                           ),
                         ),
                         const SizedBox(height: 20),
@@ -396,7 +365,7 @@ class _ShareContractScreenState extends State<ShareContractScreen> {
                         ],
 
                         const SizedBox(height: 20),
-                        const Divider(thickness: 1),
+                        Divider(thickness: 1, color: color.outline.withValues(alpha: 0.3)),
                         const SizedBox(height: 12),
 
                         // Share text / link
@@ -441,7 +410,7 @@ class _ShareContractScreenState extends State<ShareContractScreen> {
                     padding: const EdgeInsets.all(16),
                     decoration: BoxDecoration(
                       color: color.primaryContainer.withValues(alpha: 0.3),
-                      borderRadius: BorderRadius.circular(12),
+                      borderRadius: BorderRadius.circular(AppTheme.radiusMd),
                     ),
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.center,
@@ -470,7 +439,7 @@ class _ShareContractScreenState extends State<ShareContractScreen> {
                     padding: const EdgeInsets.all(16),
                     decoration: BoxDecoration(
                       color: color.primaryContainer.withValues(alpha: 0.3),
-                      borderRadius: BorderRadius.circular(12),
+                      borderRadius: BorderRadius.circular(AppTheme.radiusMd),
                     ),
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.center,
@@ -497,25 +466,18 @@ class _ShareContractScreenState extends State<ShareContractScreen> {
                 const SizedBox(height: 12),
 
                 // Cancel button - always available
-                SizedBox(
-                  width: double.infinity,
-                  child: OutlinedButton(
-                    onPressed: () {
-                      if (_isWaitingForSign) {
-                        SnackBarHandler.showWarning(
-                          context,
-                          TranslationHandler.get('waiting_for_acceptance'),
-                        );
-                      } else {
-                        Navigator.of(context).pop();
-                      }
-                    },
-                    style: OutlinedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(vertical: 16),
-                      foregroundColor: color.error,
-                    ),
-                    child: Text(TranslationHandler.get('cancel')),
-                  ),
+                SecondaryActionButton(
+                  action: TranslationHandler.get('cancel'),
+                  onClick: () {
+                    if (_isWaitingForSign) {
+                      SnackBarHandler.showWarning(
+                        context,
+                        TranslationHandler.get('waiting_for_acceptance'),
+                      );
+                    } else {
+                      Navigator.of(context).pop();
+                    }
+                  },
                 ),
               ],
             ),

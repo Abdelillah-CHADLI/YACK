@@ -26,6 +26,7 @@ import 'package:yack/logic/services/notification/notification_service.dart';
 import 'package:yack/logic/services/snackBarHandler.dart';
 import 'package:yack/logic/services/translation_handler.dart';
 import 'package:yack/main.dart';
+import 'package:yack/presentation/theme/theme.dart';
 
 class ContractAgreement extends StatefulWidget {
   final int contractId;
@@ -390,8 +391,17 @@ class _ContractAgreementState extends State<ContractAgreement> {
   @override
   Widget build(BuildContext context) {
     if (_isLoading) {
-      return const Scaffold(
-        body: Center(child: CircularProgressIndicator()),
+      return Scaffold(
+        body: Center(
+          child: SizedBox(
+            width: 28,
+            height: 28,
+            child: CircularProgressIndicator(
+              strokeWidth: 3,
+              color: Theme.of(context).colorScheme.primary,
+            ),
+          ),
+        ),
       );
     }
 
@@ -554,27 +564,30 @@ class _ContractAgreementState extends State<ContractAgreement> {
     return Container(
       color: colors.surface,
       padding: const EdgeInsets.all(16),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-        decoration: BoxDecoration(
-          color: statusColor.withOpacity(0.2),
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: statusColor),
-        ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(icon, color: statusColor),
-            const SizedBox(width: 8),
-            Text(
-              TranslationHandler.get(statusKey).toUpperCase(),
-              style: TextStyle(
-                color: statusColor,
-                fontWeight: FontWeight.bold,
-                fontSize: 16,
+      child: Center(
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+          decoration: BoxDecoration(
+            color: statusColor.withValues(alpha: 0.12),
+            borderRadius: BorderRadius.circular(50),
+            border: Border.all(color: statusColor.withValues(alpha: 0.4)),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(icon, color: statusColor),
+              const SizedBox(width: 8),
+              Text(
+                TranslationHandler.get(statusKey).toUpperCase(),
+                style: TextStyle(
+                  color: statusColor,
+                  fontWeight: FontWeight.w700,
+                  fontSize: 13,
+                  letterSpacing: 0.5,
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
@@ -660,11 +673,11 @@ class _ContractAgreementState extends State<ContractAgreement> {
   ) {
     return Material(
       color: bgColor,
-      borderRadius: BorderRadius.circular(12),
+      borderRadius: BorderRadius.circular(AppTheme.radiusMd),
       elevation: 2,
       child: InkWell(
         onTap: onPressed,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(AppTheme.radiusMd),
         child: Container(
           height: 50,
           padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -677,7 +690,7 @@ class _ContractAgreementState extends State<ContractAgreement> {
                 text,
                 style: TextStyle(
                   fontSize: 14,
-                  fontWeight: FontWeight.w600,
+                  fontWeight: FontWeight.w700,
                   color: textColor,
                 ),
               ),
@@ -1047,11 +1060,12 @@ class _ContractAgreementState extends State<ContractAgreement> {
             ),
           ),
           const SizedBox(width: 8),
-          Container(
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: _isSendingMessage ? colors.surfaceContainerHighest : colors.primary,
-            ),
+          Material(
+            color: _isSendingMessage
+                ? colors.surfaceContainerHighest
+                : colors.primary,
+            shape: const CircleBorder(),
+            elevation: 0,
             child: IconButton(
               onPressed: _isSendingMessage ? null : _sendMessage,
               icon: _isSendingMessage
@@ -1063,7 +1077,7 @@ class _ContractAgreementState extends State<ContractAgreement> {
                         color: colors.primary,
                       ),
                     )
-                  : Icon(Icons.send, color: colors.onPrimary, size: 20),
+                  : Icon(Icons.send_rounded, color: colors.onPrimary, size: 20),
             ),
           ),
         ],
