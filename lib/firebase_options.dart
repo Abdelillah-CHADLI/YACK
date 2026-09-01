@@ -19,10 +19,7 @@ class DefaultFirebaseOptions {
           'you can reconfigure this by running the FlutterFire CLI again.',
         );
       case TargetPlatform.macOS:
-        throw UnsupportedError(
-          'DefaultFirebaseOptions have not been configured for macos - '
-          'you can reconfigure this by running the FlutterFire CLI again.',
-        );
+        return macos;
       case TargetPlatform.windows:
         return windows;
       case TargetPlatform.linux:
@@ -38,34 +35,38 @@ class DefaultFirebaseOptions {
   }
 
   static const FirebaseOptions web = FirebaseOptions(
-    apiKey: 'AIzaSyBbXoxEmQLMsszKc-LKTZ02O_hVJqzPojQ',
-    appId: '1:39679609803:web:8fd04e1a3a1a8a69f0444e',
-    messagingSenderId: '39679609803',
-    projectId: 'yack-a30ae',
-    authDomain: 'yack-a30ae.firebaseapp.com',
-    databaseURL: 'https://yack-a30ae-default-rtdb.europe-west1.firebasedatabase.app',
-    storageBucket: 'yack-a30ae.firebasestorage.app',
-    measurementId: 'G-C3B70CLKW5',
+    apiKey: 'AIzaSyCBz6igMncRe-2-HJ75wvc5DZISPcyWXus',
+    appId: '1:1015366964970:web:1559948a9af273d9c92993',
+    messagingSenderId: '1015366964970',
+    projectId: 'yack-aeb34',
+    authDomain: 'yack-aeb34.firebaseapp.com',
+    storageBucket: 'yack-aeb34.firebasestorage.app',
+    measurementId: 'G-V5X6456XHW',
   );
 
   static const FirebaseOptions android = FirebaseOptions(
-    apiKey: 'AIzaSyAI9IFXMvdEXeA40dVBY9bbRhL5Or7VrY0',
-    appId: '1:39679609803:android:bb8d3aa26998df48f0444e',
-    messagingSenderId: '39679609803',
-    projectId: 'yack-a30ae',
-    databaseURL: 'https://yack-a30ae-default-rtdb.europe-west1.firebasedatabase.app',
-    storageBucket: 'yack-a30ae.firebasestorage.app',
+    apiKey: 'AIzaSyASxMoPm7ATUE93PHNwZIN4mGwE7E8iQxk',
+    appId: '1:1015366964970:android:b1e428749aed4d87c92993',
+    messagingSenderId: '1015366964970',
+    projectId: 'yack-aeb34',
+    storageBucket: 'yack-aeb34.firebasestorage.app',
   );
 
   static const FirebaseOptions windows = FirebaseOptions(
-    apiKey: 'AIzaSyBbXoxEmQLMsszKc-LKTZ02O_hVJqzPojQ',
-    appId: '1:39679609803:web:550bf37d433ae392f0444e',
-    messagingSenderId: '39679609803',
-    projectId: 'yack-a30ae',
-    authDomain: 'yack-a30ae.firebaseapp.com',
-    databaseURL: 'https://yack-a30ae-default-rtdb.europe-west1.firebasedatabase.app',
-    storageBucket: 'yack-a30ae.firebasestorage.app',
-    measurementId: 'G-5N9SVGWMBV',
+    apiKey: 'AIzaSyCBz6igMncRe-2-HJ75wvc5DZISPcyWXus',
+    appId: '1:1015366964970:web:15d67d420d410e12c92993',
+    messagingSenderId: '1015366964970',
+    projectId: 'yack-aeb34',
+    authDomain: 'yack-aeb34.firebaseapp.com',
+    storageBucket: 'yack-aeb34.firebasestorage.app',
+    measurementId: 'G-79MWHENCLZ',
   );
-
+  static const FirebaseOptions macos = FirebaseOptions(
+    apiKey: 'AIzaSyC9gfuiMix4du0sF7YIuh0Velx9cecAZCA',
+    appId: '1:1015366964970:ios:8e950aacf1e99c50c92993',
+    messagingSenderId: '1015366964970',
+    projectId: 'yack-aeb34',
+    storageBucket: 'yack-aeb34.firebasestorage.app',
+    iosBundleId: 'com.example.yack',
+  );
 }

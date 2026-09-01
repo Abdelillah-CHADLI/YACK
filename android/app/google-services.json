@@ -1,52 +1,13 @@
 {
   "project_info": {
-    "project_number": "39679609803",
-    "firebase_url": "https://yack-a30ae-default-rtdb.europe-west1.firebasedatabase.app",
-    "project_id": "yack-a30ae",
-    "storage_bucket": "yack-a30ae.firebasestorage.app"
+    "project_number": "1015366964970",
+    "project_id": "yack-aeb34",
+    "storage_bucket": "yack-aeb34.firebasestorage.app"
   },
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:39679609803:android:2e4018f09fe75db9f0444e",
-        "android_client_info": {
-          "package_name": "com.YACKITM.yack"
-        }
-      },
-      "oauth_client": [],
-      "api_key": [
-        {
-          "current_key": "AIzaSyAI9IFXMvdEXeA40dVBY9bbRhL5Or7VrY0"
-        }
-      ],
-      "services": {
-        "appinvite_service": {
-          "other_platform_oauth_client": []
-        }
-      }
-    },
-    {
-      "client_info": {
-        "mobilesdk_app_id": "1:39679609803:android:41a617f587bfb477f0444e",
-        "android_client_info": {
-          "package_name": "com.example.dayflow"
-        }
-      },
-      "oauth_client": [],
-      "api_key": [
-        {
-          "current_key": "AIzaSyAI9IFXMvdEXeA40dVBY9bbRhL5Or7VrY0"
-        }
-      ],
-      "services": {
-        "appinvite_service": {
-          "other_platform_oauth_client": []
-        }
-      }
-    },
-    {
-      "client_info": {
-        "mobilesdk_app_id": "1:39679609803:android:bb8d3aa26998df48f0444e",
+        "mobilesdk_app_id": "1:1015366964970:android:b1e428749aed4d87c92993",
         "android_client_info": {
           "package_name": "com.example.yack"
         }
@@ -54,7 +15,7 @@
       "oauth_client": [],
       "api_key": [
         {
-          "current_key": "AIzaSyAI9IFXMvdEXeA40dVBY9bbRhL5Or7VrY0"
+          "current_key": "AIzaSyASxMoPm7ATUE93PHNwZIN4mGwE7E8iQxk"
         }
       ],
       "services": {
