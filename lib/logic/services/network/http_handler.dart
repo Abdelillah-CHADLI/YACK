@@ -10,7 +10,14 @@ class HttpHandler {
 
   HttpHandler._internal();
 
-  final String baseUrl = "https://yack.leapcell.app";
+  // Backend base URL.
+  // Override at build/run time with:
+  //   flutter run --dart-define=API_BASE_URL=https://your-backend.example
+  // Keep the default in sync with where you actually host the backend.
+  static const String baseUrl = String.fromEnvironment(
+    'API_BASE_URL',
+    defaultValue: 'https://yack.leapcell.app',
+  );
 
   Future<String?> _getIdToken() async {
     final user = FirebaseAuth.instance.currentUser;
@@ -97,18 +104,37 @@ class HttpHandler {
 
   dynamic _handleResponse(http.Response res) {
     final status = res.statusCode;
+    final isSuccess = status >= 200 && status < 300;
+
+    if (res.body.trim().isEmpty) {
+      if (isSuccess) return null;
+      throw Exception('Server error (HTTP $status)');
+    }
+
+    // Always try to decode JSON so we can surface the server's real error message.
+    Map<String, dynamic> json;
     try {
-      final json = jsonDecode(res.body);
-      if (status >= 200 && status < 300) return json;
-      final errorMessage = json["error"] ?? "Unknown server error";
-      final error = Exception(errorMessage);
-      CrashlyticsService.recordError(error, StackTrace.current, reason: 'HTTP $status: $errorMessage');
-      throw error;
+      final decoded = jsonDecode(res.body);
+      if (decoded is! Map<String, dynamic>) {
+        if (isSuccess) return decoded;
+        throw Exception('Server error (HTTP $status): $res.body');
+      }
+      json = decoded;
     } catch (e) {
-      final errorMessage = "Invalid response (${res.statusCode}): ${res.body}";
+      if (e is Exception && !isSuccess) {
+        rethrow;
+      }
+      final errorMessage = 'Invalid response (HTTP $status): ${res.body}';
       final error = Exception(errorMessage);
       CrashlyticsService.recordError(error, StackTrace.current, reason: errorMessage);
       throw error;
     }
+
+    if (isSuccess) return json;
+
+    final errorMessage = json["error"]?.toString() ?? 'Unknown server error (HTTP $status)';
+    final error = Exception(errorMessage);
+    CrashlyticsService.recordError(error, StackTrace.current, reason: 'HTTP $status: $errorMessage');
+    throw error;
   }
 }
