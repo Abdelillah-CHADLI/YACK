@@ -1,7 +1,6 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:hive/hive.dart';
-import 'package:firebase_database/firebase_database.dart';
 import 'package:yack/logic/services/crashlytics_service.dart';
 
 class AuthService {
@@ -51,7 +50,6 @@ class AuthService {
         password: password,
       );
 
-      final user = auth.currentUser;
       final box = await Hive.openBox('user');
       box.put("didFirstLogin", true);
       await _saveAuthStatus('authenticated');
