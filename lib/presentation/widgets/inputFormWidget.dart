@@ -1,21 +1,26 @@
 import 'package:flutter/material.dart';
+import 'package:yack/presentation/theme/theme.dart';
 
 class CustomTextFormField extends StatefulWidget {
   final String hintText;
+  final String? labelText;
   final bool isPassword;
   final Color? fillColor;
   final IconData? icon;
   final TextEditingController? controller;
   final String? Function(String?)? validator;
+  final TextInputType? keyboardType;
 
   const CustomTextFormField({
     super.key,
     required this.hintText,
+    this.labelText,
     this.isPassword = false,
     this.fillColor,
     this.icon,
     this.controller,
     this.validator,
+    this.keyboardType,
   });
 
   @override
@@ -46,6 +51,9 @@ class _CustomTextFormFieldState extends State<CustomTextFormField> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final color = theme.colorScheme;
+
     return Directionality(
       textDirection: TextDirection.ltr,
       child: TextFormField(
@@ -54,38 +62,44 @@ class _CustomTextFormFieldState extends State<CustomTextFormField> {
         obscureText: widget.isPassword ? _obscureText : false,
         textAlign: TextAlign.left,
         maxLines: 1,
+        keyboardType: widget.keyboardType,
         style: const TextStyle(
-          fontWeight: FontWeight.w400,
+          fontWeight: FontWeight.w500,
           fontStyle: FontStyle.normal,
-          fontSize: 14,
+          fontSize: 15,
         ),
         decoration: InputDecoration(
+          labelText: widget.labelText,
           hintText: widget.hintText,
-          hintStyle: const TextStyle(
+          hintStyle: TextStyle(
             fontWeight: FontWeight.w400,
             fontStyle: FontStyle.normal,
             fontSize: 14,
-            color: Colors.grey,
+            color: color.onSurfaceVariant.withValues(alpha: 0.75),
           ),
-          filled: true,
-          fillColor: widget.fillColor,
-          contentPadding: const EdgeInsets.symmetric(vertical: 8, horizontal: 20),
+          prefixIcon: widget.icon != null
+              ? Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 12),
+                  child: Icon(widget.icon, size: 22),
+                )
+              : null,
           suffixIcon: widget.isPassword
               ? IconButton(
-            icon: Icon(
-              _obscureText ? Icons.visibility_off : Icons.visibility,
-              color: Colors.grey,
-            ),
-            onPressed: () => setState(() {
-              _obscureText = !_obscureText;
-            }),
-          )
-              : (widget.icon != null
-              ? Padding(
-            padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 10),
-            child: Icon(widget.icon, size: 24),
-          )
-              : null),
+                  icon: AnimatedSwitcher(
+                    duration: AppTheme.fast,
+                    transitionBuilder: (child, anim) =>
+                        FadeTransition(opacity: anim, child: child),
+                    child: Icon(
+                      _obscureText ? Icons.visibility_off : Icons.visibility,
+                      key: ValueKey(_obscureText),
+                      color: color.onSurfaceVariant,
+                    ),
+                  ),
+                  onPressed: () => setState(() {
+                    _obscureText = !_obscureText;
+                  }),
+                )
+              : null,
         ),
         validator: widget.validator,
       ),

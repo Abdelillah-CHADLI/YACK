@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:yack/presentation/theme/theme.dart';
 
 class SettingsCard extends StatelessWidget {
   final List<Widget> children;
@@ -7,13 +8,19 @@ class SettingsCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
     return Container(
       decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surface,
-        borderRadius: BorderRadius.circular(12),
+        color: theme.colorScheme.surface,
+        borderRadius: BorderRadius.circular(AppTheme.radiusLg),
+        border: Border.all(
+          color: theme.colorScheme.outlineVariant.withValues(alpha: 0.6),
+        ),
+        boxShadow: AppTheme.cardShadow,
       ),
+      clipBehavior: Clip.antiAlias,
       child: Column(children: children),
     );
   }
 }
-

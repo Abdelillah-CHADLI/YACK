@@ -39,30 +39,38 @@ class SettingsSheet<T> extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     return Container(
-      padding: const EdgeInsets.all(24),
+      padding: const EdgeInsets.fromLTRB(24, 4, 24, 24),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
             title,
-            style: theme.textTheme.titleMedium?.copyWith(
-              fontWeight: FontWeight.bold,
+            style: theme.textTheme.titleLarge?.copyWith(
+              fontWeight: FontWeight.w700,
             ),
           ),
-          const SizedBox(height: 14),
+          const SizedBox(height: 8),
           ...options.map((opt) {
             if (opt.type == SettingType.switchTile) {
               return SwitchListTile(
-                title: Text(opt.title),
-                subtitle: opt.subtitle != null ? Text(opt.subtitle!) : null,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                title: Text(opt.title, style: theme.textTheme.titleSmall),
+                subtitle:
+                    opt.subtitle != null ? Text(opt.subtitle!) : null,
                 value: opt.value as bool,
                 onChanged: (v) => opt.onChanged(v as T),
               );
             } else {
               return RadioListTile<T>(
-                title: Text(opt.title),
-                subtitle: opt.subtitle != null ? Text(opt.subtitle!) : null,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                title: Text(opt.title, style: theme.textTheme.titleSmall),
+                subtitle:
+                    opt.subtitle != null ? Text(opt.subtitle!) : null,
                 value: opt.value,
                 groupValue: opt.groupValue,
                 onChanged: (v) {

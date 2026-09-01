@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:yack/logic/utils/profile_name_dialog.dart';
 import 'package:yack/logic/services/translation_handler.dart';
+import 'package:yack/presentation/theme/theme.dart';
 
 class UserInfoHeader extends StatelessWidget {
   const UserInfoHeader({super.key});
@@ -20,16 +21,14 @@ class UserInfoHeader extends StatelessWidget {
 
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         color: theme.cardColor,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.04),
-            offset: const Offset(0, 4),
-          ),
-        ],
+        borderRadius: BorderRadius.circular(AppTheme.radiusLg),
+        border: Border.all(
+          color: colorScheme.outlineVariant.withValues(alpha: 0.6),
+        ),
+        boxShadow: AppTheme.cardShadow,
       ),
       child: ValueListenableBuilder(
         valueListenable:
@@ -44,16 +43,16 @@ class UserInfoHeader extends StatelessWidget {
               .trim();
 
           return Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
+            crossAxisAlignment: CrossAxisAlignment.center,
             children: [
               CircleAvatar(
-                radius: 32,
-                backgroundColor: colorScheme.primary.withOpacity(0.12),
+                radius: 34,
+                backgroundColor: colorScheme.primary.withValues(alpha: 0.12),
                 child: Text(
                   _buildInitial(firstName),
                   style: theme.textTheme.titleLarge?.copyWith(
                     color: colorScheme.primary,
-                    fontWeight: FontWeight.w700,
+                    fontWeight: FontWeight.w800,
                   ),
                 ),
               ),
@@ -66,25 +65,43 @@ class UserInfoHeader extends StatelessWidget {
                       name.isNotEmpty
                           ? name
                           : TranslationHandler.get('profile_name_placeholder'),
-                      style: theme.textTheme.titleMedium
-                          ?.copyWith(fontWeight: FontWeight.w700),
+                      style: theme.textTheme.titleLarge?.copyWith(
+                        fontWeight: FontWeight.w700,
+                      ),
                     ),
                     const SizedBox(height: 6),
                     Text(
                       user?.email ?? TranslationHandler.get('email'),
                       style: theme.textTheme.bodyMedium?.copyWith(
-                        color: theme.textTheme.bodyMedium?.color
-                            ?.withOpacity(0.7),
+                        color: theme.textTheme.bodyMedium?.color,
                       ),
                     ),
-                    const SizedBox(height: 12),
+                    const SizedBox(height: 1),
+                    Row(
+                      children: [
+                        Icon(
+                          Icons.shield_outlined,
+                          size: 14,
+                          color: colorScheme.primary.withValues(alpha: 0.8),
+                        ),
+                        const SizedBox(width: 4),
+                        Text(
+                          TranslationHandler.get('status_active'),
+                          style: theme.textTheme.labelSmall?.copyWith(
+                            color: colorScheme.primary,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 10),
                     TextButton.icon(
                       style: TextButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(horizontal: 12),
+                        padding: const EdgeInsets.symmetric(horizontal: 2),
                         foregroundColor: colorScheme.primary,
                       ),
                       onPressed: () => showEditNameDialog(context),
-                      icon: const Icon(Icons.edit_outlined, size: 18),
+                      icon: const Icon(Icons.edit_outlined, size: 16),
                       label: Text(TranslationHandler.get('edit_name')),
                     ),
                   ],

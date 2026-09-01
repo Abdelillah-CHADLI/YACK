@@ -1,9 +1,7 @@
 import 'package:flutter/material.dart';
 
-
 class TitleWidget extends StatelessWidget {
   final String text;
-
 
   const TitleWidget({
     super.key,
@@ -14,10 +12,13 @@ class TitleWidget extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
 
-    return Text(text,style: TextStyle(
-      fontSize: 30,
-      color: theme.colorScheme.onSurface,
-      fontWeight: FontWeight.bold
-    ),);
+    return Text(
+      text,
+      style: theme.textTheme.displaySmall?.copyWith(
+        color: theme.colorScheme.onSurface,
+        fontWeight: FontWeight.w800,
+        letterSpacing: -0.5,
+      ),
+    );
   }
 }

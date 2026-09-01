@@ -3,6 +3,7 @@ import 'package:isar/isar.dart';
 import 'package:yack/data/db/models/contract.dart';
 import 'package:yack/logic/services/translation_handler.dart';
 import 'package:yack/presentation/widgets/profile/status_count_tile.dart';
+import 'package:yack/presentation/theme/theme.dart';
 
 class ContractStatusSummary extends StatelessWidget {
   const ContractStatusSummary({super.key});
@@ -39,14 +40,11 @@ class ContractStatusSummary extends StatelessWidget {
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: theme.cardColor,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04),
-            blurRadius: 8,
-            offset: const Offset(0, 4),
-          ),
-        ],
+        borderRadius: BorderRadius.circular(AppTheme.radiusLg),
+        border: Border.all(
+          color: theme.colorScheme.outlineVariant.withValues(alpha: 0.6),
+        ),
+        boxShadow: AppTheme.cardShadow,
       ),
       child: StreamBuilder<List<Contract>>(
         stream: isar.contracts.where().watch(fireImmediately: true),
