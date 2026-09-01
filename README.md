@@ -1,182 +1,137 @@
 # 📱 YACK — Your Agreement Contract Keeper
-**YACK (Your Agreement Contract Keeper)** is a Flutter mobile app that allows users to **create, sign, and verify digital contracts** securely. It ensures authenticity and integrity using **hashing**, with future plans for **blockchain verification**, **GPS tracking**, and **Face ID authentication**.
 
-## 🚀 Features
-- ✍️ Create, sign, and manage contracts
-- 🔐 Secure data using hashing
-- ☁️ Firebase integration (Auth, Firestore, Storage)
-- 🧾 View and verify signed agreements
-- 📍 Future: GPS and Face ID verification
-- ⛓️ Future: Blockchain-backed proof of authenticity
+**YACK (Your Agreement Contract Keeper)** is a Flutter mobile app that lets users **create, share, sign, and verify digital contracts** securely. Contracts are protected with **end-to-end encryption** (RSA public/private keys via `pointycastle`), shared instantly over a peer-to-peer link (QR code or deep link), and kept in sync with a backend. It offers a premium, mobile-first Material 3 UI with full Arabic/French/English localization and light/dark themes.
 
-## 🏗️ Project Structure
-lib/  
-├── main.dart  
-├── config/  
-│   ├── app_theme.dart  
-│   ├── constants.dart  
-│   └── routes.dart  
-├── models/  
-│   ├── user_model.dart  
-│   └── contract_model.dart  
-├── services/  
-│   ├── auth_service.dart  
-│   ├── contract_service.dart  
-│   ├── hash_service.dart  
-│   └── storage_service.dart  
-├── providers/  
-│   ├── auth_provider.dart  
-│   └── contract_provider.dart  
-├── screens/  
-│   ├── login_screen.dart  
-│   ├── home_screen.dart  
-│   ├── create_contract_screen.dart  
-│   └── verify_contract_screen.dart  
-├── widgets/  
-│   ├── custom_button.dart  
-│   ├── input_field.dart  
-│   └── contract_card.dart  
-└── utils/  
-├── validators.dart  
-└── snackbar_helper.dart
+> The app communicates with a separate Node.js backend (`YACK-Backend`), not included in this repository.
 
-## ⚙️ Firebase Setup for YACK
-### 1. Create a Firebase Project
-- Go to [Firebase Console](https://console.firebase.google.com)
-- Click **Add Project** → name it `yack-app`
-- Enable **Google Analytics** (optional)
+---
 
-### 2. Register Your Flutter App
-**For Android:**
-- Add package name (e.g., `com.example.yack`)
-- Download `google-services.json`
-- Place it in `android/app/google-services.json`
+## ✨ Features
 
-**For iOS:**
-- Download `GoogleService-Info.plist`
-- Place it in `ios/Runner/GoogleService-Info.plist`
+- ✍️ Create contracts with an encrypted title, description, and price
+- 📷 Share a contract via **QR code** or paste a **deep link** manually
+- 🖋️ Other party **scans / joins**, then both sides **accept & sign**
+- 🔐 End-to-end encryption with asymmetric RSA key pairs (per user)
+- ☁️ Firebase authentication + push notifications; Isar/Hive local storage with backend sync
+- 🧾 Review contracts (accept/decline), translate content inline, and view statuses (pending, active, accepted, rejected, completed, disputed)
+- 🎨 Premium Material 3 design system with light & dark themes
+- 🌍 Localized UI (English, Arabic, French)
 
-### 3. Add Firebase Dependencies
-Run these commands:
-flutter pub add firebase_core
-flutter pub add firebase_auth
-flutter pub add cloud_firestore
-flutter pub add firebase_storage
+## 🗂️ Architecture
 
-arduino
-Copy code
-Then run:
+The Flutter app uses a layered structure:
+
+| Layer | Location | Purpose |
+|-------|----------|---------|
+| Data | `lib/data/` | Local models (Isar), repositories, adapters |
+| Logic | `lib/logic/` | Cubits (BLoC state), services (auth, network, storage, notifications, encryption) |
+| Presentation | `lib/presentation/` | Screens, theming, and reusable widgets |
+| L10n | `lib/l10n/` | Translation maps (`en`, `ar`, `fr`) |
+
+```
+lib/
+├── main.dart / app.dart / app_wrapper.dart   # entry points & routing
+├── data/
+│   ├── db/models/                            # Isar models (contract, message, media)
+│   └── repositories/                         # local data access (isar_adapter, …)
+├── logic/
+│   ├── cubits/                               # BLoC state (auth, contract, settings, …)
+│   └── services/
+│       ├── auth/                             # Firebase auth + encryption/crypto
+│       ├── contract/                         # contract CRUD & sync
+│       ├── message/ media/ notification/ network/
+│       └── snapshot helpers (snackBarHandler, translation_handler)
+├── presentation/
+│   ├── theme/                                # design tokens + light/dark themes
+│   ├── screens/                              # home, scan, share, create, settings, profile, auth, subscription, …
+│   └── widgets/                              # reusable buttons, inputs, cards, badges
+└── l10n/                                     # translations
+```
+
+## 🚀 Getting Started
+
+### Prerequisites
+
+- Flutter SDK (stable) with Dart >= 3.9
+- A backend instance (see **Backend** below)
+- A Firebase project configured for Android (and optionally Web/Windows/macOS)
+
+### 1. Install dependencies
+
+```bash
 flutter pub get
+```
 
-perl
-Copy code
+### 2. Configure Firebase
 
-### 4. Initialize Firebase in Flutter
-In your `main.dart`:
-import 'package:flutter/material.dart';
-import 'package:firebase_core/firebase_core.dart';
-import 'firebase_options.dart';
+- Create a Firebase project and register your Android app (package `com.example.yack`).
+- Place the downloaded config as `android/app/google-services.json`.
+- Update `lib/firebase_options.dart` (or re-run `flutterfire configure`).
+- Enable the **Email/Password** sign-in provider in the Firebase console before testing sign-up.
 
-void main() async {
-WidgetsFlutterBinding.ensureInitialized();
-await Firebase.initializeApp(
-options: DefaultFirebaseOptions.currentPlatform,
-);
-runApp(const YackApp());
-}
+### 3. Point the app at your backend
 
-class YackApp extends StatelessWidget {
-const YackApp({super.key});
+The backend base URL is set via a compile-time Dart define (defaults to `https://yack.leapcell.app`). For a local backend on an Android emulator:
 
-@override
-Widget build(BuildContext context) {
-return MaterialApp(
-title: 'YACK',
-theme: ThemeData(primarySwatch: Colors.blue),
-home: const HomeScreen(),
-);
-}
-}
+```bash
+flutter run --dart-define=API_BASE_URL=http://10.0.2.2:3000
+```
 
-shell
-Copy code
+Omit the define to use the default in `lib/logic/services/network/http_handler.dart`.
 
-### 5. Verify Connection
-Run the app:
+### 4. Run the app
+
+```bash
 flutter run
+```
 
-nginx
-Copy code
-If no errors appear, Firebase is connected successfully ✅
+## 🔌 Backend
 
-## 🧠 Example: Authentication Service
-import 'package:firebase_auth/firebase_auth.dart';
+The API lives in a separate repository (`YACK-Backend`: Node.js/Express, Mongoose, Firebase Admin, Cloudinary) and is typically deployed to [Leapcell](https://leapcell.io). It is responsible for:
 
-class AuthService {
-final _auth = FirebaseAuth.instance;
+- User accounts (Firebase Auth)
+- Contract creation, joining, and signing coordination
+- Push notifications between the two parties
+- Media uploads (Cloudinary)
 
-Future<User?> signIn(String email, String password) async {
-final result = await _auth.signInWithEmailAndPassword(email: email, password: password);
-return result.user;
-}
+> 🔐 Backend credentials (Firebase Admin service account, MongoDB URI, Cloudinary keys) live in that backend repo's environment variables — **never** commit them to this app repository.
 
-Future<User?> signUp(String email, String password) async {
-final result = await _auth.createUserWithEmailAndPassword(email: email, password: password);
-return result.user;
-}
+## 🌍 Localization
 
-Future<void> signOut() async {
-await _auth.signOut();
-}
-}
+Add or update strings in:
 
-shell
-Copy code
+- `lib/l10n/en.dart`
+- `lib/l10n/ar.dart`
+- `lib/l10n/fr.dart`
 
-## 🧾 Example: Save a Contract to Firestore
-import 'package:cloud_firestore/cloud_firestore.dart';
+Keys must be added manually to **all three** maps; missing keys fall back gracefully via `TranslationHandler`.
 
-class ContractService {
-final _firestore = FirebaseFirestore.instance;
+## 🧪 Analysis
 
-Future<void> saveContract(String title, String hash, String userId) async {
-await _firestore.collection('contracts').add({
-'title': title,
-'hash': hash,
-'ownerId': userId,
-'createdAt': FieldValue.serverTimestamp(),
-});
-}
+```bash
+flutter analyze
+```
 
-Stream<QuerySnapshot> getUserContracts(String userId) {
-return _firestore
-.collection('contracts')
-.where('ownerId', isEqualTo: userId)
-.snapshots();
-}
-}
-
-markdown
-Copy code
+Zero errors is the target. Remaining warnings/infos come from generated Isar files (`.g.dart`), naming conventions, and `print()` in services.
 
 ## 🧰 Tech Stack
-| Category | Technology                        |
-|-----------|-----------------------------------|
-| Frontend | Flutter                           |
-| Backend | Firebase (Auth, Firestore, Storage) |
-| Language | Dart                              |
-| Security | Hashing                           |
-| Platform | Android                           |
 
-## 📦 Future Enhancements
-- GPS location verification
-- Face ID / Fingerprint authentication
-- Blockchain contract hashing
-- In-app signature pad
+| Category    | Technology                                                       |
+|-------------|------------------------------------------------------------------|
+| Frontend    | Flutter (Material 3)                                              |
+| State       | flutter_bloc (BLoC)                                               |
+| Local DB    | Isar + Hive                                                       |
+| Encryption  | pointycastle (RSA)                                                |
+| Auth / Push | Firebase Auth, Messaging, Crashlytics                             |
+| Sharing     | qr_flutter + mobile_scanner                                        |
+| Backend     | Node.js/Express (separate repo)                                    |
+| Languages   | English, Arabic, French                                            |
+| Platforms   | Android (primary; web/windows/macOS configured)                    |
 
-## 📜 License
+## 📄 License
+
 This project is licensed under the **MIT License**.
 
 ## ❤️ Author
-**YACK Team**  
-_Your Agreement Contract Keeper — simple, secure, and smart digital contracts._
+
+**YACK Team** — *Your Agreement Contract Keeper — simple, secure, and smart digital contracts.*
