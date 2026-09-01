@@ -12,7 +12,12 @@
           "package_name": "com.example.yack"
         }
       },
-      "oauth_client": [],
+      "oauth_client": [
+        {
+          "client_id": "1015366964970-18smlefi8do5k7sg5eevvan4lpibf96t.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
       "api_key": [
         {
           "current_key": "AIzaSyASxMoPm7ATUE93PHNwZIN4mGwE7E8iQxk"
@@ -20,7 +25,19 @@
       ],
       "services": {
         "appinvite_service": {
-          "other_platform_oauth_client": []
+          "other_platform_oauth_client": [
+            {
+              "client_id": "1015366964970-18smlefi8do5k7sg5eevvan4lpibf96t.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "1015366964970-37ihgk9i1v4kf88j3udsk567d20sgqfc.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.example.yack"
+              }
+            }
+          ]
         }
       }
     }

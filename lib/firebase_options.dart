@@ -67,6 +67,7 @@ class DefaultFirebaseOptions {
     messagingSenderId: '1015366964970',
     projectId: 'yack-aeb34',
     storageBucket: 'yack-aeb34.firebasestorage.app',
+    iosClientId: '1015366964970-37ihgk9i1v4kf88j3udsk567d20sgqfc.apps.googleusercontent.com',
     iosBundleId: 'com.example.yack',
   );
 }
