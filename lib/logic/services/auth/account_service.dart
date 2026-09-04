@@ -2,15 +2,15 @@ import 'package:hive/hive.dart';
 import 'package:yack/data/repositories/isar_adapter.dart';
 import 'package:yack/logic/services/network/http_handler.dart';
 import 'package:yack/logic/services/user/user_service.dart';
+import 'package:yack/logic/services/auth/decrypted_key_cache.dart';
 
 /// Service for managing account-related operations
 /// Works in conjunction with AuthService for post-authentication account setup
 class AccountService {
   AccountService({HttpHandler? httpHandler, UserService? userService})
-      : _userService = userService ?? UserService(httpHandler: httpHandler);
+    : _userService = userService ?? UserService(httpHandler: httpHandler);
 
   final UserService _userService;
-
 
   /// Fetch and cache user profile from backend
   Future<UserProfile> fetchAndCacheProfile() async {
@@ -110,6 +110,7 @@ class AccountService {
 
   /// Clear all cached account data (for logout)
   Future<void> clearCachedData() async {
+    DecryptedKeyCache.clear();
     // Clear Hive user box
     final box = await Hive.openBox('user');
     await box.delete('firstName');
@@ -122,6 +123,9 @@ class AccountService {
     await box.delete('isComplete');
     await box.delete('decryptedPrivateKey');
     await box.delete('userId');
+    await box.delete('hiddenContractIds');
+    await box.delete('didFirstLogin');
+    await box.delete('authStatus');
 
     // Clear all Isar data (contracts, messages, media, notifications)
     await clearAllIsarData();

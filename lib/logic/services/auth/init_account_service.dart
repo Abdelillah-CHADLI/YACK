@@ -1,10 +1,11 @@
 import 'package:hive/hive.dart';
 import 'package:yack/logic/services/auth/cryptoService.dart';
+import 'package:yack/logic/services/auth/decrypted_key_cache.dart';
 import 'package:yack/logic/services/user/user_service.dart';
 
 class InitAccountService {
   InitAccountService({UserService? userService})
-      : _userService = userService ?? UserService();
+    : _userService = userService ?? UserService();
 
   final UserService _userService;
 
@@ -17,7 +18,7 @@ class InitAccountService {
       iv: keyBundle['iv']!,
     );
 
-    // Decrypt the private key to store it for immediate use
+    // Keep the unlocked private key in process memory for immediate use.
     final decryptedPrivateKey = CryptoService.decryptPrivateKey(
       ciphertextBase64: keyBundle['encryptedPrivateKey']!,
       password: password,
@@ -30,7 +31,8 @@ class InitAccountService {
     await box.put('encryptedPrivateKey', keyBundle['encryptedPrivateKey']);
     await box.put('privateKeySalt', keyBundle['salt']);
     await box.put('privateKeyIV', keyBundle['iv']);
-    await box.put('decryptedPrivateKey', decryptedPrivateKey);
+    DecryptedKeyCache.store(decryptedPrivateKey);
+    await box.delete('decryptedPrivateKey');
     await box.put('isComplete', true);
   }
 }

@@ -55,7 +55,7 @@ class UserProfile {
 
 class UserService {
   UserService({HttpHandler? httpHandler})
-      : _http = httpHandler ?? HttpHandler();
+    : _http = httpHandler ?? HttpHandler();
 
   final HttpHandler _http;
 
@@ -68,24 +68,27 @@ class UserService {
     required String iv,
   }) async {
     final box = await Hive.openBox('user');
-    final firstName = box.get('firstName')?.toString();
-    final lastName = box.get('lastName')?.toString();
+    final firstName = box.get('firstName')?.toString().trim();
+    final lastName = box.get('lastName')?.toString().trim();
 
-    if (firstName == null || firstName.isEmpty || lastName == null || lastName.isEmpty) {
-      // throw StateError('Missing cached profile name.');
-      // set "" for both
-      box.put('firstName', '');
-      box.put('lastName', '');
+    if (firstName == null ||
+        firstName.isEmpty ||
+        lastName == null ||
+        lastName.isEmpty) {
+      throw StateError('profile_name_required');
     }
 
-    await _http.post('/user/finalize', body: {
-      'firstName': firstName,
-      'lastName': lastName,
-      'publicKey': publicKey,
-      'encryptedPrivateKey': encryptedPrivateKey,
-      'salt': salt,
-      'iv': iv,
-    });
+    await _http.post(
+      '/user/finalize',
+      body: {
+        'firstName': firstName,
+        'lastName': lastName,
+        'publicKey': publicKey,
+        'encryptedPrivateKey': encryptedPrivateKey,
+        'salt': salt,
+        'iv': iv,
+      },
+    );
   }
 
   /// Get user profile with keys.
@@ -102,16 +105,23 @@ class UserService {
     required String salt,
     required String iv,
   }) async {
-    await _http.put('/user/private-key', body: {
-      'encryptedPrivateKey': encryptedPrivateKey,
-      'salt': salt,
-      'iv': iv,
-    });
+    await _http.put(
+      '/user/private-key',
+      body: {
+        'encryptedPrivateKey': encryptedPrivateKey,
+        'salt': salt,
+        'iv': iv,
+      },
+    );
   }
 
-  /// Update profile info (firstName, lastName).
+  /// Update profile info (firstName, lastName, notification language).
   /// At least one field required.
-  Future<void> updateProfile({String? firstName, String? lastName}) async {
+  Future<void> updateProfile({
+    String? firstName,
+    String? lastName,
+    String? language,
+  }) async {
     final body = <String, dynamic>{};
     if (firstName != null && firstName.isNotEmpty) {
       body['firstName'] = firstName;
@@ -119,8 +129,11 @@ class UserService {
     if (lastName != null && lastName.isNotEmpty) {
       body['lastName'] = lastName;
     }
+    if (language != null && language.isNotEmpty) {
+      body['language'] = language;
+    }
     if (body.isEmpty) {
-      throw ArgumentError('At least one field (firstName or lastName) is required');
+      throw ArgumentError('At least one profile field is required');
     }
     await _http.put('/user/profile', body: body);
   }

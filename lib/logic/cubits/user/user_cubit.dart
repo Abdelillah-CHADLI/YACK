@@ -1,6 +1,7 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:hive/hive.dart';
 import 'package:yack/logic/services/auth/cryptoService.dart';
+import 'package:yack/logic/services/auth/decrypted_key_cache.dart';
 import 'package:yack/logic/services/auth/init_account_service.dart';
 import 'package:yack/logic/services/user/user_service.dart';
 
@@ -8,17 +9,17 @@ import 'user_state.dart';
 
 class UserCubit extends Cubit<UserState> {
   UserCubit({UserService? service, InitAccountService? initAccountService})
-      : _service = service ?? UserService(),
-        _initAccountService = initAccountService ?? InitAccountService(userService: service ?? UserService()),
-        super(const UserInitial());
+    : _service = service ?? UserService(),
+      _initAccountService =
+          initAccountService ??
+          InitAccountService(userService: service ?? UserService()),
+      super(const UserInitial());
 
   final UserService _service;
   final InitAccountService _initAccountService;
 
   /// Complete account setup with verified email, name, and encryption keys.
-  Future<void> finalize({
-    required String password,
-  }) async {
+  Future<void> finalize({required String password}) async {
     emit(const UserLoading());
     // Allow UI to update before heavy crypto operations
     await Future.delayed(const Duration(milliseconds: 50));
@@ -40,7 +41,10 @@ class UserCubit extends Cubit<UserState> {
       final profile = await _service.getProfile();
 
       // Check if keys are missing - this means account setup was not completed
-      if (profile.isComplete == false || (profile.publicKey == null || profile.publicKey!.isEmpty) && (profile.encryptedPrivateKey == null || profile.encryptedPrivateKey!.isEmpty)) {
+      if (profile.isComplete == false ||
+          (profile.publicKey == null || profile.publicKey!.isEmpty) &&
+              (profile.encryptedPrivateKey == null ||
+                  profile.encryptedPrivateKey!.isEmpty)) {
         // Still cache other profile info
         try {
           final box = await Hive.openBox('user');
@@ -68,11 +72,9 @@ class UserCubit extends Cubit<UserState> {
         await box.put('publicKey', profile.publicKey);
 
         await box.put('isComplete', true);
-
       } catch (e) {
         // Ignore caching errors
       }
-
 
       emit(UserProfileLoaded(profile));
     } catch (e) {
@@ -84,7 +86,11 @@ class UserCubit extends Cubit<UserState> {
   Future<void> updatePrivateKey(String encryptedPrivateKey) async {
     emit(const UserLoading());
     try {
-      await _service.updatePrivateKey(encryptedPrivateKey: encryptedPrivateKey, salt: '', iv: '');
+      await _service.updatePrivateKey(
+        encryptedPrivateKey: encryptedPrivateKey,
+        salt: '',
+        iv: '',
+      );
       emit(const UserUpdateSuccess());
     } catch (e) {
       emit(UserError(e.toString()));
@@ -115,7 +121,11 @@ class UserCubit extends Cubit<UserState> {
       final iv = box.get('privateKeyIV') as String?;
 
       if (encryptedPrivateKey == null || salt == null || iv == null) {
-        emit(const UserDecryptError('Missing encryption data. Please set up your account again.'));
+        emit(
+          const UserDecryptError(
+            'Missing encryption data. Please set up your account again.',
+          ),
+        );
         return;
       }
 
@@ -127,12 +137,15 @@ class UserCubit extends Cubit<UserState> {
         ivBase64: iv,
       );
 
-      // Store decrypted key in memory (not persisted)
-      await box.put('decryptedPrivateKey', decryptedKey);
+      DecryptedKeyCache.store(decryptedKey);
+      // Remove data left by older app versions that persisted this key.
+      await box.delete('decryptedPrivateKey');
 
       emit(const UserDecryptSuccess());
     } catch (e) {
-      emit(UserDecryptError('Invalid password or corrupted data: ${e.toString()}'));
+      emit(
+        UserDecryptError('Invalid password or corrupted data: ${e.toString()}'),
+      );
     }
   }
 }

@@ -6,6 +6,13 @@ import 'package:pointycastle/export.dart';
 class CryptoService {
   CryptoService._(); // no instances
 
+  /// Conservative UTF-8 payload ceiling for the current RSA-OAEP scheme.
+  /// Longer product content should move to hybrid AES-GCM encryption.
+  static const int maxRsaPlaintextBytes = 190;
+
+  static bool canEncryptWithRsa(String plaintext) =>
+      utf8.encode(plaintext).length <= maxRsaPlaintextBytes;
+
   // -----------------------------
   // CONFIG
   // -----------------------------
@@ -20,9 +27,7 @@ class CryptoService {
   // -----------------------------
   static Uint8List _randomBytes(int length) {
     final rand = Random.secure();
-    return Uint8List.fromList(
-      List.generate(length, (_) => rand.nextInt(256)),
-    );
+    return Uint8List.fromList(List.generate(length, (_) => rand.nextInt(256)));
   }
 
   // -----------------------------
@@ -65,21 +70,10 @@ class CryptoService {
     final salt = _randomBytes(16);
     final iv = _randomBytes(12);
 
-    final key = _deriveKey(
-      password: password,
-      salt: salt,
-    );
+    final key = _deriveKey(password: password, salt: salt);
 
     final cipher = GCMBlockCipher(AESEngine())
-      ..init(
-        true,
-        AEADParameters(
-          KeyParameter(key),
-          128,
-          iv,
-          Uint8List(0),
-        ),
-      );
+      ..init(true, AEADParameters(KeyParameter(key), 128, iv, Uint8List(0)));
 
     final ciphertext = cipher.process(privateKeyBytes);
 
@@ -103,29 +97,22 @@ class CryptoService {
     final salt = base64Decode(saltBase64);
     final iv = base64Decode(ivBase64);
 
-    final key = _deriveKey(
-      password: password,
-      salt: salt,
-    );
+    final key = _deriveKey(password: password, salt: salt);
 
     final cipher = GCMBlockCipher(AESEngine())
-      ..init(
-        false,
-        AEADParameters(
-          KeyParameter(key),
-          128,
-          iv,
-          Uint8List(0),
-        ),
-      );
+      ..init(false, AEADParameters(KeyParameter(key), 128, iv, Uint8List(0)));
 
     return cipher.process(ciphertext);
   }
 
-  static Future<Map<String, String>> generateAndEncryptKeys(String password) async {
+  static Future<Map<String, String>> generateAndEncryptKeys(
+    String password,
+  ) async {
     final keyPair = generateRSAKeyPair();
     final encrypted = encryptPrivateKey(
-      privateKeyBytes: _encodeRSAPrivateKey(keyPair.privateKey as RSAPrivateKey),
+      privateKeyBytes: _encodeRSAPrivateKey(
+        keyPair.privateKey as RSAPrivateKey,
+      ),
       password: password,
     );
     return {
@@ -141,10 +128,12 @@ class CryptoService {
   // -----------------------------
   static AsymmetricKeyPair<PublicKey, PrivateKey> generateRSAKeyPair() {
     final keyGen = RSAKeyGenerator()
-      ..init(ParametersWithRandom(
-        RSAKeyGeneratorParameters(BigInt.parse('65537'), 2048, 64),
-        _secureRandom(),
-      ));
+      ..init(
+        ParametersWithRandom(
+          RSAKeyGeneratorParameters(BigInt.parse('65537'), 2048, 64),
+          _secureRandom(),
+        ),
+      );
     return keyGen.generateKeyPair();
   }
 
@@ -163,10 +152,7 @@ class CryptoService {
   // RSA KEY ENCODING/DECODING
   // -----------------------------
   static String _encodeRSAPublicKey(RSAPublicKey key) {
-    final map = {
-      'n': key.modulus.toString(),
-      'e': key.exponent.toString(),
-    };
+    final map = {'n': key.modulus.toString(), 'e': key.exponent.toString()};
     return base64Encode(utf8.encode(json.encode(map)));
   }
 
@@ -207,12 +193,16 @@ class CryptoService {
     required String plaintext,
     required String publicKeyBase64,
   }) {
+    if (!canEncryptWithRsa(plaintext)) {
+      throw ArgumentError.value(
+        plaintext,
+        'plaintext',
+        'UTF-8 payload exceeds $maxRsaPlaintextBytes bytes',
+      );
+    }
     final publicKey = _decodeRSAPublicKey(publicKeyBase64);
     final encryptor = OAEPEncoding(RSAEngine())
-      ..init(
-        true,
-        PublicKeyParameter<RSAPublicKey>(publicKey),
-      );
+      ..init(true, PublicKeyParameter<RSAPublicKey>(publicKey));
 
     final encrypted = encryptor.process(
       Uint8List.fromList(utf8.encode(plaintext)),
@@ -230,14 +220,9 @@ class CryptoService {
   }) {
     final privateKey = _decodeRSAPrivateKey(privateKeyBytes);
     final decryptor = OAEPEncoding(RSAEngine())
-      ..init(
-        false,
-        PrivateKeyParameter<RSAPrivateKey>(privateKey),
-      );
+      ..init(false, PrivateKeyParameter<RSAPrivateKey>(privateKey));
 
-    final decrypted = decryptor.process(
-      base64Decode(ciphertextBase64),
-    );
+    final decrypted = decryptor.process(base64Decode(ciphertextBase64));
 
     return utf8.decode(decrypted);
   }

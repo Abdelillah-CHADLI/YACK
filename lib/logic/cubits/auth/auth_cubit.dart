@@ -4,6 +4,7 @@ import 'package:yack/logic/services/auth/auth_service.dart';
 import 'package:yack/logic/services/contract/contract_sync_service.dart';
 import 'package:yack/logic/services/auth/account_service.dart';
 import 'package:hive/hive.dart';
+import 'package:yack/logic/services/auth/decrypted_key_cache.dart';
 
 class AuthCubit extends Cubit<AuthState> {
   AuthCubit() : super(AuthInitial());
@@ -64,9 +65,10 @@ class AuthCubit extends Cubit<AuthState> {
   /// - AccountNotComplete
   /// - AccountCompleteButLocked
   /// - Authenticated
-  Future<void> _evaluateAccountStateAndEmit({required bool fromOnlineCheck}) async {
+  Future<void> _evaluateAccountStateAndEmit({
+    required bool fromOnlineCheck,
+  }) async {
     try {
-
       // When coming from online, refresh profile cache to have latest isComplete, keys, etc.
       if (fromOnlineCheck) {
         await _accountService.fetchAndCacheProfile();
@@ -74,7 +76,10 @@ class AuthCubit extends Cubit<AuthState> {
 
       final box = await Hive.openBox('user');
       final isComplete = box.get('isComplete') ?? false;
-      final decryptedPrivateKey = box.get('decryptedPrivateKey');
+      // Migrate away from older versions that persisted the unlocked key.
+      if (box.containsKey('decryptedPrivateKey')) {
+        await box.delete('decryptedPrivateKey');
+      }
 
       if (!isComplete) {
         // Account not finished (no keypair initialized, etc.)
@@ -83,13 +88,13 @@ class AuthCubit extends Cubit<AuthState> {
       }
 
       // Account is complete
-      if (decryptedPrivateKey == null) {
+      if (!DecryptedKeyCache.isUnlocked) {
         // Need to decrypt private key first
         emit(AccountCompleteButLocked());
         return;
       }
 
-      // Account complete and decryptedPrivateKey exists -> fully authenticated
+      // Account complete and the process-memory key exists -> fully authenticated
       emit(Authenticated());
     } catch (_) {
       throw 'error';
@@ -99,11 +104,14 @@ class AuthCubit extends Cubit<AuthState> {
   /// Sync contracts in background (non-blocking)
   void _syncContractsInBackground() {
     // Run in background, don't await
-    _syncService.syncContracts().then((count) {
-      print('[AuthCubit] Synced $count contracts in background');
-    }).catchError((e) {
-      print('[AuthCubit] Background contract sync failed: $e');
-    });
+    _syncService
+        .syncContracts()
+        .then((count) {
+          print('[AuthCubit] Synced $count contracts in background');
+        })
+        .catchError((e) {
+          print('[AuthCubit] Background contract sync failed: $e');
+        });
   }
 
   Future<void> checkOnlineAuth() async {

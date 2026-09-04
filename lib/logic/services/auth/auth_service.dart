@@ -2,6 +2,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:hive/hive.dart';
 import 'package:yack/logic/services/crashlytics_service.dart';
+import 'package:yack/logic/services/auth/decrypted_key_cache.dart';
 
 class AuthService {
   // Keys for persisting auth status in Hive
@@ -30,29 +31,33 @@ class AuthService {
 
   /// Login Function
   /// Called FROM Cubit (LoginCubit), NOT from UI directly.
-  static Future<void> login(
-      BuildContext context,
-      GlobalKey<FormState> formKey,
-      String email,
-      String password,
-      ) async
-  {
-
+  static Future<bool> login(
+    BuildContext context,
+    GlobalKey<FormState> formKey,
+    String email,
+    String password,
+  ) async {
     if (!formKey.currentState!.validate()) {
       throw "auth_invalid_input"; // translation key
     }
 
     final auth = FirebaseAuth.instance;
+    DecryptedKeyCache.clear();
 
     try {
-      await auth.signInWithEmailAndPassword(
+      final credential = await auth.signInWithEmailAndPassword(
         email: email,
         password: password,
       );
 
+      await credential.user?.reload();
+      final isVerified =
+          FirebaseAuth.instance.currentUser?.emailVerified == true;
+
       final box = await Hive.openBox('user');
-      box.put("didFirstLogin", true);
-      await _saveAuthStatus('authenticated');
+      await box.put("didFirstLogin", true);
+      await _saveAuthStatus(isVerified ? 'authenticated' : 'unverified');
+      return isVerified;
 
       // // Fetch and cache first/last name on login
       // if (user != null) {
@@ -98,7 +103,11 @@ class AuthService {
 
       // }
     } on FirebaseAuthException catch (e) {
-      CrashlyticsService.recordError(e, StackTrace.current, reason: 'Login: ${e.code}');
+      CrashlyticsService.recordError(
+        e,
+        StackTrace.current,
+        reason: 'Login: ${e.code}',
+      );
       throw _mapFirebaseLoginError(e);
     } catch (e, stack) {
       CrashlyticsService.recordError(e, stack, reason: 'Login error');
@@ -122,21 +131,20 @@ class AuthService {
 
   // SIGN UP
   static Future<void> signup(
-      BuildContext context,
-      GlobalKey<FormState> formKey,
-      String email,
-      String password,
-      String firstName,
-      String lastName,
-      ) async
-  {
-
+    BuildContext context,
+    GlobalKey<FormState> formKey,
+    String email,
+    String password,
+    String firstName,
+    String lastName,
+  ) async {
     // Validate input fields
     if (!formKey.currentState!.validate()) {
       throw "auth_invalid_input";
     }
 
     final auth = FirebaseAuth.instance;
+    DecryptedKeyCache.clear();
 
     try {
       // Create user in Firebase Auth
@@ -153,10 +161,13 @@ class AuthService {
         'didFirstLogin': true,
       });
 
-
       await _saveAuthStatus('unverified');
     } on FirebaseAuthException catch (e) {
-      CrashlyticsService.recordError(e, StackTrace.current, reason: 'Signup: ${e.code}');
+      CrashlyticsService.recordError(
+        e,
+        StackTrace.current,
+        reason: 'Signup: ${e.code}',
+      );
       if (e.code == "email-already-in-use") {
         throw "auth_email_in_use";
       } else if (e.code == "invalid-email") {
@@ -256,9 +267,7 @@ class AuthService {
 
       // logged in + verified - sync contracts from Firebase (Chadli)
       // This ensures contracts are synced when app restarts with existing session
-      try {
-
-      } catch (_) {
+      try {} catch (_) {
         // Sync errors shouldn't block authentication
       }
 

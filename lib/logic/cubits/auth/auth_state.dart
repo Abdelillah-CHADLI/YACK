@@ -20,7 +20,7 @@ class UncompletedUser extends AuthState {}
 // New: user is authenticated, but account setup not complete (no keys etc.)
 class AccountNotComplete extends AuthState {}
 
-// New: user is authenticated, account complete, but no decryptedPrivateKey cached
+// User is authenticated and complete, but the process-memory key is locked.
 class AccountCompleteButLocked extends AuthState {}
 
 class AuthError extends AuthState {
