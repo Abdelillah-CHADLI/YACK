@@ -14,6 +14,9 @@ class LoginLoading extends LoginState {}
 // When login succeeds
 class LoginSuccess extends LoginState {}
 
+/// Credentials are correct, but email verification is still required.
+class LoginUnverified extends LoginState {}
+
 // When login fails
 class LoginError extends LoginState {
   final String? message;

@@ -1,16 +1,14 @@
-import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:yack/logic/cubits/auth/password_reset_cubit.dart';
 import 'package:yack/logic/cubits/auth/password_reset_state.dart';
-import 'package:yack/logic/utils/platform.dart';
-import 'package:yack/logic/utils/validator.dart';
-import 'package:yack/presentation/widgets/inputFormWidget.dart';
-import 'package:yack/presentation/widgets/titleWidget.dart';
-import 'package:yack/presentation/widgets/hrefTextWidget.dart';
 import 'package:yack/logic/services/snackBarHandler.dart';
 import 'package:yack/logic/services/translation_handler.dart';
+import 'package:yack/logic/utils/validator.dart';
+import 'package:yack/presentation/widgets/hrefTextWidget.dart';
+import 'package:yack/presentation/widgets/inputFormWidget.dart';
 import 'package:yack/presentation/widgets/primaryActionButton.dart';
+import 'package:yack/presentation/widgets/yack_ui.dart';
 
 class ForgetPassword extends StatefulWidget {
   const ForgetPassword({super.key});
@@ -24,86 +22,92 @@ class _ForgetPasswordState extends State<ForgetPassword> {
   final _emailController = TextEditingController();
 
   @override
+  void dispose() {
+    _emailController.dispose();
+    super.dispose();
+  }
+
+  void _submit() {
+    FocusScope.of(context).unfocus();
+    context.read<PasswordResetCubit>().resetPassword(
+      context,
+      _formKey,
+      _emailController.text.trim(),
+    );
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final screenWidth = MediaQuery.of(context).size.width;
-    // final screenHeight = MediaQuery.of(context).size.height;
-
-    return Scaffold(
-      body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Form(
-            key: _formKey,
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+    return YackAuthScaffold(
+      showBack: true,
+      title: TranslationHandler.get('forget_password'),
+      subtitle: TranslationHandler.get('forget_password_message'),
+      icon: Icons.password_outlined,
+      footer: HrefWidget(
+        text: TranslationHandler.get('back_to_login'),
+        onClick: () => Navigator.pushReplacementNamed(context, '/login'),
+      ),
+      child: BlocConsumer<PasswordResetCubit, PasswordResetState>(
+        listener: (context, state) {
+          if (state is PasswordResetError) {
+            SnackBarHandler.showError(
+              context,
+              TranslationHandler.get(state.messageKey),
+            );
+          }
+        },
+        builder: (context, state) {
+          if (state is PasswordResetSuccess) {
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                Text(TranslationHandler.get('app_name'),
-                    style: theme.textTheme.titleMedium),
-                SizedBox(
-                  width: PlatformInfo.isDesktop
-                      ? min(400, screenWidth * 0.9)
-                      : screenWidth,
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.center,
-                    children: [
-                      TitleWidget(
-                          text: TranslationHandler.get('forget_password')),
-                      const SizedBox(height: 8),
-                      Text(
-                        TranslationHandler.get('forget_password_message'),
-                      ),
-                      const SizedBox(height: 30),
-                      CustomTextFormField(
-                        controller: _emailController,
-                        hintText: TranslationHandler.get('email'),
-                        validator: Validator.email,
-                      ),
-                      const SizedBox(height: 25),
-                      BlocConsumer<PasswordResetCubit,PasswordResetState>(
-                        listener: (context,state) {
-
-                          if (state is PasswordResetSuccess){
-                            SnackBarHandler.showSuccess(
-                                context, TranslationHandler.get('password_reset_sent'));
-                            Navigator.pushReplacementNamed(context, '/login');
-                          }
-                          else if (state is PasswordResetError) {
-                            SnackBarHandler.showError(context, TranslationHandler.get(state.messageKey));
-                          }
-
-                        },
-                        builder: (context,state) {
-                          return PrimaryActionButton(
-                              isLoading: state is PasswordResetLoading,
-                              action: TranslationHandler.get('reset'),
-                              onClick: (){
-                                context.read<PasswordResetCubit>().resetPassword(
-                                  context,
-                                  _formKey,
-                                  _emailController.text,);
-                                },
-                          );
-                        })
-                     ],
+                YackNotice(
+                  message: TranslationHandler.resolve(
+                    'password_reset_sent_to',
+                    params: {'email': _emailController.text.trim()},
                   ),
+                  tone: YackNoticeTone.positive,
+                  icon: Icons.mark_email_read_outlined,
                 ),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Text(TranslationHandler.get('dont_have_account')),
-                    HrefWidget(
-                      text: TranslationHandler.get('sign_up'),
-                      onClick: () {
-                        Navigator.pushNamed(context, '/signup');
-                      },
-                    ),
-                  ],
+                const SizedBox(height: 20),
+                PrimaryActionButton(
+                  action: TranslationHandler.get('back_to_login'),
+                  icon: Icons.arrow_back,
+                  onClick: () =>
+                      Navigator.pushReplacementNamed(context, '/login'),
+                ),
+              ],
+            );
+          }
+
+          return Form(
+            key: _formKey,
+            autovalidateMode: AutovalidateMode.onUserInteraction,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                CustomTextFormField(
+                  labelText: TranslationHandler.get('email'),
+                  hintText: TranslationHandler.get('email'),
+                  icon: Icons.mail_outline,
+                  controller: _emailController,
+                  validator: Validator.email,
+                  keyboardType: TextInputType.emailAddress,
+                  textInputAction: TextInputAction.done,
+                  autofillHints: const [AutofillHints.email],
+                  onFieldSubmitted: (_) => _submit(),
+                ),
+                const SizedBox(height: 24),
+                PrimaryActionButton(
+                  isLoading: state is PasswordResetLoading,
+                  action: TranslationHandler.get('send_reset_link'),
+                  icon: Icons.send_outlined,
+                  onClick: state is PasswordResetLoading ? null : _submit,
                 ),
               ],
             ),
-          ),
-        ),
+          );
+        },
       ),
     );
   }

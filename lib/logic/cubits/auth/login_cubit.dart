@@ -8,19 +8,22 @@ class LoginCubit extends Cubit<LoginState> {
   LoginCubit() : super(LoginInitial());
 
   Future<void> login(
-      BuildContext context,
-      GlobalKey<FormState> formKey,
-      String email,
-      String password) async {
-
+    BuildContext context,
+    GlobalKey<FormState> formKey,
+    String email,
+    String password,
+  ) async {
     emit(LoginLoading());
 
     try {
-      await AuthService.login(context, formKey, email, password);
-      emit(LoginSuccess());
-
-    }
-    catch (e){
+      final isVerified = await AuthService.login(
+        context,
+        formKey,
+        email,
+        password,
+      );
+      emit(isVerified ? LoginSuccess() : LoginUnverified());
+    } catch (e) {
       emit(LoginError(e.toString()));
     }
   }

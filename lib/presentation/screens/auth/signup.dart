@@ -1,21 +1,17 @@
-import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:yack/logic/cubits/auth/signup_cubit.dart';
 import 'package:yack/logic/cubits/auth/signup_state.dart';
-import 'package:yack/logic/utils/platform.dart';
 import 'package:yack/logic/services/snackBarHandler.dart';
+import 'package:yack/logic/services/translation_handler.dart';
 import 'package:yack/logic/utils/validator.dart';
+import 'package:yack/presentation/widgets/hrefTextWidget.dart';
 import 'package:yack/presentation/widgets/inputFormWidget.dart';
 import 'package:yack/presentation/widgets/primaryActionButton.dart';
-import 'package:yack/presentation/widgets/titleWidget.dart';
-import 'package:yack/presentation/widgets/hrefTextWidget.dart';
-import 'package:yack/logic/services/translation_handler.dart';
-import 'package:yack/presentation/theme/theme.dart';
+import 'package:yack/presentation/widgets/yack_ui.dart';
 
 class SignUpScreen extends StatefulWidget {
   const SignUpScreen({super.key});
-
 
   @override
   State<SignUpScreen> createState() => _SignUpScreenState();
@@ -23,168 +19,145 @@ class SignUpScreen extends StatefulWidget {
 
 class _SignUpScreenState extends State<SignUpScreen> {
   final _formKey = GlobalKey<FormState>();
-  final emailController = TextEditingController();
-  final passwordController = TextEditingController();
-  final confirmPasswordController = TextEditingController();
-  final firstNameController = TextEditingController();
-  final lastNameController = TextEditingController();
+  final _emailController = TextEditingController();
+  final _passwordController = TextEditingController();
+  final _confirmPasswordController = TextEditingController();
+  final _firstNameController = TextEditingController();
+  final _lastNameController = TextEditingController();
 
+  @override
+  void dispose() {
+    _emailController.dispose();
+    _passwordController.dispose();
+    _confirmPasswordController.dispose();
+    _firstNameController.dispose();
+    _lastNameController.dispose();
+    super.dispose();
+  }
+
+  void _submit() {
+    FocusScope.of(context).unfocus();
+    context.read<SignupCubit>().signup(
+      context,
+      _formKey,
+      _emailController.text.trim(),
+      _passwordController.text,
+      _firstNameController.text.trim(),
+      _lastNameController.text.trim(),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final screenWidth = MediaQuery.of(context).size.width;
-
-    return Scaffold(
-      body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(20),
-          child: SingleChildScrollView(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Container(
-                      width: 26,
-                      height: 26,
-                      decoration: BoxDecoration(
-                        color: AppTheme.yackGreen,
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: const Icon(
-                        Icons.lock_outline,
-                        size: 16,
-                        color: Colors.white,
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    Text(
-                      TranslationHandler.get('app_name'),
-                      style: theme.textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.w800,
-                        letterSpacing: 0.5,
-                      ),
-                    ),
-                  ],
+    return YackAuthScaffold(
+      title: TranslationHandler.get('create_account'),
+      subtitle: TranslationHandler.get('signup_subtitle'),
+      icon: Icons.person_add_alt_1_outlined,
+      footer: Wrap(
+        alignment: WrapAlignment.center,
+        crossAxisAlignment: WrapCrossAlignment.center,
+        children: [
+          Text(TranslationHandler.get('already_have_account')),
+          const SizedBox(width: 4),
+          HrefWidget(
+            text: TranslationHandler.get('login'),
+            onClick: () => Navigator.pushReplacementNamed(context, '/login'),
+          ),
+        ],
+      ),
+      child: AutofillGroup(
+        child: Form(
+          key: _formKey,
+          autovalidateMode: AutovalidateMode.onUserInteraction,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              CustomTextFormField(
+                labelText: TranslationHandler.get('email'),
+                hintText: TranslationHandler.get('email'),
+                icon: Icons.mail_outline,
+                controller: _emailController,
+                validator: Validator.email,
+                keyboardType: TextInputType.emailAddress,
+                textInputAction: TextInputAction.next,
+                autofillHints: const [
+                  AutofillHints.newUsername,
+                  AutofillHints.email,
+                ],
+              ),
+              const SizedBox(height: 16),
+              CustomTextFormField(
+                labelText: TranslationHandler.get('first_name'),
+                hintText: TranslationHandler.get('first_name'),
+                icon: Icons.person_outline,
+                controller: _firstNameController,
+                validator: (value) =>
+                    Validator.name(value, fieldName: 'first_name'),
+                textCapitalization: TextCapitalization.words,
+                textInputAction: TextInputAction.next,
+                autofillHints: const [AutofillHints.givenName],
+              ),
+              const SizedBox(height: 16),
+              CustomTextFormField(
+                labelText: TranslationHandler.get('last_name'),
+                hintText: TranslationHandler.get('last_name'),
+                icon: Icons.badge_outlined,
+                controller: _lastNameController,
+                validator: (value) =>
+                    Validator.name(value, fieldName: 'last_name'),
+                textCapitalization: TextCapitalization.words,
+                textInputAction: TextInputAction.next,
+                autofillHints: const [AutofillHints.familyName],
+              ),
+              const SizedBox(height: 16),
+              CustomTextFormField(
+                labelText: TranslationHandler.get('password'),
+                hintText: TranslationHandler.get('password'),
+                helperText: TranslationHandler.get('account_password_helper'),
+                isPassword: true,
+                icon: Icons.key_outlined,
+                controller: _passwordController,
+                validator: (value) => Validator.password(value, minLength: 8),
+                textInputAction: TextInputAction.next,
+                autofillHints: const [AutofillHints.newPassword],
+              ),
+              const SizedBox(height: 16),
+              CustomTextFormField(
+                labelText: TranslationHandler.get('confirm_password'),
+                hintText: TranslationHandler.get('confirm_password'),
+                isPassword: true,
+                icon: Icons.key_outlined,
+                controller: _confirmPasswordController,
+                validator: (value) =>
+                    Validator.confirmPassword(value, _passwordController.text),
+                textInputAction: TextInputAction.done,
+                autofillHints: const [AutofillHints.newPassword],
+                onFieldSubmitted: (_) => _submit(),
+              ),
+              const SizedBox(height: 24),
+              BlocConsumer<SignupCubit, SignupState>(
+                listener: (context, state) {
+                  if (state is SignupSuccess) {
+                    Navigator.pushNamedAndRemoveUntil(
+                      context,
+                      '/confirm',
+                      (_) => false,
+                    );
+                  } else if (state is SignupError) {
+                    SnackBarHandler.showError(
+                      context,
+                      TranslationHandler.get(state.message ?? 'signup_failed'),
+                    );
+                  }
+                },
+                builder: (context, state) => PrimaryActionButton(
+                  isLoading: state is SignupLoading,
+                  onClick: state is SignupLoading ? null : _submit,
+                  action: TranslationHandler.get('sign_up'),
+                  icon: Icons.arrow_forward,
                 ),
-                const SizedBox(height: 20),
-                SizedBox(
-                  width: PlatformInfo.isDesktop
-                      ? min(400, screenWidth * 0.9)
-                      : screenWidth,
-                  child: Form(
-                    key: _formKey,
-                    child: Column(
-                      spacing: 10,
-                      children: [
-                        TitleWidget(text: TranslationHandler.get('welcome')),
-                        const SizedBox(height: 8),
-                        Text(
-                          TranslationHandler.get('signup_subtitle'),
-                          textAlign: TextAlign.center,
-                          style: theme.textTheme.bodyMedium,
-                        ),
-                        const SizedBox(height: 20),
-
-                        // Email
-                        CustomTextFormField(
-                          hintText: TranslationHandler.get('email'),
-                          icon: Icons.mail_outline,
-                          controller: emailController,
-                          validator: Validator.email,
-                        ),
-
-                        // First & Last Name
-                        Row(
-                          spacing: 10,
-                          children: [
-                            Expanded(
-                              child: CustomTextFormField(
-                                hintText: TranslationHandler.get('first_name'),
-                                icon: Icons.person_outline,
-                                controller: firstNameController,
-                                validator: (v) =>
-                                    Validator.name(v, fieldName: 'first_name'),
-                              ),
-                            ),
-                            Expanded(
-                              child: CustomTextFormField(
-                                hintText: TranslationHandler.get('last_name'),
-                                controller: lastNameController,
-                                validator: (v) =>
-                                    Validator.name(v, fieldName: 'last_name'),
-                              ),
-                            ),
-                          ],
-                        ),
-
-                        // Password
-                        CustomTextFormField(
-                          hintText: TranslationHandler.get('password'),
-                          isPassword: true,
-                          icon: Icons.lock_outline,
-                          controller: passwordController,
-                          validator: (v) =>
-                              Validator.password(v, minLength: 8),
-                        ),
-
-                        // Password Confirm
-                        CustomTextFormField(
-                          hintText: TranslationHandler.get('confirm_password'),
-                          isPassword: true,
-                          icon: Icons.lock_outline,
-                          controller: confirmPasswordController,
-                          validator: (v) => Validator.confirmPassword(
-                              v, passwordController.value.text),
-                        ),
-                        BlocConsumer<SignupCubit, SignupState>(
-                          builder: (context, state) {
-                            return PrimaryActionButton(
-                              isLoading: state is SignupLoading,
-                              action: TranslationHandler.get('sign_up'),
-                              onClick: () {
-                                context.read<SignupCubit>().signup(
-                                    context,
-                                    _formKey,
-                                    emailController.value.text.trim(),
-                                    passwordController.value.text.trim(),
-                                    firstNameController.value.text.trim(),
-                                    lastNameController.value.text.trim());
-                              },
-                            );
-                          },
-                          listener: (context, state) {
-                            if (state is SignupSuccess) {
-                              Navigator.pushReplacementNamed(
-                                  context, "/confirm");
-                            } else if (state is SignupError) {
-                              SnackBarHandler.showError(
-                                  context,
-                                  TranslationHandler.get('signup_failed'));
-                            }
-                          },
-                        ),
-                        const SizedBox(height: 12),
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Text(TranslationHandler.get('already_have_account')),
-                            const SizedBox(width: 5),
-                            HrefWidget(
-                              text: TranslationHandler.get('login'),
-                              onClick: () =>
-                                  Navigator.pushNamed(context, '/login'),
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ],
-            ),
+              ),
+            ],
           ),
         ),
       ),

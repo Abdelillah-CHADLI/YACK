@@ -1,110 +1,125 @@
-import 'dart:math';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:yack/logic/cubits/auth/auth_cubit.dart';
 import 'package:yack/logic/cubits/auth/confirm_cubit.dart';
 import 'package:yack/logic/cubits/auth/confirm_state.dart';
-import 'package:yack/logic/utils/platform.dart';
-import 'package:yack/presentation/widgets/titleWidget.dart';
-import 'package:yack/presentation/widgets/hrefTextWidget.dart';
+import 'package:yack/logic/services/auth/account_service.dart';
 import 'package:yack/logic/services/snackBarHandler.dart';
-import 'package:yack/presentation/widgets/primaryActionButton.dart';
 import 'package:yack/logic/services/translation_handler.dart';
+import 'package:yack/presentation/widgets/hrefTextWidget.dart';
+import 'package:yack/presentation/widgets/primaryActionButton.dart';
+import 'package:yack/presentation/widgets/yack_ui.dart';
 
-class ConfirmAccount extends StatelessWidget {
-
+class ConfirmAccount extends StatefulWidget {
   const ConfirmAccount({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final screenWidth = MediaQuery.of(context).size.width;
+  State<ConfirmAccount> createState() => _ConfirmAccountState();
+}
 
-    return Scaffold(
-      body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+class _ConfirmAccountState extends State<ConfirmAccount> {
+  bool _isResending = false;
+
+  Future<void> _resend() async {
+    if (_isResending) return;
+    setState(() => _isResending = true);
+    final sent = await context.read<ConfirmCubit>().sendConfirmationEmail();
+    if (!mounted) return;
+    setState(() => _isResending = false);
+    if (sent) {
+      SnackBarHandler.showMessage(
+        context,
+        TranslationHandler.get('verification_email_sent'),
+      );
+    } else {
+      SnackBarHandler.showError(
+        context,
+        TranslationHandler.get('resend_failed'),
+      );
+    }
+  }
+
+  Future<void> _switchAccount() async {
+    await AccountService().clearCachedData();
+    await FirebaseAuth.instance.signOut();
+    if (!mounted) return;
+    context.read<AuthCubit>().markUnauthenticated();
+    Navigator.pushNamedAndRemoveUntil(context, '/login', (_) => false);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final email =
+        FirebaseAuth.instance.currentUser?.email ??
+        TranslationHandler.get('your_email');
+
+    return YackAuthScaffold(
+      title: TranslationHandler.get('confirm_account'),
+      subtitle: TranslationHandler.get('confirm_account_message'),
+      icon: Icons.mark_email_unread_outlined,
+      footer: HrefWidget(
+        text: TranslationHandler.get('use_another_account'),
+        onClick: _switchAccount,
+      ),
+      child: BlocConsumer<ConfirmCubit, ConfirmState>(
+        listener: (context, state) {
+          if (state is ConfirmSuccess) {
+            Navigator.pushNamedAndRemoveUntil(
+              context,
+              '/init-account',
+              (_) => false,
+            );
+          } else if (state is ConfirmUnverified) {
+            SnackBarHandler.showWarning(
+              context,
+              TranslationHandler.get('auth_email_not_verified'),
+            );
+          } else if (state is ConfirmError) {
+            SnackBarHandler.showError(
+              context,
+              TranslationHandler.get(state.message ?? 'auth_unexpected_error'),
+            );
+          }
+        },
+        builder: (context, state) {
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Text(TranslationHandler.get('app_name'),
-                  style: theme.textTheme.titleMedium),
-              SizedBox(
-                width: PlatformInfo.isDesktop
-                    ? min(400, screenWidth * 0.9)
-                    : screenWidth,
-                child: Column(
-                  spacing: 10,
-                  crossAxisAlignment: CrossAxisAlignment.center,
-                  children: [
-                    TitleWidget(text: TranslationHandler.get('confirm_account')),
-                    Text(
-                      TranslationHandler.get('confirm_account_message'),
-                      textAlign: TextAlign.center,
-                    ),
-                    const SizedBox(height: 30),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.end,
-                      children: [
-                        Text(TranslationHandler.get('did_not_receive_email')),
-                        HrefWidget(
-                          text: TranslationHandler.get('resend'),
-                          onClick: () async {
-                            if (await context.read<ConfirmCubit>().sendConfirmationEmail()){
-                              SnackBarHandler.showMessage(context, TranslationHandler.get('verification_email_sent'));
-                            }
-                            else {
-                              SnackBarHandler.showError(context, TranslationHandler.get('resend_failed'));
-                            }
-                          },
-                        ),
-                      ],
-                    ),
-                    BlocConsumer<ConfirmCubit,ConfirmState>(
-                        builder: (context, state) {
-                          return PrimaryActionButton(
-                            isLoading: state is ConfirmLoading,
-                            action: TranslationHandler.get('check'),
-                            onClick: () {
-                              context.read<ConfirmCubit>().confirm();
-                            },
-                          );
-                        },
-                        listener: (context,state){
-                          if(state is ConfirmSuccess){
-                            // Navigate to init account to set up encryption password
-                            Navigator.pushNamedAndRemoveUntil(context, '/init-account', (route) => false);
-                          }
-                          else if(state is ConfirmUnverified){
-                            SnackBarHandler.showWarning(
-                                context,
-                                TranslationHandler.get('auth_email_not_verified')
-                            );
-                          }
-                          else if(state is ConfirmError){
-                            SnackBarHandler.showError(
-                                context,
-                                 TranslationHandler.get(state.message!)
-                            );
-                          }
-                        })
-                  ],
+              YackNotice(
+                message: TranslationHandler.resolve(
+                  'verification_sent_to',
+                  params: {'email': email},
+                ),
+                icon: Icons.alternate_email,
+              ),
+              const SizedBox(height: 22),
+              PrimaryActionButton(
+                isLoading: state is ConfirmLoading,
+                action: TranslationHandler.get('verified_email_action'),
+                icon: Icons.verified_outlined,
+                onClick: state is ConfirmLoading
+                    ? null
+                    : () => context.read<ConfirmCubit>().confirm(),
+              ),
+              const SizedBox(height: 8),
+              TextButton.icon(
+                onPressed: _isResending ? null : _resend,
+                icon: _isResending
+                    ? const SizedBox.square(
+                        dimension: 17,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Icon(Icons.refresh),
+                label: Text(
+                  _isResending
+                      ? TranslationHandler.get('sending')
+                      : TranslationHandler.get('resend_email'),
                 ),
               ),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Text(TranslationHandler.get('dont_have_account')),
-                  HrefWidget(
-                    text: TranslationHandler.get('sign_up'),
-                    onClick: () {
-                      Navigator.pushNamed(context, '/signup');
-                    },
-                  ),
-                ],
-              ),
             ],
-          ),
-        ),
+          );
+        },
       ),
     );
   }

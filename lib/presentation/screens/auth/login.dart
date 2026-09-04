@@ -1,18 +1,14 @@
-import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:yack/logic/cubits/auth/login_cubit.dart';
 import 'package:yack/logic/cubits/auth/login_state.dart';
-import 'package:yack/logic/utils/platform.dart';
 import 'package:yack/logic/services/snackBarHandler.dart';
 import 'package:yack/logic/services/translation_handler.dart';
-import 'package:yack/presentation/widgets/primaryActionButton.dart';
-import 'package:yack/presentation/widgets/titleWidget.dart';
-import 'package:yack/presentation/widgets/hrefTextWidget.dart';
 import 'package:yack/logic/utils/validator.dart';
+import 'package:yack/presentation/widgets/hrefTextWidget.dart';
 import 'package:yack/presentation/widgets/inputFormWidget.dart';
-import 'package:yack/presentation/theme/theme.dart';
-
+import 'package:yack/presentation/widgets/primaryActionButton.dart';
+import 'package:yack/presentation/widgets/yack_ui.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -23,132 +19,116 @@ class LoginScreen extends StatefulWidget {
 
 class _LoginScreenState extends State<LoginScreen> {
   final _formKey = GlobalKey<FormState>();
+  final _emailController = TextEditingController();
+  final _passwordController = TextEditingController();
 
-  final TextEditingController emailController = TextEditingController();
-  final TextEditingController passwordController = TextEditingController();
+  @override
+  void dispose() {
+    _emailController.dispose();
+    _passwordController.dispose();
+    super.dispose();
+  }
+
+  void _submit() {
+    FocusScope.of(context).unfocus();
+    context.read<LoginCubit>().login(
+      context,
+      _formKey,
+      _emailController.text.trim(),
+      _passwordController.text,
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final screenWidth = MediaQuery.of(context).size.width;
-
-    return Scaffold(
-      body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(10),
+    return YackAuthScaffold(
+      title: TranslationHandler.get('welcome_back'),
+      subtitle: TranslationHandler.get('login_subtitle'),
+      icon: Icons.lock_open_outlined,
+      footer: Wrap(
+        alignment: WrapAlignment.center,
+        crossAxisAlignment: WrapCrossAlignment.center,
+        children: [
+          Text(TranslationHandler.get('dont_have_account')),
+          const SizedBox(width: 4),
+          HrefWidget(
+            text: TranslationHandler.get('sign_up'),
+            onClick: () => Navigator.pushReplacementNamed(context, '/signup'),
+          ),
+        ],
+      ),
+      child: AutofillGroup(
+        child: Form(
+          key: _formKey,
+          autovalidateMode: AutovalidateMode.onUserInteraction,
           child: Column(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Container(
-                    width: 26,
-                    height: 26,
-                    decoration: BoxDecoration(
-                      color: AppTheme.yackGreen,
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: const Icon(
-                      Icons.lock_outline,
-                      size: 16,
-                      color: Colors.white,
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  Text(
-                    TranslationHandler.get('app_name'),
-                    style: theme.textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.w800,
-                      letterSpacing: 0.5,
-                    ),
-                  ),
+              CustomTextFormField(
+                labelText: TranslationHandler.get('email'),
+                hintText: TranslationHandler.get('email'),
+                icon: Icons.mail_outline,
+                controller: _emailController,
+                validator: Validator.email,
+                keyboardType: TextInputType.emailAddress,
+                textInputAction: TextInputAction.next,
+                autofillHints: const [
+                  AutofillHints.username,
+                  AutofillHints.email,
                 ],
               ),
-              SizedBox(
-                width: PlatformInfo.isDesktop
-                    ? min(400, screenWidth * 0.9)
-                    : screenWidth,
-                child: Form(
-                  key: _formKey,
-                  child: Column(
-                    spacing: 10,
-                    children: [
-                      TitleWidget(
-                          text: TranslationHandler.get('welcome_back')),
-                      const SizedBox(height: 8),
-                      Text(
-                        TranslationHandler.get('login_subtitle'),
-                        textAlign: TextAlign.center,
-                        style: theme.textTheme.bodyMedium,
-                      ),
-                      const SizedBox(height: 24),
-                      CustomTextFormField(
-                        hintText: TranslationHandler.get('email'),
-                        icon: Icons.mail_outline,
-                        controller: emailController,
-                        validator: Validator.email,
-                      ),
-                      CustomTextFormField(
-                        hintText: TranslationHandler.get('password'),
-                        isPassword: true,
-                        icon: Icons.lock_outline,
-                        controller: passwordController,
-                        validator: (v) => Validator.length(v, min: 8),
-                      ),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.end,
-                        children: [
-                          HrefWidget(
-                            text: TranslationHandler.get('forget_password'),
-                            onClick: () {
-                              Navigator.pushNamed(context, '/forgot-password');
-                            },
-                          ),
-                        ],
-                      ),
-                      BlocConsumer<LoginCubit, LoginState>(
-                        listener: (context, state) {
-                          if (state is LoginSuccess) {
-                            // Navigate to decrypt account to unlock with encryption password
-                            Navigator.pushReplacementNamed(
-                                context, "/decrypt-account");
-                          } else if (state is LoginError) {
-                            SnackBarHandler.showError(
-                                context,
-                                TranslationHandler.get(state.message!));
-                          }
-                        },
-                        builder: (context, state) {
-                          return PrimaryActionButton(
-                            isLoading: state is LoginLoading,
-                            onClick: () {
-                              context.read<LoginCubit>().login(
-                                  context,
-                                  _formKey,
-                                  emailController.value.text.trim(),
-                                  passwordController.value.text.trim());
-                            },
-                            action: TranslationHandler.get('login'),
-                          );
-                        },
-                      )
-                    ],
-                  ),
+              const SizedBox(height: 16),
+              CustomTextFormField(
+                labelText: TranslationHandler.get('password'),
+                hintText: TranslationHandler.get('password'),
+                isPassword: true,
+                icon: Icons.key_outlined,
+                controller: _passwordController,
+                validator: (value) => Validator.length(value, min: 8),
+                textInputAction: TextInputAction.done,
+                autofillHints: const [AutofillHints.password],
+                onFieldSubmitted: (_) => _submit(),
+              ),
+              Align(
+                alignment: AlignmentDirectional.centerEnd,
+                child: HrefWidget(
+                  text: TranslationHandler.get('forget_password'),
+                  onClick: () =>
+                      Navigator.pushNamed(context, '/forgot-password'),
                 ),
               ),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                spacing: 5,
-                children: [
-                  Text(TranslationHandler.get('dont_have_account')),
-                  HrefWidget(
-                    text: TranslationHandler.get('sign_up'),
-                    onClick: () {
-                      Navigator.pushNamed(context, '/signup');
-                    },
-                  ),
-                ],
+              const SizedBox(height: 12),
+              YackNotice(
+                message: TranslationHandler.get('login_unlock_note'),
+                tone: YackNoticeTone.neutral,
+                icon: Icons.shield_outlined,
+              ),
+              const SizedBox(height: 20),
+              BlocConsumer<LoginCubit, LoginState>(
+                listener: (context, state) {
+                  if (state is LoginSuccess) {
+                    Navigator.pushReplacementNamed(context, '/decrypt-account');
+                  } else if (state is LoginUnverified) {
+                    Navigator.pushNamedAndRemoveUntil(
+                      context,
+                      '/confirm',
+                      (_) => false,
+                    );
+                  } else if (state is LoginError) {
+                    SnackBarHandler.showError(
+                      context,
+                      TranslationHandler.get(
+                        state.message ?? 'auth_unexpected_error',
+                      ),
+                    );
+                  }
+                },
+                builder: (context, state) => PrimaryActionButton(
+                  isLoading: state is LoginLoading,
+                  onClick: state is LoginLoading ? null : _submit,
+                  action: TranslationHandler.get('login'),
+                  icon: Icons.arrow_forward,
+                ),
               ),
             ],
           ),

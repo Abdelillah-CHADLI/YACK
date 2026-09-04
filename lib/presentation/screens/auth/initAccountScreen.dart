@@ -1,19 +1,20 @@
-import 'dart:math';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:hive/hive.dart';
+import 'package:yack/logic/cubits/auth/auth_cubit.dart';
 import 'package:yack/logic/cubits/user/user_cubit.dart';
 import 'package:yack/logic/cubits/user/user_state.dart';
-import 'package:yack/logic/cubits/auth/auth_cubit.dart';
-import 'package:yack/logic/utils/platform.dart';
+import 'package:yack/logic/services/auth/account_service.dart';
 import 'package:yack/logic/services/snackBarHandler.dart';
 import 'package:yack/logic/services/translation_handler.dart';
-import 'package:yack/presentation/widgets/primaryActionButton.dart';
-import 'package:yack/presentation/widgets/titleWidget.dart';
-import 'package:yack/presentation/widgets/inputFormWidget.dart';
+import 'package:yack/logic/utils/validator.dart';
 import 'package:yack/presentation/widgets/hrefTextWidget.dart';
+import 'package:yack/presentation/widgets/inputFormWidget.dart';
+import 'package:yack/presentation/widgets/primaryActionButton.dart';
+import 'package:yack/presentation/widgets/yack_ui.dart';
 
-/// Screen shown after email verification to set up encryption password
-/// The user must create a password to encrypt their private key
+/// Creates the local encryption key after email verification.
 class InitAccountScreen extends StatefulWidget {
   const InitAccountScreen({super.key});
 
@@ -25,16 +26,33 @@ class _InitAccountScreenState extends State<InitAccountScreen> {
   final _formKey = GlobalKey<FormState>();
   final _passwordController = TextEditingController();
   final _confirmPasswordController = TextEditingController();
+  final _firstNameController = TextEditingController();
+  final _lastNameController = TextEditingController();
+  bool _needsNames = false;
+  bool _understandsRecovery = false;
+
+  @override
+  void initState() {
+    super.initState();
+    final box = Hive.box('user');
+    _firstNameController.text = box.get('firstName')?.toString() ?? '';
+    _lastNameController.text = box.get('lastName')?.toString() ?? '';
+    _needsNames =
+        _firstNameController.text.trim().isEmpty ||
+        _lastNameController.text.trim().isEmpty;
+  }
 
   @override
   void dispose() {
     _passwordController.dispose();
     _confirmPasswordController.dispose();
+    _firstNameController.dispose();
+    _lastNameController.dispose();
     super.dispose();
   }
 
   String? _validatePassword(String? value) {
-    final text = value?.trim() ?? '';
+    final text = value ?? '';
     if (text.isEmpty) {
       return TranslationHandler.get('init_account_password_required');
     }
@@ -44,155 +62,166 @@ class _InitAccountScreenState extends State<InitAccountScreen> {
     return null;
   }
 
-  String? _validateConfirmPassword(String? value) {
-    if (value?.trim() != _passwordController.text.trim()) {
+  String? _validateConfirmation(String? value) {
+    if (value != _passwordController.text) {
       return TranslationHandler.get('passwords_do_not_match');
     }
     return null;
   }
 
-  void _onSubmit() {
+  Future<void> _submit() async {
     if (!(_formKey.currentState?.validate() ?? false)) return;
+    if (!_understandsRecovery) {
+      SnackBarHandler.showWarning(
+        context,
+        TranslationHandler.get('acknowledge_encryption_warning'),
+      );
+      return;
+    }
     FocusScope.of(context).unfocus();
 
-    final password = _passwordController.text.trim();
+    if (_needsNames) {
+      await Hive.box('user').putAll({
+        'firstName': _firstNameController.text.trim(),
+        'lastName': _lastNameController.text.trim(),
+      });
+    }
+    if (!mounted) return;
+    context.read<UserCubit>().finalize(password: _passwordController.text);
+  }
 
-    context.read<UserCubit>().finalize(
-      password: password,
-    );
+  Future<void> _switchAccount() async {
+    await AccountService().clearCachedData();
+    await FirebaseAuth.instance.signOut();
+    if (!mounted) return;
+    context.read<AuthCubit>().markUnauthenticated();
+    Navigator.pushNamedAndRemoveUntil(context, '/login', (_) => false);
   }
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final screenWidth = MediaQuery.of(context).size.width;
-
-    return Scaffold(
-      body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                TranslationHandler.get('app_name'),
-                style: theme.textTheme.titleMedium,
-              ),
-              SizedBox(
-                width: PlatformInfo.isDesktop
-                    ? min(400, screenWidth * 0.9)
-                    : screenWidth,
-                child: Form(
-                  key: _formKey,
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.center,
-                    children: [
-                      TitleWidget(
-                        text: TranslationHandler.get('init_account_title'),
-                      ),
-                      const SizedBox(height: 16),
-                      Text(
-                        TranslationHandler.get('init_account_subtitle'),
-                        style: theme.textTheme.bodyMedium,
-                        textAlign: TextAlign.center,
-                      ),
-                      const SizedBox(height: 24),
-                      // Warning container
-                      Container(
-                        padding: const EdgeInsets.all(16),
-                        decoration: BoxDecoration(
-                          color: theme.colorScheme.errorContainer.withValues(alpha: 0.3),
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(
-                            color: theme.colorScheme.error.withValues(alpha: 0.5),
-                          ),
-                        ),
-                        child: Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Icon(
-                              Icons.warning_rounded,
-                              color: theme.colorScheme.error,
-                              size: 24,
-                            ),
-                            const SizedBox(width: 12),
-                            Expanded(
-                              child: Text(
-                                TranslationHandler.get('init_account_warning'),
-                                style: theme.textTheme.bodyMedium?.copyWith(
-                                  color: theme.colorScheme.error,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(height: 32),
-                      CustomTextFormField(
-                        hintText: TranslationHandler.get('init_account_password_label'),
-                        isPassword: true,
-                        controller: _passwordController,
-                        validator: _validatePassword,
-                      ),
-                      const SizedBox(height: 16),
-                      Text(
-                        TranslationHandler.get('init_account_password_helper'),
-                        style: theme.textTheme.bodySmall?.copyWith(
-                          color: theme.colorScheme.onSurfaceVariant,
-                        ),
-                      ),
-                      const SizedBox(height: 16),
-                      CustomTextFormField(
-                        hintText: TranslationHandler.get('init_account_confirm_password_label'),
-                        isPassword: true,
-                        controller: _confirmPasswordController,
-                        validator: _validateConfirmPassword,
-                      ),
-                      const SizedBox(height: 32),
-                      BlocConsumer<UserCubit, UserState>(
-                        listener: (context, state) {
-                          if (state is UserFinalizeSuccess) {
-                            context.read<AuthCubit>().markAuthenticated();
-                            Navigator.pushNamedAndRemoveUntil(
-                              context,
-                              '/home',
-                              (route) => false,
-                            );
-                          } else if (state is UserError) {
-                            SnackBarHandler.showError(context, state.message);
-                          }
-                        },
-                        builder: (context, state) {
-                          return PrimaryActionButton(
-                            isLoading: state is UserLoading,
-                            action: TranslationHandler.get('init_account_submit'),
-                            onClick: _onSubmit,
-                          );
-                        },
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-              const SizedBox(height: 16),
-              // NEW: go back to Login
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                spacing: 5,
+    return YackAuthScaffold(
+      title: TranslationHandler.get('init_account_title'),
+      subtitle: TranslationHandler.get('init_account_subtitle'),
+      icon: Icons.enhanced_encryption_outlined,
+      footer: HrefWidget(
+        text: TranslationHandler.get('use_another_account'),
+        onClick: _switchAccount,
+      ),
+      child: BlocConsumer<UserCubit, UserState>(
+        listener: (context, state) {
+          if (state is UserFinalizeSuccess) {
+            context.read<AuthCubit>().markAuthenticated();
+            Navigator.pushNamedAndRemoveUntil(context, '/home', (_) => false);
+          } else if (state is UserError) {
+            SnackBarHandler.showError(context, state.message);
+          }
+        },
+        builder: (context, state) {
+          return AutofillGroup(
+            child: Form(
+              key: _formKey,
+              autovalidateMode: AutovalidateMode.onUserInteraction,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  Text(TranslationHandler.get('already_have_account')),
-                  HrefWidget(
-                    text: TranslationHandler.get('login'),
-                    onClick: () {
-                      Navigator.pushNamed(context, '/login');
-                    },
+                  YackNotice(
+                    message: TranslationHandler.get('init_account_warning'),
+                    tone: YackNoticeTone.warning,
+                    icon: Icons.key_outlined,
+                  ),
+                  if (_needsNames) ...[
+                    const SizedBox(height: 22),
+                    Text(
+                      TranslationHandler.get('complete_profile'),
+                      style: Theme.of(context).textTheme.titleMedium,
+                    ),
+                    const SizedBox(height: 14),
+                    CustomTextFormField(
+                      labelText: TranslationHandler.get('first_name'),
+                      hintText: TranslationHandler.get('first_name'),
+                      controller: _firstNameController,
+                      icon: Icons.person_outline,
+                      validator: (value) =>
+                          Validator.name(value, fieldName: 'first_name'),
+                      textCapitalization: TextCapitalization.words,
+                      textInputAction: TextInputAction.next,
+                      autofillHints: const [AutofillHints.givenName],
+                    ),
+                    const SizedBox(height: 16),
+                    CustomTextFormField(
+                      labelText: TranslationHandler.get('last_name'),
+                      hintText: TranslationHandler.get('last_name'),
+                      controller: _lastNameController,
+                      icon: Icons.badge_outlined,
+                      validator: (value) =>
+                          Validator.name(value, fieldName: 'last_name'),
+                      textCapitalization: TextCapitalization.words,
+                      textInputAction: TextInputAction.next,
+                      autofillHints: const [AutofillHints.familyName],
+                    ),
+                  ],
+                  const SizedBox(height: 22),
+                  CustomTextFormField(
+                    labelText: TranslationHandler.get(
+                      'init_account_password_label',
+                    ),
+                    hintText: TranslationHandler.get(
+                      'init_account_password_label',
+                    ),
+                    helperText: TranslationHandler.get(
+                      'init_account_password_helper',
+                    ),
+                    isPassword: true,
+                    icon: Icons.key_outlined,
+                    controller: _passwordController,
+                    validator: _validatePassword,
+                    textInputAction: TextInputAction.next,
+                    autofillHints: const [AutofillHints.newPassword],
+                  ),
+                  const SizedBox(height: 16),
+                  CustomTextFormField(
+                    labelText: TranslationHandler.get(
+                      'init_account_confirm_password_label',
+                    ),
+                    hintText: TranslationHandler.get(
+                      'init_account_confirm_password_label',
+                    ),
+                    isPassword: true,
+                    icon: Icons.key_outlined,
+                    controller: _confirmPasswordController,
+                    validator: _validateConfirmation,
+                    textInputAction: TextInputAction.done,
+                    autofillHints: const [AutofillHints.newPassword],
+                    onFieldSubmitted: (_) => _submit(),
+                  ),
+                  const SizedBox(height: 12),
+                  CheckboxListTile(
+                    value: _understandsRecovery,
+                    onChanged: state is UserLoading
+                        ? null
+                        : (value) => setState(
+                            () => _understandsRecovery = value ?? false,
+                          ),
+                    controlAffinity: ListTileControlAffinity.leading,
+                    contentPadding: EdgeInsets.zero,
+                    title: Text(
+                      TranslationHandler.get('encryption_acknowledgement'),
+                      style: Theme.of(context).textTheme.bodyMedium,
+                    ),
+                  ),
+                  const SizedBox(height: 18),
+                  PrimaryActionButton(
+                    isLoading: state is UserLoading,
+                    action: TranslationHandler.get('init_account_submit'),
+                    icon: Icons.shield_outlined,
+                    onClick: state is UserLoading ? null : _submit,
                   ),
                 ],
               ),
-            ],
-          ),
-        ),
+            ),
+          );
+        },
       ),
     );
   }
