@@ -2,120 +2,107 @@ import 'package:flutter/material.dart';
 import 'package:isar/isar.dart';
 import 'package:yack/data/db/models/contract.dart';
 import 'package:yack/logic/services/translation_handler.dart';
-import 'package:yack/presentation/widgets/profile/status_count_tile.dart';
 import 'package:yack/presentation/theme/theme.dart';
 
 class ContractStatusSummary extends StatelessWidget {
   const ContractStatusSummary({super.key});
 
-  Map<ContractStatus, int> _buildCounts(List<Contract> contracts) {
-    final counts = <ContractStatus, int>{
-      ContractStatus.accepted: 0,
-      ContractStatus.pending: 0,
-      ContractStatus.completed: 0,
-      ContractStatus.rejected: 0,
-      ContractStatus.disputed: 0,
-      ContractStatus.active: 0,
-
-    };
-
-    for (final contract in contracts) {
-      counts.update(contract.status, (value) => value + 1, ifAbsent: () => 1);
-    }
-
-    return counts;
-  }
-
   @override
   Widget build(BuildContext context) {
-    final isar = Isar.getInstance();
-    final theme = Theme.of(context);
-
-    if (isar == null) {
+    final database = Isar.getInstance();
+    if (database == null) {
       return const Center(child: CircularProgressIndicator());
     }
 
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: theme.cardColor,
-        borderRadius: BorderRadius.circular(AppTheme.radiusLg),
-        border: Border.all(
-          color: theme.colorScheme.outlineVariant.withValues(alpha: 0.6),
-        ),
-        boxShadow: AppTheme.cardShadow,
-      ),
-      child: StreamBuilder<List<Contract>>(
-        stream: isar.contracts.where().watch(fireImmediately: true),
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator());
-          }
+    return StreamBuilder<List<Contract>>(
+      stream: database.contracts.where().watch(fireImmediately: true),
+      builder: (context, snapshot) {
+        if (!snapshot.hasData &&
+            snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(child: CircularProgressIndicator());
+        }
+        final contracts = snapshot.data ?? const <Contract>[];
+        final inProgress = contracts.where((contract) {
+          return contract.status == ContractStatus.pending ||
+              contract.status == ContractStatus.active ||
+              contract.status == ContractStatus.accepted;
+        }).length;
+        final closed = contracts.where((contract) {
+          return contract.status == ContractStatus.completed ||
+              contract.status == ContractStatus.rejected;
+        }).length;
+        final disputed = contracts
+            .where((contract) => contract.status == ContractStatus.disputed)
+            .length;
 
-          final contracts = snapshot.data ?? [];
-          final counts = _buildCounts(contracts);
+        return Container(
+          decoration: BoxDecoration(
+            color: Theme.of(context).colorScheme.surface,
+            borderRadius: BorderRadius.circular(AppTheme.radiusSm),
+            border: Border.all(
+              color: Theme.of(context).colorScheme.outlineVariant,
+            ),
+          ),
+          child: Column(
+            children: [
+              _SummaryRow(
+                icon: Icons.pending_actions_outlined,
+                label: TranslationHandler.get('in_progress'),
+                count: inProgress,
+                color: AppTheme.statusOrange,
+              ),
+              const Divider(),
+              _SummaryRow(
+                icon: Icons.task_alt_outlined,
+                label: TranslationHandler.get('closed'),
+                count: closed,
+                color: AppTheme.statusGreen,
+              ),
+              const Divider(),
+              _SummaryRow(
+                icon: Icons.report_problem_outlined,
+                label: TranslationHandler.get('status_disputed'),
+                count: disputed,
+                color: AppTheme.statusRed,
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+}
 
-          return LayoutBuilder(
-            builder: (context, constraints) {
-              final isWide = constraints.maxWidth > 500;
-              final tiles = [
-                StatusCountTile(
-                  label: TranslationHandler.get('status_active'),
-                  count: counts[ContractStatus.active] ?? 0,
-                  color: Colors.green,
-                  icon: Icons.work_outline,
-                ),
-                StatusCountTile(
-                  label: TranslationHandler.get('status_pending'),
-                  count: counts[ContractStatus.pending] ?? 0,
-                  color: Colors.orange,
-                  icon: Icons.hourglass_bottom,
-                ),
-                StatusCountTile(
-                  label: TranslationHandler.get('status_completed'),
-                  count: counts[ContractStatus.completed] ?? 0,
-                  color: Colors.blue,
-                  icon: Icons.task_alt,
-                ),
-                StatusCountTile(
-                  label: TranslationHandler.get('status_disputed'),
-                  count: counts[ContractStatus.disputed] ?? 0,
-                  color: Colors.red,
-                  icon: Icons.warning_amber_rounded,
-                ),
-              ];
+class _SummaryRow extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final int count;
+  final Color color;
 
-              if (isWide) {
-                return Row(
-                  children: tiles
-                      .map(
-                        (tile) => Expanded(
-                          child: Padding(
-                            padding: const EdgeInsets.symmetric(horizontal: 6),
-                            child: tile,
-                          ),
-                        ),
-                      )
-                      .toList(),
-                );
-              }
+  const _SummaryRow({
+    required this.icon,
+    required this.label,
+    required this.count,
+    required this.color,
+  });
 
-              return Wrap(
-                spacing: 12,
-                runSpacing: 12,
-                children: tiles
-                    .map(
-                      (tile) => SizedBox(
-                        width: (constraints.maxWidth - 12) / 2,
-                        child: tile,
-                      ),
-                    )
-                    .toList(),
-              );
-            },
-          );
-        },
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      child: Row(
+        children: [
+          Icon(icon, size: 21, color: color),
+          const SizedBox(width: 12),
+          Expanded(child: Text(label, style: theme.textTheme.titleSmall)),
+          Text(
+            '$count',
+            style: theme.textTheme.titleLarge?.copyWith(
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+        ],
       ),
     );
   }
