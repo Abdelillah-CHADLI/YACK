@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:yack/presentation/theme/theme.dart';
+import 'package:yack/logic/services/translation_handler.dart';
 
 /// A shimmering placeholder for loading states (no external dependencies).
 class Shimmer extends StatefulWidget {
@@ -31,6 +32,14 @@ class _ShimmerState extends State<Shimmer> with SingleTickerProviderStateMixin {
 
   @override
   Widget build(BuildContext context) {
+    if (AppTheme.disableAnimations(context)) {
+      return Semantics(
+        label: TranslationHandler.get('loading'),
+        container: true,
+        child: widget.child,
+      );
+    }
+
     final brightness = Theme.of(context).brightness;
     final base = brightness == Brightness.dark
         ? const Color(0xFF262A33)
@@ -39,24 +48,28 @@ class _ShimmerState extends State<Shimmer> with SingleTickerProviderStateMixin {
         ? const Color(0xFF31363F)
         : const Color(0xFFF4F6F5);
 
-    return AnimatedBuilder(
-      animation: _controller,
-      builder: (context, child) {
-        return ShaderMask(
-          blendMode: BlendMode.srcATop,
-          shaderCallback: (bounds) {
-            final dx = bounds.width * (_controller.value * 2 - 1);
-            return LinearGradient(
-              colors: [base, highlight, base],
-              stops: const [0.35, 0.5, 0.65],
-              begin: Alignment(dx, 0),
-              end: Alignment(dx + 1, 0),
-            ).createShader(bounds);
-          },
-          child: child,
-        );
-      },
-      child: widget.child,
+    return Semantics(
+      label: TranslationHandler.get('loading'),
+      container: true,
+      child: AnimatedBuilder(
+        animation: _controller,
+        builder: (context, child) {
+          return ShaderMask(
+            blendMode: BlendMode.srcATop,
+            shaderCallback: (bounds) {
+              final dx = bounds.width * (_controller.value * 2 - 1);
+              return LinearGradient(
+                colors: [base, highlight, base],
+                stops: const [0.35, 0.5, 0.65],
+                begin: Alignment(dx, 0),
+                end: Alignment(dx + 1, 0),
+              ).createShader(bounds);
+            },
+            child: child,
+          );
+        },
+        child: widget.child,
+      ),
     );
   }
 }
@@ -103,7 +116,7 @@ class ContractCardSkeleton extends StatelessWidget {
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: theme.cardColor,
-        borderRadius: BorderRadius.circular(AppTheme.radiusLg),
+        borderRadius: BorderRadius.circular(AppTheme.radiusMd),
         border: Border.all(
           color: theme.colorScheme.outlineVariant.withValues(alpha: 0.5),
         ),

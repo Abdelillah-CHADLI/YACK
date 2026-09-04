@@ -1,7 +1,5 @@
 import 'dart:async';
-import 'dart:math';
 import 'package:flutter/material.dart';
-import 'package:yack/presentation/theme/theme.dart';
 
 class SecondaryActionButton extends StatelessWidget {
   const SecondaryActionButton({
@@ -9,53 +7,51 @@ class SecondaryActionButton extends StatelessWidget {
     required this.action,
     this.onClick,
     this.isLoading = false,
+    this.destructive = false,
+    this.icon,
   });
 
   final String action;
   final bool isLoading;
   final FutureOr<void> Function()? onClick;
+  final bool destructive;
+  final IconData? icon;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final error = theme.colorScheme.error;
+    final foreground = destructive
+        ? theme.colorScheme.error
+        : theme.colorScheme.onSurface;
 
-    return AnimatedOpacity(
-      duration: AppTheme.fast,
-      opacity: isLoading ? 0.85 : 1,
-      child: Material(
-        color: Colors.transparent,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(AppTheme.radiusMd),
-          side: BorderSide(color: error, width: 1.4),
-        ),
-        child: InkWell(
-          onTap: isLoading ? null : onClick,
-          borderRadius: BorderRadius.circular(AppTheme.radiusMd),
-          highlightColor: error.withValues(alpha: 0.06),
-          splashColor: error.withValues(alpha: 0.08),
-          child: Container(
-            constraints: BoxConstraints(minHeight: min(58, 60)),
-            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-            alignment: Alignment.center,
-            width: double.infinity,
-            child: isLoading
-                ? SizedBox(
-                    width: 20,
-                    height: 20,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2.4,
-                      color: error,
-                    ),
-                  )
-                : Text(
-                    action,
-                    textAlign: TextAlign.center,
-                    style: const TextStyle(
-                      fontSize: 15,
-                      fontWeight: FontWeight.w700,
-                    ).copyWith(color: error),
+    return Semantics(
+      button: true,
+      enabled: !isLoading && onClick != null,
+      liveRegion: isLoading,
+      child: SizedBox(
+        width: double.infinity,
+        child: OutlinedButton.icon(
+          onPressed: isLoading || onClick == null ? null : () => onClick!(),
+          icon: isLoading
+              ? SizedBox.square(
+                  dimension: 19,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2.2,
+                    color: foreground,
                   ),
+                )
+              : icon == null
+              ? const SizedBox.shrink()
+              : Icon(icon, size: 20),
+          label: Text(action, textAlign: TextAlign.center),
+          style: OutlinedButton.styleFrom(
+            foregroundColor: foreground,
+            side: BorderSide(
+              color: destructive
+                  ? theme.colorScheme.error.withValues(alpha: .65)
+                  : theme.colorScheme.outline,
+            ),
+            minimumSize: const Size.fromHeight(54),
           ),
         ),
       ),

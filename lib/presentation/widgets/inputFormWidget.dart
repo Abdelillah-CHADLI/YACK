@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:yack/logic/services/translation_handler.dart';
 import 'package:yack/presentation/theme/theme.dart';
 
 class CustomTextFormField extends StatefulWidget {
@@ -10,6 +11,13 @@ class CustomTextFormField extends StatefulWidget {
   final TextEditingController? controller;
   final String? Function(String?)? validator;
   final TextInputType? keyboardType;
+  final TextInputAction? textInputAction;
+  final Iterable<String>? autofillHints;
+  final String? helperText;
+  final ValueChanged<String>? onFieldSubmitted;
+  final TextCapitalization textCapitalization;
+  final bool enabled;
+  final int maxLines;
 
   const CustomTextFormField({
     super.key,
@@ -21,6 +29,13 @@ class CustomTextFormField extends StatefulWidget {
     this.controller,
     this.validator,
     this.keyboardType,
+    this.textInputAction,
+    this.autofillHints,
+    this.helperText,
+    this.onFieldSubmitted,
+    this.textCapitalization = TextCapitalization.none,
+    this.enabled = true,
+    this.maxLines = 1,
   });
 
   @override
@@ -54,55 +69,62 @@ class _CustomTextFormFieldState extends State<CustomTextFormField> {
     final theme = Theme.of(context);
     final color = theme.colorScheme;
 
-    return Directionality(
-      textDirection: TextDirection.ltr,
-      child: TextFormField(
-        textDirection: TextDirection.ltr,
-        controller: _internalController,
-        obscureText: widget.isPassword ? _obscureText : false,
-        textAlign: TextAlign.left,
-        maxLines: 1,
-        keyboardType: widget.keyboardType,
-        style: const TextStyle(
-          fontWeight: FontWeight.w500,
-          fontStyle: FontStyle.normal,
-          fontSize: 15,
-        ),
-        decoration: InputDecoration(
-          labelText: widget.labelText,
-          hintText: widget.hintText,
-          hintStyle: TextStyle(
-            fontWeight: FontWeight.w400,
-            fontStyle: FontStyle.normal,
-            fontSize: 14,
-            color: color.onSurfaceVariant.withValues(alpha: 0.75),
-          ),
-          prefixIcon: widget.icon != null
-              ? Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 12),
-                  child: Icon(widget.icon, size: 22),
-                )
-              : null,
-          suffixIcon: widget.isPassword
-              ? IconButton(
-                  icon: AnimatedSwitcher(
-                    duration: AppTheme.fast,
-                    transitionBuilder: (child, anim) =>
-                        FadeTransition(opacity: anim, child: child),
-                    child: Icon(
-                      _obscureText ? Icons.visibility_off : Icons.visibility,
-                      key: ValueKey(_obscureText),
-                      color: color.onSurfaceVariant,
-                    ),
+    final contentDirection =
+        widget.keyboardType == TextInputType.emailAddress ||
+            widget.keyboardType == TextInputType.phone ||
+            widget.keyboardType == TextInputType.number ||
+            widget.keyboardType ==
+                const TextInputType.numberWithOptions(decimal: true)
+        ? TextDirection.ltr
+        : null;
+
+    return TextFormField(
+      textDirection: contentDirection,
+      controller: _internalController,
+      obscureText: widget.isPassword ? _obscureText : false,
+      textAlign: TextAlign.start,
+      maxLines: widget.isPassword ? 1 : widget.maxLines,
+      keyboardType: widget.keyboardType,
+      textInputAction: widget.textInputAction,
+      autofillHints: widget.autofillHints,
+      onFieldSubmitted: widget.onFieldSubmitted,
+      textCapitalization: widget.textCapitalization,
+      enabled: widget.enabled,
+      autocorrect: !widget.isPassword,
+      enableSuggestions: !widget.isPassword,
+      style: theme.textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.w500),
+      decoration: InputDecoration(
+        labelText: widget.labelText ?? widget.hintText,
+        hintText: widget.hintText,
+        helperText: widget.helperText,
+        prefixIcon: widget.icon != null
+            ? Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 12),
+                child: Icon(widget.icon, size: 22),
+              )
+            : null,
+        suffixIcon: widget.isPassword
+            ? IconButton(
+                tooltip: TranslationHandler.get(
+                  _obscureText ? 'show_password' : 'hide_password',
+                ),
+                icon: AnimatedSwitcher(
+                  duration: AppTheme.fast,
+                  transitionBuilder: (child, anim) =>
+                      FadeTransition(opacity: anim, child: child),
+                  child: Icon(
+                    _obscureText ? Icons.visibility_off : Icons.visibility,
+                    key: ValueKey(_obscureText),
+                    color: color.onSurfaceVariant,
                   ),
-                  onPressed: () => setState(() {
-                    _obscureText = !_obscureText;
-                  }),
-                )
-              : null,
-        ),
-        validator: widget.validator,
+                ),
+                onPressed: () => setState(() {
+                  _obscureText = !_obscureText;
+                }),
+              )
+            : null,
       ),
+      validator: widget.validator,
     );
   }
 }
