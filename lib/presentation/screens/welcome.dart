@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:hive/hive.dart';
-import 'package:yack/logic/services/translation_handler.dart';
-import 'package:yack/presentation/widgets/primaryActionButton.dart';
-import 'package:yack/presentation/widgets/titleWidget.dart';
 import 'package:yack/data/models/OnboardingData.dart';
+import 'package:yack/logic/services/translation_handler.dart';
+import 'package:yack/presentation/theme/theme.dart';
 import 'package:yack/presentation/widgets/hrefTextWidget.dart';
-
+import 'package:yack/presentation/widgets/primaryActionButton.dart';
+import 'package:yack/presentation/widgets/yack_ui.dart';
 
 class OnboardingScreen extends StatefulWidget {
   const OnboardingScreen({super.key});
@@ -15,209 +15,127 @@ class OnboardingScreen extends StatefulWidget {
 }
 
 class _OnboardingScreenState extends State<OnboardingScreen> {
-  final PageController _pageController = PageController();
+  final _pageController = PageController();
   int _currentPage = 0;
 
   final List<OnboardingPage> _pages = const [
     OnboardingPage(
-      icon: Icons.edit_document,
+      icon: Icons.edit_note_outlined,
       titleKey: 'onboarding_create_contracts_title',
       subtitleKey: 'onboarding_create_contracts_subtitle',
-      color: Color(0xFF00D563),
+      color: AppTheme.yackGreen,
     ),
     OnboardingPage(
-      icon: Icons.verified_user,
+      icon: Icons.qr_code_2_outlined,
       titleKey: 'onboarding_secure_verified_title',
       subtitleKey: 'onboarding_secure_verified_subtitle',
-      color: Color(0xFF00C2FF),
+      color: AppTheme.yackBrass,
     ),
     OnboardingPage(
-      icon: Icons.folder_open,
+      icon: Icons.fact_check_outlined,
       titleKey: 'onboarding_track_agreements_title',
       subtitleKey: 'onboarding_track_agreements_subtitle',
-      color: Color(0xFF7C4DFF),
-    ),
-    OnboardingPage(
-      icon: Icons.handshake,
-      titleKey: 'onboarding_start_trust_title',
-      subtitleKey: 'onboarding_start_trust_subtitle',
-      color: Color(0xFF00D563),
+      color: AppTheme.statusBlue,
     ),
   ];
 
-  void _nextPage() {
-    if (_currentPage < _pages.length - 1) {
-      _pageController.nextPage(
-        duration: const Duration(milliseconds: 300),
-        curve: Curves.easeInOut,
-      );
+  bool get _isLast => _currentPage == _pages.length - 1;
+
+  Future<void> _goTo(String route) async {
+    await Hive.box('user').put('didFirstTime', true);
+    if (mounted) Navigator.pushReplacementNamed(context, route);
+  }
+
+  void _next() {
+    if (_isLast) {
+      _goTo('/signup');
+      return;
     }
-  }
-
-  void _skipToEnd() {
-    _pageController.animateToPage(
-      _pages.length - 1,
-      duration: const Duration(milliseconds: 400),
-      curve: Curves.easeInOut,
-    );
-  }
-
-  Future<void> _getStarted() async{
-    final userBox = await Hive.openBox('user');
-    await userBox.put('didFirstTime', true);
-
-    Navigator.pushReplacementNamed(context, '/signup');
+    _pageController.nextPage(duration: AppTheme.slow, curve: AppTheme.ease);
   }
 
   @override
   Widget build(BuildContext context) {
-        final theme = Theme.of(context);
-        return Scaffold(
-          body: SafeArea(
-            child: Column(
-          spacing: 10,
+    final theme = Theme.of(context);
+    final colors = theme.colorScheme;
+
+    return Scaffold(
+      body: SafeArea(
+        child: Column(
           children: [
-            // Logo at top
             Padding(
-              padding: const EdgeInsets.symmetric(vertical: 20),
+              padding: const EdgeInsets.fromLTRB(20, 14, 12, 4),
               child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Container(
-                    width: 28,
-                    height: 28,
-                    decoration: BoxDecoration(
-                      color: theme.colorScheme.primary,
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: const Icon(
-                      Icons.lock_outline,
-                      size: 18,
-                      color: Colors.white,
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  Text(
-                    TranslationHandler.get('app_name'),
-                    style: theme.textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.w800,
-                      letterSpacing: 0.5,
-                    ),
+                  const YackBrand(),
+                  const Spacer(),
+                  HrefWidget(
+                    text: TranslationHandler.get('login'),
+                    onClick: () => _goTo('/login'),
                   ),
                 ],
               ),
             ),
-
-            // PageView
             Expanded(
               child: PageView.builder(
                 controller: _pageController,
-                onPageChanged: (index) {
-                  setState(() {
-                    _currentPage = index;
-                  });
-                },
+                onPageChanged: (index) => setState(() => _currentPage = index),
                 itemCount: _pages.length,
-                itemBuilder: (context, index) {
-                  return _buildPage(_pages[index]);
-                },
-              ),
-            ),
-
-            // Page indicators
-            Padding(
-              padding: const EdgeInsets.symmetric(vertical: 24),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: List.generate(
-                  _pages.length,
-                      (index) => AnimatedContainer(
-                    duration: const Duration(milliseconds: 300),
-                    margin: const EdgeInsets.symmetric(horizontal: 4),
-                    width: _currentPage == index ? 32 : 8,
-                    height: 8,
-                    decoration: BoxDecoration(
-                      color: _currentPage == index
-                          ? theme.colorScheme.primary
-                          : theme.colorScheme.onSurface,
-                      borderRadius: BorderRadius.circular(4),
-                    ),
+                itemBuilder: (context, index) => Semantics(
+                  label: TranslationHandler.resolve(
+                    'page_count',
+                    params: {
+                      'current': '${index + 1}',
+                      'total': '${_pages.length}',
+                    },
                   ),
+                  child: _OnboardingPageView(page: _pages[index], index: index),
                 ),
               ),
             ),
-
-            if (_currentPage < _pages.length - 1)
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Text(TranslationHandler.get('remember_app')),
-                  const SizedBox(width: 5),
-                  HrefWidget(
-                    text: TranslationHandler.get('skip'),
-                    onClick: _skipToEnd,
-                  ),
-                ],
-              ),
-
-            // Bottom button
             Padding(
-              padding: const EdgeInsets.fromLTRB(24, 0, 24, 32),
-              child: _currentPage < _pages.length - 1
-                  ?
-                  PrimaryActionButton(action: TranslationHandler.get('next'), onClick: _nextPage)
-                  : PrimaryActionButton(action: TranslationHandler.get('get_started'), onClick: _getStarted)
+              padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 520),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Row(
+                      children: List.generate(
+                        _pages.length,
+                        (index) => Expanded(
+                          child: AnimatedContainer(
+                            duration: AppTheme.normal,
+                            height: 3,
+                            margin: EdgeInsetsDirectional.only(
+                              end: index == _pages.length - 1 ? 0 : 6,
+                            ),
+                            color: index <= _currentPage
+                                ? colors.primary
+                                : colors.outlineVariant,
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 18),
+                    PrimaryActionButton(
+                      action: TranslationHandler.get(
+                        _isLast ? 'get_started' : 'next',
+                      ),
+                      icon: Icons.arrow_forward,
+                      onClick: _next,
+                    ),
+                    if (!_isLast)
+                      TextButton(
+                        onPressed: () => _goTo('/signup'),
+                        child: Text(TranslationHandler.get('skip')),
+                      ),
+                  ],
+                ),
               ),
+            ),
           ],
         ),
-          ),
-        );
-  }
-
-  Widget _buildPage(OnboardingPage page) {
-    final theme = Theme.of(context);
-
-
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 32),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          // Illustration/Icon
-          Container(
-            width: 200,
-            height: 200,
-            decoration: BoxDecoration(
-              color: page.color.withValues(alpha: 0.1),
-              shape: BoxShape.circle,
-            ),
-            child: Center(
-              child: Container(
-                width: 120,
-                height: 120,
-                decoration: BoxDecoration(
-                  color: page.color.withValues(alpha: 0.2),
-                  shape: BoxShape.circle,
-                ),
-                child: Icon(
-                  page.icon,
-                  size: 64,
-                  color: page.color,
-                ),
-              ),
-            ),
-          ),
-          const SizedBox(height: 48),
-          // Title
-          TitleWidget(text: TranslationHandler.get(page.titleKey)),
-          const SizedBox(height: 16),
-          // Subtitle
-          Text(
-            TranslationHandler.get(page.subtitleKey),
-            textAlign: TextAlign.center,
-            style: theme.textTheme.bodyMedium,
-          ),
-        ],
       ),
     );
   }
@@ -226,5 +144,130 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   void dispose() {
     _pageController.dispose();
     super.dispose();
+  }
+}
+
+class _OnboardingPageView extends StatelessWidget {
+  final OnboardingPage page;
+  final int index;
+
+  const _OnboardingPageView({required this.page, required this.index});
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colors = theme.colorScheme;
+
+    return SingleChildScrollView(
+      padding: const EdgeInsets.fromLTRB(20, 32, 20, 16),
+      child: Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 520),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                width: double.infinity,
+                height: 230,
+                padding: const EdgeInsets.all(22),
+                decoration: BoxDecoration(
+                  color: colors.surface,
+                  border: Border.all(color: colors.outlineVariant),
+                  borderRadius: BorderRadius.circular(AppTheme.radiusLg),
+                ),
+                child: _WorkflowPreview(index: index, color: page.color),
+              ),
+              const SizedBox(height: 30),
+              Text(
+                TranslationHandler.get(page.titleKey),
+                style: theme.textTheme.headlineMedium,
+              ),
+              const SizedBox(height: 10),
+              Text(
+                TranslationHandler.get(page.subtitleKey),
+                style: theme.textTheme.bodyLarge?.copyWith(
+                  color: colors.onSurfaceVariant,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _WorkflowPreview extends StatelessWidget {
+  final int index;
+  final Color color;
+
+  const _WorkflowPreview({required this.index, required this.color});
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colors = theme.colorScheme;
+    final icon = switch (index) {
+      0 => Icons.edit_note_outlined,
+      1 => Icons.qr_code_2_outlined,
+      _ => Icons.fact_check_outlined,
+    };
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Container(
+              width: 44,
+              height: 44,
+              alignment: Alignment.center,
+              decoration: BoxDecoration(
+                color: color.withValues(alpha: .11),
+                borderRadius: BorderRadius.circular(AppTheme.radiusSm),
+              ),
+              child: Icon(icon, color: color),
+            ),
+            const Spacer(),
+            Container(
+              width: 72,
+              height: 24,
+              decoration: BoxDecoration(
+                color: colors.surfaceContainerHigh,
+                borderRadius: BorderRadius.circular(AppTheme.radiusSm),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 26),
+        Container(height: 14, width: 190, color: colors.onSurface),
+        const SizedBox(height: 14),
+        Container(height: 8, color: colors.outlineVariant),
+        const SizedBox(height: 8),
+        FractionallySizedBox(
+          widthFactor: .72,
+          child: Container(height: 8, color: colors.outlineVariant),
+        ),
+        const Spacer(),
+        Row(
+          children: [
+            Expanded(
+              child: Container(
+                height: 44,
+                decoration: BoxDecoration(
+                  color: color.withValues(alpha: .1),
+                  border: BorderDirectional(
+                    start: BorderSide(color: color, width: 3),
+                  ),
+                  borderRadius: BorderRadius.circular(AppTheme.radiusSm),
+                ),
+              ),
+            ),
+            const SizedBox(width: 10),
+            Icon(Icons.arrow_forward, color: color),
+          ],
+        ),
+      ],
+    );
   }
 }

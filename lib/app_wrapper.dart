@@ -5,6 +5,7 @@ import 'logic/cubits/auth/auth_cubit.dart';
 import 'logic/cubits/auth/auth_state.dart';
 import 'logic/services/snackBarHandler.dart';
 import 'logic/services/translation_handler.dart';
+import 'presentation/widgets/yack_ui.dart';
 
 class AppWrapper extends StatelessWidget {
   const AppWrapper({super.key});
@@ -28,7 +29,11 @@ class AppWrapper extends StatelessWidget {
         // ==========================
         if (state is UnverifiedUser) {
           WidgetsBinding.instance.addPostFrameCallback((_) {
-            Navigator.pushNamedAndRemoveUntil(context, '/confirm' , (_) => false);
+            Navigator.pushNamedAndRemoveUntil(
+              context,
+              '/confirm',
+              (_) => false,
+            );
           });
           return; // IMPORTANT
         }
@@ -38,7 +43,11 @@ class AppWrapper extends StatelessWidget {
         // ==========================
         if (state is AccountNotComplete) {
           WidgetsBinding.instance.addPostFrameCallback((_) {
-            Navigator.pushNamedAndRemoveUntil(context, '/init-account', (_) => false);
+            Navigator.pushNamedAndRemoveUntil(
+              context,
+              '/init-account',
+              (_) => false,
+            );
           });
           return; // IMPORTANT
         }
@@ -49,7 +58,11 @@ class AppWrapper extends StatelessWidget {
         // ==========================
         if (state is AccountCompleteButLocked) {
           WidgetsBinding.instance.addPostFrameCallback((_) {
-            Navigator.pushNamedAndRemoveUntil(context, '/decrypt-account', (_) => false);
+            Navigator.pushNamedAndRemoveUntil(
+              context,
+              '/decrypt-account',
+              (_) => false,
+            );
           });
           return; // IMPORTANT
         }
@@ -58,13 +71,16 @@ class AppWrapper extends StatelessWidget {
         //        UNAUTHENTICATED
         // ==========================
         if (state is Unauthenticated || state is AuthError) {
-
           // FIRST TIME → WELCOME
           if (userBox.get('didFirstTime') != true) {
             userBox.put('didFirstTime', true);
 
             WidgetsBinding.instance.addPostFrameCallback((_) {
-              Navigator.pushNamedAndRemoveUntil(context, '/welcome', (_) => false);
+              Navigator.pushNamedAndRemoveUntil(
+                context,
+                '/welcome',
+                (_) => false,
+              );
             });
 
             return; // IMPORTANT
@@ -73,7 +89,11 @@ class AppWrapper extends StatelessWidget {
           // Seen login screen before
           if (userBox.get('didFirstLogin') == true) {
             WidgetsBinding.instance.addPostFrameCallback((_) {
-              Navigator.pushNamedAndRemoveUntil(context, '/login' , (_) => false);
+              Navigator.pushNamedAndRemoveUntil(
+                context,
+                '/login',
+                (_) => false,
+              );
             });
 
             return; // IMPORTANT
@@ -100,9 +120,27 @@ class AppWrapper extends StatelessWidget {
       },
 
       builder: (context, state) {
-        // Simple loading screen
-        return const Scaffold(
-          body: Center(child: CircularProgressIndicator()),
+        return Scaffold(
+          body: SafeArea(
+            child: Center(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const YackBrand(),
+                  const SizedBox(height: 24),
+                  const SizedBox.square(
+                    dimension: 24,
+                    child: CircularProgressIndicator(strokeWidth: 2.4),
+                  ),
+                  const SizedBox(height: 14),
+                  Text(
+                    TranslationHandler.get('checking_account'),
+                    style: Theme.of(context).textTheme.bodyMedium,
+                  ),
+                ],
+              ),
+            ),
+          ),
         );
       },
     );

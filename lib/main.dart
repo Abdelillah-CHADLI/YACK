@@ -34,7 +34,6 @@ import 'package:path_provider/path_provider.dart';
 
 late Isar isar;
 
-
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
@@ -69,33 +68,36 @@ void main() async {
   await Hive.openBox('contracts');
   final userBox = await Hive.openBox('user');
   await TranslationHandler.initialize(userBox);
-  NotificationRouterService.initialize();
-
-
   runApp(
-      MultiBlocProvider(
-          providers: [
-              BlocProvider<AuthCubit>(create: (_) => AuthCubit()..checkAuth()),
-              BlocProvider<LoginCubit>(create: (_) => LoginCubit()),
-              BlocProvider<SignupCubit>(create: (_) => SignupCubit()),
-              BlocProvider<ConfirmCubit>(create: (_) => ConfirmCubit(),),
-              BlocProvider<PasswordResetCubit>(create: (_) => PasswordResetCubit(),),
-              BlocProvider<ChangePasswordCubit>(create: (_) => ChangePasswordCubit(),),
-              // Contract cubits
-              BlocProvider<ContractListCubit>(create: (_) => ContractListCubit()),
-              BlocProvider<ContractStateCubit>(create: (_) => ContractStateCubit()),
-              BlocProvider<ContractVerificationCubit>(create: (_) => ContractVerificationCubit()),
-              BlocProvider<ContractSyncCubit>(create: (_) => ContractSyncCubit()),
-              BlocProvider<TempContractCubit>(create: (_) => TempContractCubit()),
-              // Message and Media cubits
-              BlocProvider<MessageCubit>(create: (_) => MessageCubit()),
-              BlocProvider<MediaCubit>(create: (_) => MediaCubit()),
-              // User cubit
-              BlocProvider<UserCubit>(create: (_) => UserCubit()),
-              // Notification cubit
-              BlocProvider<NotificationCubit>(create: (_) => NotificationCubit()),
-          ],
-          child: MyApp(userBox: userBox,)
-      )
+    MultiBlocProvider(
+      providers: [
+        BlocProvider<AuthCubit>(create: (_) => AuthCubit()..checkAuth()),
+        BlocProvider<LoginCubit>(create: (_) => LoginCubit()),
+        BlocProvider<SignupCubit>(create: (_) => SignupCubit()),
+        BlocProvider<ConfirmCubit>(create: (_) => ConfirmCubit()),
+        BlocProvider<PasswordResetCubit>(create: (_) => PasswordResetCubit()),
+        BlocProvider<ChangePasswordCubit>(create: (_) => ChangePasswordCubit()),
+        // Contract cubits
+        BlocProvider<ContractListCubit>(create: (_) => ContractListCubit()),
+        BlocProvider<ContractStateCubit>(create: (_) => ContractStateCubit()),
+        BlocProvider<ContractVerificationCubit>(
+          create: (_) => ContractVerificationCubit(),
+        ),
+        BlocProvider<ContractSyncCubit>(create: (_) => ContractSyncCubit()),
+        BlocProvider<TempContractCubit>(create: (_) => TempContractCubit()),
+        // Message and Media cubits
+        BlocProvider<MessageCubit>(create: (_) => MessageCubit()),
+        BlocProvider<MediaCubit>(create: (_) => MediaCubit()),
+        // User cubit
+        BlocProvider<UserCubit>(create: (_) => UserCubit()),
+        // Notification cubit
+        BlocProvider<NotificationCubit>(create: (_) => NotificationCubit()),
+      ],
+      child: MyApp(userBox: userBox),
+    ),
   );
+
+  WidgetsBinding.instance.addPostFrameCallback((_) {
+    NotificationRouterService.flushPendingNavigation();
+  });
 }
