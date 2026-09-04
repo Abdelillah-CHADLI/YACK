@@ -1,9 +1,193 @@
 const english = {
   'app_name': 'YACK',
+  'loading': 'Loading',
+  'refresh': 'Refresh',
+  'activity_title': 'Activity',
+  'selected_count': '{count} selected',
+  'mark_all_as_read': 'Mark all as read',
+  'select': 'Select',
+  'today': 'Today',
+  'yesterday': 'Yesterday',
+  'delete_activity_title': 'Delete activity?',
+  'delete_activity_message':
+      'Delete {count} selected items? This cannot be undone.',
+  'activity_deleted': '{count} activity items deleted.',
+  'invite_activity_hint':
+      'Open the invitation you created or scanned to continue this agreement.',
+  'contract_unavailable':
+      'This agreement is not available on this device yet. Refresh and try again.',
+  'settings_heading': 'Your workspace',
+  'settings_heading_desc':
+      'Manage your identity, security, and how YACK behaves on this device.',
+  'notifications_info_subtitle': 'Delivery and availability information',
+  'privacy_info_subtitle': 'How current privacy controls work',
+  'plans_support_section': 'Plans & support',
+  'plans_preview': 'Plans preview',
+  'plans_preview_subtitle': 'See planned tiers; billing is not available yet',
+  'info': 'Info',
+  'unavailable': 'Unavailable',
+  'help_unavailable_subtitle': 'In-app support is not available yet',
+  'logout_device_note':
+      'Logging out removes locally unlocked agreement data from this device.',
+  'logout_confirm_title': 'Log out of this device?',
+  'logout_confirm_message':
+      'You will need both your login and encryption passwords to access your agreements again.',
+  'logout_failed': 'YACK could not log you out. Please try again.',
+  'notification_controls_detail':
+      'Notification preferences are not configurable inside YACK yet.',
+  'notification_controls_explanation':
+      'Contract activity notifications still arrive when device permission is enabled. Email and payment-reminder controls are not currently offered.',
+  'privacy_controls_detail':
+      'YACK does not currently expose analytics, biometric, or public-profile controls.',
+  'privacy_controls_explanation':
+      'Agreement text is encrypted on your device. Review each attachment before uploading it, because attachment handling is separate from agreement-text encryption.',
+  'language_updated_device_only':
+      'Language changed on this device. Notification language could not be updated while offline.',
+  'plans_title': 'What is available',
+  'plans_title_desc':
+      'A factual view of current access and capabilities that are still planned.',
+  'billing_unavailable_note':
+      'Billing is not connected. YACK will never report a purchase as complete from this screen.',
+  'available_now': 'Available now',
+  'available_now_desc': 'Included in the current application',
+  'current_access': 'Agreement workspace',
+  'current_access_desc':
+      'Create, exchange, review, and manage agreements with another party.',
+  'device_encryption': 'On-device text encryption',
+  'device_encryption_desc':
+      'Agreement text is encrypted before it is sent and unlocked on your device.',
+  'included': 'Included',
+  'planned_options': 'Planned options',
+  'planned_options_desc': 'Shown for transparency, with no purchase available',
+  'paid_plans': 'Paid plans',
+  'paid_plans_desc':
+      'Plan limits, benefits, and pricing have not been connected to the service.',
+  'in_app_billing': 'In-app billing',
+  'in_app_billing_desc':
+      'No payment method is collected and no subscription can be activated here.',
+  'not_available_yet': 'Not available yet',
+  'plans_no_purchase_disclaimer':
+      'This page is informational. It does not create an order, charge a payment method, or change your account.',
+  'identity_security': 'Identity & security',
+  'identity_security_desc':
+      'The account and device states that protect access to your agreements.',
+  'email_unavailable': 'Email unavailable',
+  'email_verified': 'Email address verified',
+  'email_verification_required': 'Email verification required',
+  'agreements_unlocked_device': 'Agreements unlocked on this device',
+  'agreements_locked_device': 'Agreements locked on this device',
+  'encryption_setup_incomplete': 'Encryption setup is incomplete',
+  'agreement_activity_desc': 'Messages, attachments, and agreement decisions',
+  'message_too_long_to_encrypt':
+      'This message is too long to encrypt. Shorten it and try again.',
+  'attachment_too_large': 'Choose an attachment smaller than 6 MB.',
+  'agreement_locked_title': 'Agreement is locked',
+  'agreement_locked_desc':
+      'Unlock your encryption key to read and send agreement messages.',
+  'no_activity_yet_desc':
+      'Messages and shared attachments between both parties appear here.',
+  'add_attachment': 'Add attachment',
+  'send_message': 'Send message',
+  'attachment_privacy_note':
+      'Attachments use a separate upload path and are not covered by agreement-text encryption. Maximum size: 6 MB.',
+  'attachment_picker_failed':
+      'YACK could not open the media picker. Check device permissions and try again.',
+  'you': 'You',
+  'hide_agreement_title': 'Hide this agreement?',
+  'hide_agreement_message':
+      'This removes the agreement from this device only. The shared record remains on the service.',
+  'hide_from_device': 'Hide from device',
+  'agreement_hidden': 'Agreement hidden on this device.',
+  'undo': 'Undo',
+  'sync_failed':
+      'Could not refresh agreements. Check your connection and try again.',
+  'search_contracts': 'Search agreements',
+  'clear': 'Clear',
+  'all': 'All',
+  'all_contracts': 'All agreements',
+  'in_progress': 'In progress',
+  'closed': 'Closed',
+  'no_matching_contracts': 'No matching agreements',
+  'no_matching_contracts_desc':
+      'Try a different search or clear the current filter.',
+  'clear_filters': 'Clear filters',
+  'more_options': 'More options',
+  'draft_agreement': 'Draft an agreement',
+  'agreement_terms': 'Agreement terms',
+  'contract_encryption_note':
+      'Your agreement text is encrypted on this device before it is sent.',
+  'encrypted_field_helper':
+      'Keep the terms concise so they can be encrypted securely.',
+  'encrypted_field_too_long':
+      'This field is too long to encrypt. Shorten it and try again.',
+  'continue_to_invite': 'Continue to invite',
+  'join_instead': 'Have an invitation? Scan it instead',
+  'discard_draft_title': 'Discard this draft?',
+  'discard_draft_message': 'The agreement details you entered will be lost.',
+  'keep_editing': 'Keep editing',
+  'discard': 'Discard',
+  'create_account': 'Create your account',
+  'account_password_helper':
+      'Use at least 8 characters. You will create a separate encryption password next.',
+  'login_unlock_note':
+      'After signing in, you will unlock your encrypted agreements with your encryption password.',
+  'your_email': 'your email address',
+  'use_another_account': 'Use another account',
+  'verification_sent_to':
+      'We sent a verification link to {email}. Open it, then return here.',
+  'verified_email_action': 'I’ve verified my email',
+  'sending': 'Sending…',
+  'resend_email': 'Resend verification email',
+  'auth_email_not_verified':
+      'Your email is not verified yet. Open the link we sent, then try again.',
+  'back_to_login': 'Back to login',
+  'password_reset_sent_to': 'A password reset link was sent to {email}.',
+  'send_reset_link': 'Send reset link',
+  'complete_profile': 'Complete your profile',
+  'acknowledge_encryption_warning':
+      'Confirm that you understand the encryption password cannot be recovered.',
+  'encryption_acknowledgement':
+      'I understand that YACK cannot recover this encryption password.',
+  'unlocking_account': 'Unlocking the encrypted agreements for {email}.',
+  'encryption_password_not_login':
+      'This is the encryption password you created after verifying your email, not your login password.',
+  'profile_name_required':
+      'Enter your first and last name to finish account setup.',
+  'checking_account': 'Checking your account…',
+  'contract': 'Agreement',
+  'cannot_join_own_contract': 'You cannot join your own agreement invitation.',
+  'contract_content_invalid':
+      'This invitation contains terms that cannot be processed safely.',
+  'joining_contract': 'Joining the agreement',
+  'joining_contract_desc':
+      'Encrypting your copy and confirming your signature…',
+  'waiting_for_signature_desc':
+      'Your signature is recorded. You can return to agreements; YACK will notify you when the other party signs.',
+  'back_to_contracts': 'Back to agreements',
+  'join_agreement': 'Join an agreement',
+  'participant_joined_ready':
+      'The other party joined. Review the terms when you are ready.',
+  'leave_invitation_title': 'Leave this invitation?',
+  'leave_invitation_message':
+      'The invitation may remain active for the other party. You can return to your agreements now.',
+  'stay': 'Stay here',
+  'leave': 'Leave',
+  'invitation_ready': 'Invitation ready',
+  'participant_joined': '{name} joined this agreement.',
+  'copy_link': 'Copy invitation link',
+  'invitation_expiry_note':
+      'Temporary invitations expire after a short time. Ask the other party to scan or open the link now.',
+  'review_and_sign': 'Review and sign',
+  'created': 'Created',
+  'participant_joined_step': 'Joined',
+  'you_signed': 'You signed',
+  'both_signed': 'Complete',
   'login': 'Login',
   'sign_up': 'Sign Up',
   'email': 'Email',
   'password': 'Password',
+  'show_password': 'Show password',
+  'hide_password': 'Hide password',
   'confirm_password': 'Confirm password',
   'first_name': 'First Name',
   'last_name': 'Last Name',
@@ -11,22 +195,23 @@ const english = {
   'login_subtitle': 'Sign in securely to access your contracts.',
   'welcome': 'Welcome',
   'signup_subtitle': 'Create your secure account to get started.',
-  'forget_password': 'Forget Password',
+  'forget_password': 'Forgot password',
   'dont_have_account': "Don't have an account?",
   'already_have_account': 'Already have an account?',
   'remember_app': 'Already Know About The App?',
   'skip': 'Skip',
   'next': 'Next',
   'get_started': 'Get Started',
-  'onboarding_create_contracts_title': 'Create Contracts Easily',
+  'onboarding_create_contracts_title': 'Write clear terms',
   'onboarding_create_contracts_subtitle':
-      'Draft and sign agreements in minutes with our intuitive interface',
-  'onboarding_secure_verified_title': 'Secure & Verified',
+      'Set out the terms, amount, and details both people need to understand.',
+  'onboarding_secure_verified_title': 'Invite the other party',
   'onboarding_secure_verified_subtitle':
-      'Every contract is tamper-proof and cryptographically protected',
-  'onboarding_track_agreements_title': 'Track Agreements',
+      'Share one private QR invitation so the other person can review and sign.',
+  'onboarding_track_agreements_title': 'Keep the full record',
   'onboarding_track_agreements_subtitle':
-      'Access and manage all your contracts in one secure place',
+      'Follow each agreement’s status, conversation, and supporting files in one place.',
+  'page_count': 'Page {current} of {total}',
   'onboarding_start_trust_title': 'Start Building Trust',
   'onboarding_start_trust_subtitle':
       'Begin your journey with YACK and secure your agreements today',
@@ -112,7 +297,14 @@ const english = {
   'contract_review': 'Contract Review',
   'from_user': 'From: {name}',
   'binding_warning':
-      'Once accepted, this contract becomes legally binding. Please ensure all terms are correct.',
+      'Signing records your acceptance of these exact terms. Review every detail before continuing.',
+  'review_before_signing': 'Review before signing',
+  'translation_privacy_disclosure':
+      'Translation sends the agreement title and terms to the external MyMemory translation service. Continue only if both parties are comfortable sharing this text with that service.',
+  'continue_action': 'Continue',
+  'content_already_in_language':
+      'This agreement already appears to use your selected language.',
+  'translated': 'Translated',
   'accept_contract': 'Accept Contract',
   'decline_contract': 'Decline Contract',
   'contract_accepted': 'You have accepted the contract!',
@@ -133,7 +325,8 @@ const english = {
   'price_label': 'Price',
   'notifications_title': 'Notifications',
   'no_notifications': 'No notifications yet',
-  'no_notifications_desc': 'When something important happens, you will see it here.',
+  'no_notifications_desc':
+      'When something important happens, you will see it here.',
   'no_contracts': 'No contracts yet',
   'contracts': 'Contracts',
   'add_contract_short': 'Add Contract',
@@ -229,7 +422,8 @@ const english = {
   'currency': 'DA',
   'contract_decoded_successfully': 'Contract decoded successfully!',
   'invalid_contract_qr': 'Invalid contract QR code',
-  'invitation_not_started': 'Sharing has not been started. Ask the other party to click Start Sharing.',
+  'invitation_not_started':
+      'Sharing has not been started. Ask the other party to click Start Sharing.',
   'cannot_accept_own_contract': 'You cannot accept your own contract.',
   'title_required': 'Please enter a contract title.',
   'invalid_price': 'Please enter a valid price.',
@@ -256,10 +450,12 @@ const english = {
   'contract_disputed_notification': 'Contract has been disputed',
   'complete': 'Complete',
   'complete_contract': 'Complete Contract',
-  'complete_contract_warning': 'Mark this contract as completed? This means the job/task has been done.',
+  'complete_contract_warning':
+      'Mark this contract as completed? This means the job/task has been done.',
   'subscription': 'Subscription',
   'choose_your_plan': 'Choose Your Plan',
-  'unlock_premium_features': 'Unlock premium features and create unlimited contracts',
+  'unlock_premium_features':
+      'Unlock premium features and create unlimited contracts',
   'plan_basic': 'Basic',
   'plan_pro': 'Pro',
   'plan_unlimited': 'Unlimited',
@@ -303,7 +499,6 @@ const english = {
   "auth_email_in_use": "Email already in use.",
   "auth_weak_password": "Password is too weak.",
   "auth_verification_sent": "Verification email sent.",
-  "auth_email_not_verified": "Email is not verified yet.",
   "auth_no_user_logged_in": "No user is logged in.",
   "auth_wrong_old_password": "Old password is incorrect.",
   "auth_weak_new_password": "The new password is too weak.",
@@ -325,23 +520,30 @@ const english = {
   'message_shared_video': '🎥 Shared a video',
   // Init Account Screen
   'init_account_title': 'Secure Your Account',
-  'init_account_subtitle': 'Create a password to encrypt your private key. This password protects your contracts and signatures.',
-  'init_account_warning': 'WARNING: This password cannot be recovered. If you lose it, your account data will be permanently inaccessible. We do not store this password.',
+  'init_account_subtitle':
+      'Create a password to encrypt your private key. This password protects your contracts and signatures.',
+  'init_account_warning':
+      'WARNING: This password cannot be recovered. If you lose it, your account data will be permanently inaccessible. We do not store this password.',
   'init_account_password_label': 'Encryption Password',
-  'init_account_password_helper': 'Use at least 12 characters with a mix of letters, numbers, and symbols for maximum security.',
+  'init_account_password_helper':
+      'Use at least 12 characters with a mix of letters, numbers, and symbols for maximum security.',
   'init_account_confirm_password_label': 'Confirm Password',
   'init_account_password_required': 'Password is required',
   'init_account_password_min_length': 'Password must be at least 12 characters',
   'init_account_submit': 'Secure My Account',
   // Decrypt Account Screen
   'decrypt_account_title': 'Unlock Your Account',
-  'decrypt_account_subtitle': 'Enter your encryption password to access your account.',
-  'decrypt_account_info': 'Your private key is encrypted for security. Enter the password you created during account setup.',
+  'decrypt_account_subtitle':
+      'Enter your encryption password to access your account.',
+  'decrypt_account_info':
+      'Your private key is encrypted for security. Enter the password you created during account setup.',
   'decrypt_account_password_label': 'Encryption Password',
   'decrypt_account_password_required': 'Password is required',
   'decrypt_account_submit': 'Unlock',
-  'decrypt_account_error': 'Failed to unlock account. Please check your password.',
-  'missing_public_key': 'Your encryption key is missing. Please log out and set up your account again.',
+  'decrypt_account_error':
+      'Failed to unlock account. Please check your password.',
+  'missing_public_key':
+      'Your encryption key is missing. Please log out and set up your account again.',
   'contract_joined': 'has joined the contract',
   'waiting_for_user_b': 'Waiting for the other party to join...',
   'waiting_for_user_a_sign': 'Waiting for the contract creator to sign...',
@@ -355,11 +557,13 @@ const english = {
   'enter_link_manually': 'Enter Link Manually',
   'paste_contract_link': 'Paste the contract link or code',
   'join_contract': 'Join Contract',
-  'simple_link_no_preview': 'Using a simplified link - contract details may not be available until joined.',
+  'simple_link_no_preview':
+      'Using a simplified link - contract details may not be available until joined.',
   // Contract Agreement - Real-time notifications
   'notification_other_accepted': '{name} has accepted the contract',
   'notification_contract_disputed': '{name} has disputed the contract',
-  'error_encryption_keys_missing': 'Encryption keys are missing. Please log out and log in again.',
+  'error_encryption_keys_missing':
+      'Encryption keys are missing. Please log out and log in again.',
   'error_sending_message': 'Failed to send message. Please try again.',
   'media_uploaded_success': 'Media uploaded successfully!',
   'error_uploading_media': 'Failed to upload media. Please try again.',
@@ -367,9 +571,11 @@ const english = {
   'error_disputing_contract': 'Failed to dispute contract. Please try again.',
   'contract_disputed': 'Contract has been disputed',
   'waiting_for_other_accept': 'Waiting for the other party to accept...',
-  'accept_contract_confirmation': 'Are you sure you want to accept this contract? This action cannot be undone.',
+  'accept_contract_confirmation':
+      'Are you sure you want to accept this contract? This action cannot be undone.',
   'dispute_contract': 'Dispute Contract',
-  'dispute_contract_warning': 'Are you sure you want to dispute this contract? This will notify the other party.',
+  'dispute_contract_warning':
+      'Are you sure you want to dispute this contract? This will notify the other party.',
   'dispute_reason_optional': 'Reason for dispute (optional)',
   'accepted': 'Accepted',
   'other_party': 'Other Party',
@@ -383,20 +589,25 @@ const english = {
   'encryption_password': 'Encryption Password',
   'encryption_password_subtitle': 'Change your encryption password',
   'change_encryption_password': 'Change Encryption Password',
-  'change_encryption_password_warning': 'This password encrypts your private key. If you lose it, you will lose access to all your contracts and data permanently.',
+  'change_encryption_password_warning':
+      'This password encrypts your private key. If you lose it, you will lose access to all your contracts and data permanently.',
   'old_encryption_password': 'Current Encryption Password',
   'new_encryption_password': 'New Encryption Password',
   'confirm_encryption_password': 'Confirm Encryption Password',
-  'encryption_password_updated_successfully': 'Encryption password updated successfully!',
-  'missing_encryption_data': 'Missing encryption data. Please log out and set up your account again.',
+  'encryption_password_updated_successfully':
+      'Encryption password updated successfully!',
+  'missing_encryption_data':
+      'Missing encryption data. Please log out and set up your account again.',
   'good_morning': 'Good morning',
   'good_afternoon': 'Good afternoon',
   'good_evening': 'Good evening',
-  'no_contracts_desc': 'Your contracts will appear here once you create or upload one.',
+  'no_contracts_desc':
+      'Your contracts will appear here once you create or upload one.',
   'encrypted_label': 'Encrypted',
   'total_contracts_label': 'Total contracts',
   'active_contracts_label': 'Active',
   'pending_signatures_label': 'Pending signature',
   'completed_label': 'Completed',
-  'create_contract_desc': 'Fill in the details below to create a new contract. All fields are encrypted end-to-end.',
+  'create_contract_desc':
+      'Fill in the details below to create a new contract. All fields are encrypted end-to-end.',
 };

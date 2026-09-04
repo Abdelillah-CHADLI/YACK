@@ -1,9 +1,179 @@
 const arabic = {
   'app_name': 'Yack',
+  'loading': 'جارٍ التحميل',
+  'refresh': 'تحديث',
+  'activity_title': 'النشاط',
+  'selected_count': 'تم تحديد {count}',
+  'mark_all_as_read': 'تحديد الكل كمقروء',
+  'select': 'تحديد',
+  'today': 'اليوم',
+  'yesterday': 'أمس',
+  'delete_activity_title': 'حذف النشاط؟',
+  'delete_activity_message':
+      'هل تريد حذف {count} عناصر محددة؟ لا يمكن التراجع عن ذلك.',
+  'activity_deleted': 'تم حذف {count} عناصر من النشاط.',
+  'invite_activity_hint':
+      'افتح الدعوة التي أنشأتها أو مسحتها لمتابعة هذا الاتفاق.',
+  'contract_unavailable':
+      'هذا الاتفاق غير متاح على هذا الجهاز بعد. حدّث القائمة ثم حاول مجددًا.',
+  'settings_heading': 'مساحة عملك',
+  'settings_heading_desc': 'أدر هويتك وأمانك وطريقة عمل YACK على هذا الجهاز.',
+  'notifications_info_subtitle': 'معلومات التسليم والتوفر',
+  'privacy_info_subtitle': 'كيفية عمل عناصر الخصوصية حاليًا',
+  'plans_support_section': 'الخطط والدعم',
+  'plans_preview': 'معاينة الخطط',
+  'plans_preview_subtitle': 'اطّلع على الخطط المقترحة؛ الدفع غير متاح بعد',
+  'info': 'معلومات',
+  'unavailable': 'غير متاح',
+  'help_unavailable_subtitle': 'الدعم داخل التطبيق غير متاح بعد',
+  'logout_device_note':
+      'يؤدي تسجيل الخروج إلى إزالة بيانات الاتفاقات المفتوحة محليًا من هذا الجهاز.',
+  'logout_confirm_title': 'تسجيل الخروج من هذا الجهاز؟',
+  'logout_confirm_message':
+      'ستحتاج إلى كلمة مرور الدخول وكلمة مرور التشفير للوصول إلى اتفاقاتك مجددًا.',
+  'logout_failed': 'تعذّر على YACK تسجيل خروجك. حاول مجددًا.',
+  'notification_controls_detail':
+      'لا يمكن ضبط تفضيلات الإشعارات من داخل YACK حاليًا.',
+  'notification_controls_explanation':
+      'تصل إشعارات نشاط الاتفاقات عند منح إذن الجهاز. لا تتوفر حاليًا إعدادات البريد الإلكتروني أو تذكير الدفع.',
+  'privacy_controls_detail':
+      'لا يوفر YACK حاليًا إعدادات للتحليلات أو القياسات الحيوية أو الملف العام.',
+  'privacy_controls_explanation':
+      'يُشفّر نص الاتفاق على جهازك. راجع كل مرفق قبل رفعه لأن معالجة المرفقات منفصلة عن تشفير نص الاتفاق.',
+  'language_updated_device_only':
+      'تغيرت اللغة على هذا الجهاز، وتعذّر تحديث لغة الإشعارات أثناء عدم الاتصال.',
+  'plans_title': 'المتاح حاليًا',
+  'plans_title_desc':
+      'عرض واضح لإمكانات حسابك الحالية والخصائص التي ما زالت مخططة.',
+  'billing_unavailable_note':
+      'نظام الدفع غير متصل. لن يعرض YACK أي عملية شراء على أنها مكتملة من هذه الشاشة.',
+  'available_now': 'متاح الآن',
+  'available_now_desc': 'مضمّن في التطبيق الحالي',
+  'current_access': 'مساحة الاتفاقات',
+  'current_access_desc':
+      'أنشئ الاتفاقات وتبادلها وراجعها وأدرها مع الطرف الآخر.',
+  'device_encryption': 'تشفير النص على الجهاز',
+  'device_encryption_desc': 'يُشفّر نص الاتفاق قبل إرساله ويُفتح على جهازك.',
+  'included': 'مضمّن',
+  'planned_options': 'خيارات مخططة',
+  'planned_options_desc': 'تُعرض بشفافية من دون إمكانية شراء',
+  'paid_plans': 'خطط مدفوعة',
+  'paid_plans_desc': 'لم تُربط حدود الخطط ومزاياها وأسعارها بالخدمة بعد.',
+  'in_app_billing': 'الدفع داخل التطبيق',
+  'in_app_billing_desc': 'لا تُجمع أي وسيلة دفع ولا يمكن تفعيل اشتراك من هنا.',
+  'not_available_yet': 'غير متاح بعد',
+  'plans_no_purchase_disclaimer':
+      'هذه الصفحة للمعلومات فقط. لا تنشئ طلبًا ولا تخصم أي مبلغ ولا تغيّر حسابك.',
+  'identity_security': 'الهوية والأمان',
+  'identity_security_desc':
+      'حالة الحساب والجهاز التي تحمي الوصول إلى اتفاقاتك.',
+  'email_unavailable': 'البريد الإلكتروني غير متاح',
+  'email_verified': 'تم التحقق من البريد الإلكتروني',
+  'email_verification_required': 'يلزم التحقق من البريد الإلكتروني',
+  'agreements_unlocked_device': 'الاتفاقات مفتوحة على هذا الجهاز',
+  'agreements_locked_device': 'الاتفاقات مقفلة على هذا الجهاز',
+  'encryption_setup_incomplete': 'إعداد التشفير غير مكتمل',
+  'agreement_activity_desc': 'الرسائل والمرفقات وقرارات الاتفاق',
+  'message_too_long_to_encrypt':
+      'هذه الرسالة طويلة جدًا ولا يمكن تشفيرها. اختصرها ثم حاول مجددًا.',
+  'attachment_too_large': 'اختر مرفقًا يقل حجمه عن 6 ميغابايت.',
+  'agreement_locked_title': 'الاتفاق مقفل',
+  'agreement_locked_desc': 'افتح مفتاح التشفير لقراءة رسائل الاتفاق وإرسالها.',
+  'no_activity_yet_desc': 'ستظهر هنا الرسائل والمرفقات المشتركة بين الطرفين.',
+  'add_attachment': 'إضافة مرفق',
+  'send_message': 'إرسال الرسالة',
+  'attachment_privacy_note':
+      'تُرفع المرفقات عبر مسار منفصل ولا يشملها تشفير نص الاتفاق. الحد الأقصى للحجم: 6 ميغابايت.',
+  'attachment_picker_failed':
+      'تعذّر على YACK فتح منتقي الوسائط. تحقق من أذونات الجهاز وحاول مجددًا.',
+  'you': 'أنت',
+  'hide_agreement_title': 'إخفاء هذا الاتفاق؟',
+  'hide_agreement_message':
+      'سيُزال الاتفاق من هذا الجهاز فقط، بينما يبقى السجل المشترك على الخدمة.',
+  'hide_from_device': 'إخفاء من الجهاز',
+  'agreement_hidden': 'تم إخفاء الاتفاق على هذا الجهاز.',
+  'undo': 'تراجع',
+  'sync_failed': 'تعذّر تحديث العقود. تحقّق من اتصالك وحاول مجددًا.',
+  'search_contracts': 'البحث في العقود',
+  'clear': 'مسح',
+  'all': 'الكل',
+  'all_contracts': 'كل العقود',
+  'in_progress': 'قيد التنفيذ',
+  'closed': 'مغلقة',
+  'no_matching_contracts': 'لا توجد عقود مطابقة',
+  'no_matching_contracts_desc': 'جرّب بحثًا آخر أو امسح عامل التصفية الحالي.',
+  'clear_filters': 'مسح عوامل التصفية',
+  'more_options': 'خيارات إضافية',
+  'draft_agreement': 'صياغة عقد',
+  'agreement_terms': 'بنود العقد',
+  'contract_encryption_note': 'يُشفّر نص العقد على هذا الجهاز قبل إرساله.',
+  'encrypted_field_helper': 'اكتب بنودًا موجزة حتى يمكن تشفيرها بأمان.',
+  'encrypted_field_too_long':
+      'هذا الحقل طويل جدًا ولا يمكن تشفيره. اختصره وحاول مجددًا.',
+  'continue_to_invite': 'المتابعة إلى الدعوة',
+  'join_instead': 'لديك دعوة؟ امسح رمزها',
+  'discard_draft_title': 'هل تريد حذف هذه المسودة؟',
+  'discard_draft_message': 'ستفقد تفاصيل العقد التي أدخلتها.',
+  'keep_editing': 'متابعة التحرير',
+  'discard': 'حذف',
+  'create_account': 'إنشاء حسابك',
+  'account_password_helper':
+      'استخدم 8 أحرف على الأقل. ستنشئ بعد ذلك كلمة مرور منفصلة للتشفير.',
+  'login_unlock_note':
+      'بعد تسجيل الدخول ستفتح عقودك المشفّرة باستخدام كلمة مرور التشفير.',
+  'your_email': 'بريدك الإلكتروني',
+  'use_another_account': 'استخدام حساب آخر',
+  'verification_sent_to': 'أرسلنا رابط تحقق إلى {email}. افتحه ثم عُد إلى هنا.',
+  'verified_email_action': 'تحققت من بريدي الإلكتروني',
+  'sending': 'جارٍ الإرسال…',
+  'resend_email': 'إعادة إرسال رسالة التحقق',
+  'auth_email_not_verified':
+      'لم يتم التحقق من بريدك بعد. افتح الرابط المرسل ثم حاول مجددًا.',
+  'back_to_login': 'العودة إلى تسجيل الدخول',
+  'password_reset_sent_to': 'أُرسل رابط إعادة تعيين كلمة المرور إلى {email}.',
+  'send_reset_link': 'إرسال رابط إعادة التعيين',
+  'complete_profile': 'إكمال ملفك الشخصي',
+  'acknowledge_encryption_warning':
+      'أكّد أنك تدرك أن كلمة مرور التشفير لا يمكن استعادتها.',
+  'encryption_acknowledgement':
+      'أفهم أن YACK لا يستطيع استعادة كلمة مرور التشفير هذه.',
+  'unlocking_account': 'فتح العقود المشفّرة للحساب {email}.',
+  'encryption_password_not_login':
+      'هذه كلمة مرور التشفير التي أنشأتها بعد التحقق، وليست كلمة مرور تسجيل الدخول.',
+  'profile_name_required': 'أدخل اسمك الأول واسم العائلة لإكمال إعداد الحساب.',
+  'checking_account': 'جارٍ التحقق من حسابك…',
+  'contract': 'عقد',
+  'cannot_join_own_contract': 'لا يمكنك الانضمام إلى دعوة عقدك.',
+  'contract_content_invalid': 'تتضمن هذه الدعوة بنودًا لا يمكن معالجتها بأمان.',
+  'joining_contract': 'جارٍ الانضمام إلى العقد',
+  'joining_contract_desc': 'جارٍ تشفير نسختك وتأكيد توقيعك…',
+  'waiting_for_signature_desc':
+      'تم تسجيل توقيعك. يمكنك العودة إلى العقود؛ سيُعلمك YACK عند توقيع الطرف الآخر.',
+  'back_to_contracts': 'العودة إلى العقود',
+  'join_agreement': 'الانضمام إلى عقد',
+  'participant_joined_ready':
+      'انضم الطرف الآخر. راجع البنود عندما تكون مستعدًا.',
+  'leave_invitation_title': 'هل تريد مغادرة هذه الدعوة؟',
+  'leave_invitation_message':
+      'قد تبقى الدعوة فعالة للطرف الآخر. يمكنك العودة إلى عقودك الآن.',
+  'stay': 'البقاء هنا',
+  'leave': 'مغادرة',
+  'invitation_ready': 'الدعوة جاهزة',
+  'participant_joined': 'انضم {name} إلى هذا العقد.',
+  'copy_link': 'نسخ رابط الدعوة',
+  'invitation_expiry_note':
+      'تنتهي صلاحية الدعوات المؤقتة بعد وقت قصير. اطلب من الطرف الآخر مسح الرابط أو فتحه الآن.',
+  'review_and_sign': 'المراجعة والتوقيع',
+  'created': 'تم الإنشاء',
+  'participant_joined_step': 'تم الانضمام',
+  'you_signed': 'وقّعت',
+  'both_signed': 'مكتمل',
   'login': 'تسجيل الدخول',
   'sign_up': 'إنشاء حساب',
   'email': 'البريد الإلكتروني',
   'password': 'كلمة المرور',
+  'show_password': 'إظهار كلمة المرور',
+  'hide_password': 'إخفاء كلمة المرور',
   'confirm_password': 'تأكيد كلمة المرور',
   'first_name': 'الاسم الأول',
   'last_name': 'اسم العائلة',
@@ -18,15 +188,16 @@ const arabic = {
   'skip': 'تخطي',
   'next': 'التالي',
   'get_started': 'ابدأ الآن',
-  'onboarding_create_contracts_title': 'أنشئ العقود بسهولة',
+  'onboarding_create_contracts_title': 'اكتب بنودًا واضحة',
   'onboarding_create_contracts_subtitle':
-      'أنشئ الاتفاقيات ووقّعها في دقائق عبر واجهتنا السهلة',
-  'onboarding_secure_verified_title': 'آمن وموثّق',
+      'حدّد الشروط والمبلغ والتفاصيل التي يحتاج الطرفان إلى فهمها.',
+  'onboarding_secure_verified_title': 'ادعُ الطرف الآخر',
   'onboarding_secure_verified_subtitle':
-      'كل عقد غير قابل للتلاعب ومحمي بالتشفير',
-  'onboarding_track_agreements_title': 'تتبّع الاتفاقيات',
+      'شارك دعوة QR خاصة ليتمكن الطرف الآخر من المراجعة والتوقيع.',
+  'onboarding_track_agreements_title': 'احتفظ بالسجل الكامل',
   'onboarding_track_agreements_subtitle':
-      'يمكنك الوصول إلى جميع عقودك وإدارتها في مكان واحد آمن',
+      'تابع حالة كل عقد ومحادثته وملفاته الداعمة في مكان واحد.',
+  'page_count': 'الصفحة {current} من {total}',
   'onboarding_start_trust_title': 'ابدأ بناء الثقة',
   'onboarding_start_trust_subtitle': 'ابدأ رحلتك مع ياك واحمِ اتفاقياتك اليوم',
   'forget_password_message': 'أرسل طلبًا لإعادة تعيين كلمة مرور حسابك.',
@@ -108,7 +279,14 @@ const arabic = {
   'contract_review': 'مراجعة العقد',
   'from_user': 'من: {name}',
   'binding_warning':
-      'بعد القبول يصبح هذا العقد ملزمًا قانونيًا. يرجى التأكد من صحة جميع الشروط.',
+      'يسجل التوقيع موافقتك على هذه البنود نفسها. راجع كل التفاصيل قبل المتابعة.',
+  'review_before_signing': 'راجع قبل التوقيع',
+  'translation_privacy_disclosure':
+      'ترسل الترجمة عنوان العقد وبنوده إلى خدمة MyMemory الخارجية. تابع فقط إذا وافق الطرفان على مشاركة هذا النص مع الخدمة.',
+  'continue_action': 'متابعة',
+  'content_already_in_language':
+      'يبدو أن هذا العقد مكتوب بالفعل باللغة المحددة.',
+  'translated': 'مترجم',
   'accept_contract': 'قبول العقد',
   'decline_contract': 'رفض العقد',
   'contract_accepted': 'لقد قبلت العقد!',
@@ -218,7 +396,8 @@ const arabic = {
   'currency': 'دج',
   'contract_decoded_successfully': 'تم فك تشفير العقد بنجاح!',
   'invalid_contract_qr': 'رمز QR للعقد غير صالح',
-  'invitation_not_started': 'لم يتم بدء المشاركة. اطلب من الطرف الآخر النقر على بدء المشاركة.',
+  'invitation_not_started':
+      'لم يتم بدء المشاركة. اطلب من الطرف الآخر النقر على بدء المشاركة.',
   'cannot_accept_own_contract': 'لا يمكنك قبول عقدك الخاص.',
   'title_required': 'يرجى إدخال عنوان العقد.',
   'invalid_price': 'يرجى إدخال سعر صالح.',
@@ -248,7 +427,8 @@ const arabic = {
   'contract_disputed_notification': 'تم الاعتراض على العقد',
   'complete': 'إكمال',
   'complete_contract': 'إكمال العقد',
-  'complete_contract_warning': 'هل تريد تحديد هذا العقد كمكتمل؟ هذا يعني أن العمل/المهمة قد تم إنجازها.',
+  'complete_contract_warning':
+      'هل تريد تحديد هذا العقد كمكتمل؟ هذا يعني أن العمل/المهمة قد تم إنجازها.',
   'subscription': 'الاشتراك',
   'choose_your_plan': 'اختر خطتك',
   'unlock_premium_features': 'افتح الميزات المميزة وأنشئ عقودًا غير محدودة',
@@ -303,7 +483,6 @@ const arabic = {
   "auth_account_created": "تم إنشاء الحساب بنجاح.",
   "auth_email_in_use": "البريد الإلكتروني قيد الاستخدام بالفعل.",
   "auth_weak_password": "كلمة المرور ضعيفة جدًا.",
-  "auth_email_not_verified": "الرجاء التحقق من بريدك الإلكتروني.",
   "auth_no_user_logged_in": "لا يوجد مستخدم متصل.",
   "auth_wrong_old_password": "كلمة المرور القديمة غير صحيحة.",
   "auth_weak_new_password": "كلمة المرور الجديدة ضعيفة جدًا.",
@@ -317,30 +496,35 @@ const arabic = {
   'dialog_dispute_ok': 'حسنًا',
   'dialog_completion_request_message':
       'الطرف الآخر يريد إكمال هذا العقد. هل تؤكد؟',
-  'dialog_dispute_raised_message':
-      'قام الطرف الآخر برفع نزاع على هذا العقد.',
+  'dialog_dispute_raised_message': 'قام الطرف الآخر برفع نزاع على هذا العقد.',
   'error_contract_not_found': 'العقد غير موجود',
   'message_shared_image': '📷 قام بمشاركة صورة',
   'message_shared_video': '🎥 قام بمشاركة فيديو',
   // Init Account Screen
   'init_account_title': 'تأمين حسابك',
-  'init_account_subtitle': 'أنشئ كلمة مرور لتشفير مفتاحك الخاص. هذه الكلمة تحمي عقودك وتوقيعاتك.',
-  'init_account_warning': 'تحذير: لا يمكن استرداد كلمة المرور هذه. إذا فقدتها، ستفقد الوصول إلى بيانات حسابك نهائياً. نحن لا نخزن كلمة المرور هذه.',
+  'init_account_subtitle':
+      'أنشئ كلمة مرور لتشفير مفتاحك الخاص. هذه الكلمة تحمي عقودك وتوقيعاتك.',
+  'init_account_warning':
+      'تحذير: لا يمكن استرداد كلمة المرور هذه. إذا فقدتها، ستفقد الوصول إلى بيانات حسابك نهائياً. نحن لا نخزن كلمة المرور هذه.',
   'init_account_password_label': 'كلمة مرور التشفير',
-  'init_account_password_helper': 'استخدم 12 حرفاً على الأقل مع مزيج من الأحرف والأرقام والرموز لأقصى درجات الأمان.',
+  'init_account_password_helper':
+      'استخدم 12 حرفاً على الأقل مع مزيج من الأحرف والأرقام والرموز لأقصى درجات الأمان.',
   'init_account_confirm_password_label': 'تأكيد كلمة المرور',
   'init_account_password_required': 'كلمة المرور مطلوبة',
-  'init_account_password_min_length': 'يجب أن تكون كلمة المرور 12 حرفاً على الأقل',
+  'init_account_password_min_length':
+      'يجب أن تكون كلمة المرور 12 حرفاً على الأقل',
   'init_account_submit': 'تأمين حسابي',
   // Decrypt Account Screen
   'decrypt_account_title': 'فتح حسابك',
   'decrypt_account_subtitle': 'أدخل كلمة مرور التشفير للوصول إلى حسابك.',
-  'decrypt_account_info': 'مفتاحك الخاص مشفر للأمان. أدخل كلمة المرور التي أنشأتها عند إعداد الحساب.',
+  'decrypt_account_info':
+      'مفتاحك الخاص مشفر للأمان. أدخل كلمة المرور التي أنشأتها عند إعداد الحساب.',
   'decrypt_account_password_label': 'كلمة مرور التشفير',
   'decrypt_account_password_required': 'كلمة المرور مطلوبة',
   'decrypt_account_submit': 'فتح',
   'decrypt_account_error': 'فشل فتح الحساب. يرجى التحقق من كلمة المرور.',
-  'missing_public_key': 'مفتاح التشفير مفقود. يرجى تسجيل الخروج وإعادة إعداد حسابك.',
+  'missing_public_key':
+      'مفتاح التشفير مفقود. يرجى تسجيل الخروج وإعادة إعداد حسابك.',
   'contract_joined': 'انضم إلى العقد',
   'waiting_for_user_b': 'في انتظار انضمام الطرف الآخر...',
   'waiting_for_user_a_sign': 'في انتظار توقيع منشئ العقد...',
@@ -354,11 +538,13 @@ const arabic = {
   'enter_link_manually': 'إدخال الرابط يدوياً',
   'paste_contract_link': 'الصق رابط العقد أو الكود',
   'join_contract': 'انضم للعقد',
-  'simple_link_no_preview': 'استخدام رابط مبسط - تفاصيل العقد قد لا تكون متوفرة حتى الانضمام.',
+  'simple_link_no_preview':
+      'استخدام رابط مبسط - تفاصيل العقد قد لا تكون متوفرة حتى الانضمام.',
   // Contract Agreement - Real-time notifications
   'notification_other_accepted': '{name} قبل العقد',
   'notification_contract_disputed': '{name} اعترض على العقد',
-  'error_encryption_keys_missing': 'مفاتيح التشفير مفقودة. يرجى تسجيل الخروج وإعادة تسجيل الدخول.',
+  'error_encryption_keys_missing':
+      'مفاتيح التشفير مفقودة. يرجى تسجيل الخروج وإعادة تسجيل الدخول.',
   'error_sending_message': 'فشل إرسال الرسالة. يرجى المحاولة مرة أخرى.',
   'media_uploaded_success': 'تم رفع الوسائط بنجاح!',
   'error_uploading_media': 'فشل رفع الوسائط. يرجى المحاولة مرة أخرى.',
@@ -366,9 +552,11 @@ const arabic = {
   'error_disputing_contract': 'فشل الاعتراض على العقد. يرجى المحاولة مرة أخرى.',
   'contract_disputed': 'تم الاعتراض على العقد',
   'waiting_for_other_accept': 'في انتظار قبول الطرف الآخر...',
-  'accept_contract_confirmation': 'هل أنت متأكد من قبول هذا العقد؟ هذا الإجراء لا يمكن التراجع عنه.',
+  'accept_contract_confirmation':
+      'هل أنت متأكد من قبول هذا العقد؟ هذا الإجراء لا يمكن التراجع عنه.',
   'dispute_contract': 'الاعتراض على العقد',
-  'dispute_contract_warning': 'هل أنت متأكد من الاعتراض على هذا العقد؟ سيتم إخطار الطرف الآخر.',
+  'dispute_contract_warning':
+      'هل أنت متأكد من الاعتراض على هذا العقد؟ سيتم إخطار الطرف الآخر.',
   'dispute_reason_optional': 'سبب الاعتراض (اختياري)',
   'accepted': 'مقبول',
   'other_party': 'الطرف الآخر',
@@ -382,12 +570,15 @@ const arabic = {
   'encryption_password': 'كلمة مرور التشفير',
   'encryption_password_subtitle': 'تغيير كلمة مرور التشفير',
   'change_encryption_password': 'تغيير كلمة مرور التشفير',
-  'change_encryption_password_warning': 'كلمة المرور هذه تشفر مفتاحك الخاص. إذا فقدتها، ستفقد الوصول إلى جميع عقودك وبياناتك نهائياً.',
+  'change_encryption_password_warning':
+      'كلمة المرور هذه تشفر مفتاحك الخاص. إذا فقدتها، ستفقد الوصول إلى جميع عقودك وبياناتك نهائياً.',
   'old_encryption_password': 'كلمة مرور التشفير الحالية',
   'new_encryption_password': 'كلمة مرور التشفير الجديدة',
   'confirm_encryption_password': 'تأكيد كلمة مرور التشفير',
-  'encryption_password_updated_successfully': 'تم تحديث كلمة مرور التشفير بنجاح!',
-  'missing_encryption_data': 'بيانات التشفير مفقودة. يرجى تسجيل الخروج وإعادة إعداد حسابك.',
+  'encryption_password_updated_successfully':
+      'تم تحديث كلمة مرور التشفير بنجاح!',
+  'missing_encryption_data':
+      'بيانات التشفير مفقودة. يرجى تسجيل الخروج وإعادة إعداد حسابك.',
   'good_morning': 'صباح الخير',
   'good_afternoon': 'مساء الخير',
   'good_evening': 'مساء الخير',
@@ -397,5 +588,6 @@ const arabic = {
   'active_contracts_label': 'نشطة',
   'pending_signatures_label': 'بانتظار التوقيع',
   'completed_label': 'مكتملة',
-  'create_contract_desc': 'املأ البيانات أدناه لإنشاء عقد جديد. جميع الحقول مشفرة من طرف إلى طرف.',
+  'create_contract_desc':
+      'املأ البيانات أدناه لإنشاء عقد جديد. جميع الحقول مشفرة من طرف إلى طرف.',
 };

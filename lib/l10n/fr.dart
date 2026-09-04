@@ -1,14 +1,209 @@
 const french = {
   'app_name': 'YACK',
+  'loading': 'Chargement',
+  'refresh': 'Actualiser',
+  'activity_title': 'Activité',
+  'selected_count': '{count} sélectionnés',
+  'mark_all_as_read': 'Tout marquer comme lu',
+  'select': 'Sélectionner',
+  'today': "Aujourd’hui",
+  'yesterday': 'Hier',
+  'delete_activity_title': "Supprimer l’activité ?",
+  'delete_activity_message':
+      'Supprimer les {count} éléments sélectionnés ? Cette action est irréversible.',
+  'activity_deleted': '{count} éléments supprimés.',
+  'invite_activity_hint':
+      "Ouvrez l’invitation créée ou scannée pour poursuivre cet accord.",
+  'contract_unavailable':
+      "Cet accord n’est pas encore disponible sur cet appareil. Actualisez puis réessayez.",
+  'settings_heading': 'Votre espace de travail',
+  'settings_heading_desc':
+      "Gérez votre identité, votre sécurité et le comportement de YACK sur cet appareil.",
+  'notifications_info_subtitle':
+      'Informations sur la réception et la disponibilité',
+  'privacy_info_subtitle':
+      'Fonctionnement actuel des contrôles de confidentialité',
+  'plans_support_section': 'Offres et assistance',
+  'plans_preview': 'Aperçu des offres',
+  'plans_preview_subtitle':
+      "Consultez les offres prévues ; la facturation n’est pas encore disponible",
+  'info': 'Infos',
+  'unavailable': 'Indisponible',
+  'help_unavailable_subtitle':
+      "L’assistance intégrée n’est pas encore disponible",
+  'logout_device_note':
+      'La déconnexion supprime de cet appareil les accords déverrouillés localement.',
+  'logout_confirm_title': 'Se déconnecter de cet appareil ?',
+  'logout_confirm_message':
+      'Vos mots de passe de connexion et de chiffrement seront nécessaires pour accéder à nouveau à vos accords.',
+  'logout_failed': 'YACK ne peut pas vous déconnecter. Réessayez.',
+  'notification_controls_detail':
+      "Les préférences de notification ne sont pas encore configurables dans YACK.",
+  'notification_controls_explanation':
+      "Les notifications d’activité contractuelle arrivent si l’autorisation de l’appareil est active. Les e-mails et rappels de paiement ne sont pas proposés actuellement.",
+  'privacy_controls_detail':
+      "YACK ne propose pas encore de contrôles d’analyse, de biométrie ou de profil public.",
+  'privacy_controls_explanation':
+      "Le texte des accords est chiffré sur votre appareil. Vérifiez chaque pièce jointe avant l’envoi, car son traitement est distinct du chiffrement du texte.",
+  'language_updated_device_only':
+      "La langue a changé sur cet appareil. La langue des notifications n’a pas pu être mise à jour hors connexion.",
+  'plans_title': 'Ce qui est disponible',
+  'plans_title_desc':
+      'Une vue factuelle de votre accès actuel et des fonctions encore prévues.',
+  'billing_unavailable_note':
+      "La facturation n’est pas connectée. YACK ne déclarera jamais un achat terminé depuis cet écran.",
+  'available_now': 'Disponible maintenant',
+  'available_now_desc': "Inclus dans l’application actuelle",
+  'current_access': 'Espace des accords',
+  'current_access_desc':
+      'Créez, échangez, révisez et gérez des accords avec une autre partie.',
+  'device_encryption': 'Chiffrement du texte sur l’appareil',
+  'device_encryption_desc':
+      "Le texte de l’accord est chiffré avant l’envoi et déverrouillé sur votre appareil.",
+  'included': 'Inclus',
+  'planned_options': 'Options prévues',
+  'planned_options_desc':
+      'Présentées en toute transparence, sans possibilité d’achat',
+  'paid_plans': 'Offres payantes',
+  'paid_plans_desc':
+      "Les limites, avantages et tarifs ne sont pas encore reliés au service.",
+  'in_app_billing': 'Facturation intégrée',
+  'in_app_billing_desc':
+      "Aucun moyen de paiement n’est collecté et aucun abonnement ne peut être activé ici.",
+  'not_available_yet': 'Pas encore disponible',
+  'plans_no_purchase_disclaimer':
+      'Cette page est informative. Elle ne crée aucune commande, ne débite aucun moyen de paiement et ne modifie pas votre compte.',
+  'identity_security': 'Identité et sécurité',
+  'identity_security_desc':
+      'Les états du compte et de l’appareil qui protègent l’accès à vos accords.',
+  'email_unavailable': 'E-mail indisponible',
+  'email_verified': 'Adresse e-mail vérifiée',
+  'email_verification_required': 'Vérification de l’e-mail requise',
+  'agreements_unlocked_device': 'Accords déverrouillés sur cet appareil',
+  'agreements_locked_device': 'Accords verrouillés sur cet appareil',
+  'encryption_setup_incomplete':
+      'La configuration du chiffrement est incomplète',
+  'agreement_activity_desc':
+      'Messages, pièces jointes et décisions relatives à l’accord',
+  'message_too_long_to_encrypt':
+      'Ce message est trop long pour être chiffré. Raccourcissez-le puis réessayez.',
+  'attachment_too_large': 'Choisissez une pièce jointe de moins de 6 Mo.',
+  'agreement_locked_title': 'Accord verrouillé',
+  'agreement_locked_desc':
+      'Déverrouillez votre clé de chiffrement pour lire et envoyer des messages.',
+  'no_activity_yet_desc':
+      'Les messages et pièces jointes partagés entre les deux parties apparaîtront ici.',
+  'add_attachment': 'Ajouter une pièce jointe',
+  'send_message': 'Envoyer le message',
+  'attachment_privacy_note':
+      'Les pièces jointes suivent un envoi séparé et ne sont pas couvertes par le chiffrement du texte. Taille maximale : 6 Mo.',
+  'attachment_picker_failed':
+      'YACK ne peut pas ouvrir le sélecteur de médias. Vérifiez les autorisations puis réessayez.',
+  'you': 'Vous',
+  'hide_agreement_title': 'Masquer cet accord ?',
+  'hide_agreement_message':
+      "L’accord sera retiré uniquement de cet appareil. L’enregistrement partagé restera sur le service.",
+  'hide_from_device': 'Masquer sur cet appareil',
+  'agreement_hidden': 'Accord masqué sur cet appareil.',
+  'undo': 'Annuler',
+  'sync_failed':
+      'Impossible d’actualiser les contrats. Vérifiez votre connexion et réessayez.',
+  'search_contracts': 'Rechercher des contrats',
+  'clear': 'Effacer',
+  'all': 'Tous',
+  'all_contracts': 'Tous les contrats',
+  'in_progress': 'En cours',
+  'closed': 'Terminés',
+  'no_matching_contracts': 'Aucun contrat correspondant',
+  'no_matching_contracts_desc':
+      'Essayez une autre recherche ou effacez le filtre actuel.',
+  'clear_filters': 'Effacer les filtres',
+  'more_options': 'Plus d’options',
+  'draft_agreement': 'Rédiger un contrat',
+  'agreement_terms': 'Termes du contrat',
+  'contract_encryption_note':
+      'Le texte du contrat est chiffré sur cet appareil avant son envoi.',
+  'encrypted_field_helper':
+      'Restez concis afin que les termes puissent être chiffrés en toute sécurité.',
+  'encrypted_field_too_long':
+      'Ce champ est trop long pour être chiffré. Raccourcissez-le puis réessayez.',
+  'continue_to_invite': 'Continuer vers l’invitation',
+  'join_instead': 'Vous avez une invitation ? Scannez-la',
+  'discard_draft_title': 'Supprimer ce brouillon ?',
+  'discard_draft_message':
+      'Les informations saisies pour ce contrat seront perdues.',
+  'keep_editing': 'Continuer la rédaction',
+  'discard': 'Supprimer',
+  'create_account': 'Créer votre compte',
+  'account_password_helper':
+      'Utilisez au moins 8 caractères. Vous créerez ensuite un mot de passe de chiffrement distinct.',
+  'login_unlock_note':
+      'Après la connexion, vous déverrouillerez vos contrats chiffrés avec votre mot de passe de chiffrement.',
+  'your_email': 'votre adresse e-mail',
+  'use_another_account': 'Utiliser un autre compte',
+  'verification_sent_to':
+      'Un lien de vérification a été envoyé à {email}. Ouvrez-le puis revenez ici.',
+  'verified_email_action': 'J’ai vérifié mon e-mail',
+  'sending': 'Envoi…',
+  'resend_email': 'Renvoyer l’e-mail de vérification',
+  'auth_email_not_verified':
+      'Votre e-mail n’est pas encore vérifié. Ouvrez le lien envoyé puis réessayez.',
+  'back_to_login': 'Retour à la connexion',
+  'password_reset_sent_to':
+      'Un lien de réinitialisation a été envoyé à {email}.',
+  'send_reset_link': 'Envoyer le lien',
+  'complete_profile': 'Compléter votre profil',
+  'acknowledge_encryption_warning':
+      'Confirmez que vous comprenez que ce mot de passe de chiffrement est irrécupérable.',
+  'encryption_acknowledgement':
+      'Je comprends que YACK ne peut pas récupérer ce mot de passe de chiffrement.',
+  'unlocking_account': 'Déverrouillage des contrats chiffrés de {email}.',
+  'encryption_password_not_login':
+      'Utilisez le mot de passe de chiffrement créé après la vérification, pas votre mot de passe de connexion.',
+  'profile_name_required':
+      'Saisissez votre prénom et votre nom pour terminer la configuration.',
+  'checking_account': 'Vérification de votre compte…',
+  'contract': 'Contrat',
+  'cannot_join_own_contract':
+      'Vous ne pouvez pas rejoindre votre propre invitation.',
+  'contract_content_invalid':
+      'Cette invitation contient des termes qui ne peuvent pas être traités en toute sécurité.',
+  'joining_contract': 'Connexion au contrat',
+  'joining_contract_desc':
+      'Chiffrement de votre copie et confirmation de votre signature…',
+  'waiting_for_signature_desc':
+      'Votre signature est enregistrée. Vous pouvez revenir aux contrats ; YACK vous avertira après la signature de l’autre partie.',
+  'back_to_contracts': 'Retour aux contrats',
+  'join_agreement': 'Rejoindre un contrat',
+  'participant_joined_ready':
+      'L’autre partie a rejoint le contrat. Relisez les termes quand vous êtes prêt.',
+  'leave_invitation_title': 'Quitter cette invitation ?',
+  'leave_invitation_message':
+      'L’invitation peut rester active pour l’autre partie. Vous pouvez revenir à vos contrats.',
+  'stay': 'Rester ici',
+  'leave': 'Quitter',
+  'invitation_ready': 'Invitation prête',
+  'participant_joined': '{name} a rejoint ce contrat.',
+  'copy_link': 'Copier le lien d’invitation',
+  'invitation_expiry_note':
+      'Les invitations temporaires expirent rapidement. Demandez à l’autre partie de scanner ou d’ouvrir le lien maintenant.',
+  'review_and_sign': 'Relire et signer',
+  'created': 'Créé',
+  'participant_joined_step': 'Rejoint',
+  'you_signed': 'Vous avez signé',
+  'both_signed': 'Terminé',
   'login': 'Connexion',
   'sign_up': 'Inscription',
   'email': 'E-mail',
   'password': 'Mot de passe',
+  'show_password': 'Afficher le mot de passe',
+  'hide_password': 'Masquer le mot de passe',
   'confirm_password': 'Confirmer le mot de passe',
   'first_name': 'Prénom',
   'last_name': 'Nom',
   'welcome_back': 'Bon retour',
-  'login_subtitle': 'Connectez-vous en toute sécurité pour accéder à vos contrats.',
+  'login_subtitle':
+      'Connectez-vous en toute sécurité pour accéder à vos contrats.',
   'welcome': 'Bienvenue',
   'signup_subtitle': 'Créez votre compte sécurisé pour commencer.',
   'forget_password': 'Mot de passe oublié',
@@ -18,15 +213,16 @@ const french = {
   'skip': 'Passer',
   'next': 'Suivant',
   'get_started': 'Commencer',
-  'onboarding_create_contracts_title': 'Créez des contrats facilement',
+  'onboarding_create_contracts_title': 'Rédigez des termes clairs',
   'onboarding_create_contracts_subtitle':
-      'Rédigez et signez des accords en quelques minutes grâce à notre interface intuitive',
-  'onboarding_secure_verified_title': 'Sécurisé et vérifié',
+      'Indiquez les conditions, le montant et les détails utiles aux deux parties.',
+  'onboarding_secure_verified_title': 'Invitez l’autre partie',
   'onboarding_secure_verified_subtitle':
-      'Chaque contrat est infalsifiable et protégé cryptographiquement',
-  'onboarding_track_agreements_title': 'Suivez vos accords',
+      'Partagez une invitation QR privée pour permettre à l’autre personne de relire et signer.',
+  'onboarding_track_agreements_title': 'Conservez tout l’historique',
   'onboarding_track_agreements_subtitle':
-      'Accédez à tous vos contrats et gérez-les en un seul endroit sécurisé',
+      'Suivez le statut, les échanges et les pièces jointes de chaque contrat au même endroit.',
+  'page_count': 'Page {current} sur {total}',
   'onboarding_start_trust_title': 'Commencez à bâtir la confiance',
   'onboarding_start_trust_subtitle':
       'Commencez votre aventure avec YACK et sécurisez vos accords dès aujourd’hui',
@@ -113,7 +309,14 @@ const french = {
   'contract_review': 'Revue du contrat',
   'from_user': 'De : {name}',
   'binding_warning':
-      'Une fois accepté, ce contrat devient juridiquement contraignant. Assurez-vous que toutes les conditions sont correctes.',
+      'La signature enregistre votre acceptation de ces termes précis. Relisez chaque détail avant de continuer.',
+  'review_before_signing': 'Relire avant de signer',
+  'translation_privacy_disclosure':
+      'La traduction envoie le titre et les termes du contrat au service externe MyMemory. Continuez uniquement si les deux parties acceptent de partager ce texte avec ce service.',
+  'continue_action': 'Continuer',
+  'content_already_in_language':
+      'Ce contrat semble déjà rédigé dans la langue sélectionnée.',
+  'translated': 'Traduit',
   'accept_contract': 'Accepter le contrat',
   'decline_contract': 'Refuser le contrat',
   'contract_accepted': 'Vous avez accepté le contrat !',
@@ -135,7 +338,8 @@ const french = {
   'price_label': 'Prix',
   'notifications_title': 'Notifications',
   'no_notifications': 'Aucune notification pour le moment',
-  'no_notifications_desc': 'Quand quelque chose d\'important se passe, vous le verrez ici.',
+  'no_notifications_desc':
+      'Quand quelque chose d\'important se passe, vous le verrez ici.',
   'no_contracts': 'Aucun contrat pour le moment',
   'contracts': 'Contrats',
   'add_contract_short': 'Ajouter',
@@ -232,8 +436,10 @@ const french = {
   'currency': 'DA',
   'contract_decoded_successfully': 'Contrat décodé avec succès !',
   'invalid_contract_qr': 'Code QR de contrat invalide',
-  'invitation_not_started': 'Le partage n\'a pas été démarré. Demandez à l\'autre partie de cliquer sur Commencer le partage.',
-  'cannot_accept_own_contract': 'Vous ne pouvez pas accepter votre propre contrat.',
+  'invitation_not_started':
+      'Le partage n\'a pas été démarré. Demandez à l\'autre partie de cliquer sur Commencer le partage.',
+  'cannot_accept_own_contract':
+      'Vous ne pouvez pas accepter votre propre contrat.',
   'title_required': 'Veuillez entrer un titre de contrat.',
   'invalid_price': 'Veuillez entrer un prix valide.',
   'failed_to_decode_contract': 'Échec du décodage du contrat',
@@ -264,10 +470,12 @@ const french = {
   'contract_disputed_notification': 'Le contrat a été contesté',
   'complete': 'Terminer',
   'complete_contract': 'Terminer le contrat',
-  'complete_contract_warning': 'Marquer ce contrat comme terminé ? Cela signifie que le travail/la tâche a été accompli.',
+  'complete_contract_warning':
+      'Marquer ce contrat comme terminé ? Cela signifie que le travail/la tâche a été accompli.',
   'subscription': 'Abonnement',
   'choose_your_plan': 'Choisissez votre forfait',
-  'unlock_premium_features': 'Débloquez les fonctionnalités premium et créez des contrats illimités',
+  'unlock_premium_features':
+      'Débloquez les fonctionnalités premium et créez des contrats illimités',
   'plan_basic': 'Basique',
   'plan_pro': 'Pro',
   'plan_unlimited': 'Illimité',
@@ -308,7 +516,6 @@ const french = {
   "auth_too_many_requests": "Trop de tentatives. Réessayez plus tard.",
   "auth_unknown_error": "Erreur d'authentification.",
   "auth_unexpected_error": "Une erreur inattendue s'est produite.",
-  "auth_email_not_verified": "Veuillez vérifier votre e-mail.",
   "auth_verification_sent": "E-mail de vérification envoyé.",
   "auth_password_reset_sent":
       "E-mail de réinitialisation du mot de passe envoyé.",
@@ -318,10 +525,10 @@ const french = {
   "auth_no_user_logged_in": "Aucun utilisateur connecté.",
   "auth_wrong_old_password": "L'ancien mot de passe est incorrect.",
   "auth_weak_new_password": "Le nouveau mot de passe est trop faible.",
-  "auth_recent_login_required": "Veuillez vous reconnecter pour effectuer cette action.",
+  "auth_recent_login_required":
+      "Veuillez vous reconnecter pour effectuer cette action.",
   'dialog_delete_contract_title': 'Supprimer le contrat ?',
-  'dialog_delete_contract_message':
-      'Cette action est irréversible.',
+  'dialog_delete_contract_message': 'Cette action est irréversible.',
   'dialog_delete_contract_confirm': 'Supprimer',
   'dialog_dispute_confirmation_title': 'Litige',
   'dialog_dispute_confirmation_message':
@@ -336,29 +543,39 @@ const french = {
   'message_shared_video': '🎥 Vidéo partagée',
   // Init Account Screen
   'init_account_title': 'Sécurisez Votre Compte',
-  'init_account_subtitle': 'Créez un mot de passe pour chiffrer votre clé privée. Ce mot de passe protège vos contrats et signatures.',
-  'init_account_warning': 'ATTENTION : Ce mot de passe ne peut pas être récupéré. Si vous le perdez, vos données de compte seront définitivement inaccessibles. Nous ne stockons pas ce mot de passe.',
+  'init_account_subtitle':
+      'Créez un mot de passe pour chiffrer votre clé privée. Ce mot de passe protège vos contrats et signatures.',
+  'init_account_warning':
+      'ATTENTION : Ce mot de passe ne peut pas être récupéré. Si vous le perdez, vos données de compte seront définitivement inaccessibles. Nous ne stockons pas ce mot de passe.',
   'init_account_password_label': 'Mot de passe de chiffrement',
-  'init_account_password_helper': 'Utilisez au moins 12 caractères avec un mélange de lettres, chiffres et symboles pour une sécurité maximale.',
+  'init_account_password_helper':
+      'Utilisez au moins 12 caractères avec un mélange de lettres, chiffres et symboles pour une sécurité maximale.',
   'init_account_confirm_password_label': 'Confirmer le mot de passe',
   'init_account_password_required': 'Le mot de passe est requis',
-  'init_account_password_min_length': 'Le mot de passe doit contenir au moins 12 caractères',
+  'init_account_password_min_length':
+      'Le mot de passe doit contenir au moins 12 caractères',
   'init_account_submit': 'Sécuriser Mon Compte',
   // Decrypt Account Screen
   'decrypt_account_title': 'Déverrouiller Votre Compte',
-  'decrypt_account_subtitle': 'Entrez votre mot de passe de chiffrement pour accéder à votre compte.',
-  'decrypt_account_info': 'Votre clé privée est chiffrée pour la sécurité. Entrez le mot de passe que vous avez créé lors de la configuration du compte.',
+  'decrypt_account_subtitle':
+      'Entrez votre mot de passe de chiffrement pour accéder à votre compte.',
+  'decrypt_account_info':
+      'Votre clé privée est chiffrée pour la sécurité. Entrez le mot de passe que vous avez créé lors de la configuration du compte.',
   'decrypt_account_password_label': 'Mot de passe de chiffrement',
   'decrypt_account_password_required': 'Le mot de passe est requis',
   'decrypt_account_submit': 'Déverrouiller',
-  'decrypt_account_error': 'Échec du déverrouillage du compte. Veuillez vérifier votre mot de passe.',
-  'missing_public_key': 'Votre clé de chiffrement est manquante. Veuillez vous déconnecter et reconfigurer votre compte.',
+  'decrypt_account_error':
+      'Échec du déverrouillage du compte. Veuillez vérifier votre mot de passe.',
+  'missing_public_key':
+      'Votre clé de chiffrement est manquante. Veuillez vous déconnecter et reconfigurer votre compte.',
   'contract_joined': 'a rejoint le contrat',
   'waiting_for_user_b': 'En attente de l\'autre partie...',
-  'waiting_for_user_a_sign': 'En attente de la signature du créateur du contrat...',
+  'waiting_for_user_a_sign':
+      'En attente de la signature du créateur du contrat...',
   'has_signed_contract': 'a signé le contrat',
   'user_b_joined': 'L\'utilisateur a rejoint! Révision du contrat...',
-  'both_users_signed': 'Les deux parties ont signé! Le contrat est maintenant actif.',
+  'both_users_signed':
+      'Les deux parties ont signé! Le contrat est maintenant actif.',
   'contract_finalized': 'Le contrat a été finalisé avec succès!',
   'contract_sign_notification': 'Contrat Signé',
   'contract_join_notification': 'Utilisateur a rejoint le contrat',
@@ -366,21 +583,29 @@ const french = {
   'enter_link_manually': 'Entrer le lien manuellement',
   'paste_contract_link': 'Collez le lien ou le code du contrat',
   'join_contract': 'Rejoindre le contrat',
-  'simple_link_no_preview': 'Utilisation d\'un lien simplifié - les détails du contrat peuvent ne pas être disponibles avant de rejoindre.',
+  'simple_link_no_preview':
+      'Utilisation d\'un lien simplifié - les détails du contrat peuvent ne pas être disponibles avant de rejoindre.',
   // Contract Agreement - Real-time notifications
   'notification_other_accepted': '{name} a accepté le contrat',
   'notification_contract_disputed': '{name} a contesté le contrat',
-  'error_encryption_keys_missing': 'Les clés de chiffrement sont manquantes. Veuillez vous déconnecter et vous reconnecter.',
+  'error_encryption_keys_missing':
+      'Les clés de chiffrement sont manquantes. Veuillez vous déconnecter et vous reconnecter.',
   'error_sending_message': 'Échec de l\'envoi du message. Veuillez réessayer.',
   'media_uploaded_success': 'Média téléchargé avec succès!',
-  'error_uploading_media': 'Échec du téléchargement du média. Veuillez réessayer.',
-  'error_accepting_contract': 'Échec de l\'acceptation du contrat. Veuillez réessayer.',
-  'error_disputing_contract': 'Échec de la contestation du contrat. Veuillez réessayer.',
+  'error_uploading_media':
+      'Échec du téléchargement du média. Veuillez réessayer.',
+  'error_accepting_contract':
+      'Échec de l\'acceptation du contrat. Veuillez réessayer.',
+  'error_disputing_contract':
+      'Échec de la contestation du contrat. Veuillez réessayer.',
   'contract_disputed': 'Le contrat a été contesté',
-  'waiting_for_other_accept': 'En attente de l\'acceptation de l\'autre partie...',
-  'accept_contract_confirmation': 'Êtes-vous sûr de vouloir accepter ce contrat? Cette action est irréversible.',
+  'waiting_for_other_accept':
+      'En attente de l\'acceptation de l\'autre partie...',
+  'accept_contract_confirmation':
+      'Êtes-vous sûr de vouloir accepter ce contrat? Cette action est irréversible.',
   'dispute_contract': 'Contester le Contrat',
-  'dispute_contract_warning': 'Êtes-vous sûr de vouloir contester ce contrat? Cela notifiera l\'autre partie.',
+  'dispute_contract_warning':
+      'Êtes-vous sûr de vouloir contester ce contrat? Cela notifiera l\'autre partie.',
   'dispute_reason_optional': 'Raison de la contestation (optionnel)',
   'accepted': 'Accepté',
   'other_party': 'Autre Partie',
@@ -394,20 +619,25 @@ const french = {
   'encryption_password': 'Mot de passe de chiffrement',
   'encryption_password_subtitle': 'Changer votre mot de passe de chiffrement',
   'change_encryption_password': 'Changer le mot de passe de chiffrement',
-  'change_encryption_password_warning': 'Ce mot de passe chiffre votre clé privée. Si vous le perdez, vous perdrez définitivement l\'accès à tous vos contrats et données.',
+  'change_encryption_password_warning':
+      'Ce mot de passe chiffre votre clé privée. Si vous le perdez, vous perdrez définitivement l\'accès à tous vos contrats et données.',
   'old_encryption_password': 'Mot de passe de chiffrement actuel',
   'new_encryption_password': 'Nouveau mot de passe de chiffrement',
   'confirm_encryption_password': 'Confirmer le mot de passe de chiffrement',
-  'encryption_password_updated_successfully': 'Mot de passe de chiffrement mis à jour avec succès!',
-  'missing_encryption_data': 'Données de chiffrement manquantes. Veuillez vous déconnecter et reconfigurer votre compte.',
+  'encryption_password_updated_successfully':
+      'Mot de passe de chiffrement mis à jour avec succès!',
+  'missing_encryption_data':
+      'Données de chiffrement manquantes. Veuillez vous déconnecter et reconfigurer votre compte.',
   'good_morning': 'Bonjour',
   'good_afternoon': 'Bon après-midi',
   'good_evening': 'Bonsoir',
-  'no_contracts_desc': 'Vos contrats apparaîtront ici une fois que vous en aurez créé ou importé un.',
+  'no_contracts_desc':
+      'Vos contrats apparaîtront ici une fois que vous en aurez créé ou importé un.',
   'encrypted_label': 'Chiffré',
   'total_contracts_label': 'Total des contrats',
   'active_contracts_label': 'Actifs',
   'pending_signatures_label': 'En attente de signature',
   'completed_label': 'Terminés',
-  'create_contract_desc': 'Remplissez les détails ci-dessous pour créer un nouveau contrat. Tous les champs sont chiffrés de bout en bout.',
+  'create_contract_desc':
+      'Remplissez les détails ci-dessous pour créer un nouveau contrat. Tous les champs sont chiffrés de bout en bout.',
 };
