@@ -10,6 +10,8 @@ class HttpHandler {
 
   HttpHandler._internal();
 
+  static const Duration _requestTimeout = Duration(seconds: 20);
+
   // Backend base URL.
   // Override at build/run time with:
   //   flutter run --dart-define=API_BASE_URL=https://your-backend.example
@@ -44,18 +46,18 @@ class HttpHandler {
     body ??= {};
     if (fcm != null) body["fcmToken"] = fcm;
 
-    final response = await http.post(
-      url,
-      headers: await _headers(),
-      body: jsonEncode(body),
-    );
+    final response = await http
+        .post(url, headers: await _headers(), body: jsonEncode(body))
+        .timeout(_requestTimeout);
 
     return _handleResponse(response);
   }
 
   Future<dynamic> get(String endpoint) async {
     final url = Uri.parse("$baseUrl$endpoint");
-    final response = await http.get(url, headers: await _headers());
+    final response = await http
+        .get(url, headers: await _headers())
+        .timeout(_requestTimeout);
     return _handleResponse(response);
   }
 
@@ -66,11 +68,9 @@ class HttpHandler {
     final fcm = await _getFcmToken();
     if (fcm != null) body["fcmToken"] = fcm;
 
-    final response = await http.put(
-      url,
-      headers: await _headers(),
-      body: jsonEncode(body),
-    );
+    final response = await http
+        .put(url, headers: await _headers(), body: jsonEncode(body))
+        .timeout(_requestTimeout);
 
     return _handleResponse(response);
   }
@@ -82,11 +82,9 @@ class HttpHandler {
     final fcm = await _getFcmToken();
     if (fcm != null) body["fcmToken"] = fcm;
 
-    final response = await http.patch(
-      url,
-      headers: await _headers(),
-      body: jsonEncode(body),
-    );
+    final response = await http
+        .patch(url, headers: await _headers(), body: jsonEncode(body))
+        .timeout(_requestTimeout);
 
     return _handleResponse(response);
   }
@@ -94,10 +92,9 @@ class HttpHandler {
   Future<dynamic> delete(String endpoint) async {
     final url = Uri.parse("$baseUrl$endpoint");
 
-    final response = await http.delete(
-      url,
-      headers: await _headers(),
-    );
+    final response = await http
+        .delete(url, headers: await _headers())
+        .timeout(_requestTimeout);
 
     return _handleResponse(response);
   }
@@ -126,15 +123,24 @@ class HttpHandler {
       }
       final errorMessage = 'Invalid response (HTTP $status): ${res.body}';
       final error = Exception(errorMessage);
-      CrashlyticsService.recordError(error, StackTrace.current, reason: errorMessage);
+      CrashlyticsService.recordError(
+        error,
+        StackTrace.current,
+        reason: errorMessage,
+      );
       throw error;
     }
 
     if (isSuccess) return json;
 
-    final errorMessage = json["error"]?.toString() ?? 'Unknown server error (HTTP $status)';
+    final errorMessage =
+        json["error"]?.toString() ?? 'Unknown server error (HTTP $status)';
     final error = Exception(errorMessage);
-    CrashlyticsService.recordError(error, StackTrace.current, reason: 'HTTP $status: $errorMessage');
+    CrashlyticsService.recordError(
+      error,
+      StackTrace.current,
+      reason: 'HTTP $status: $errorMessage',
+    );
     throw error;
   }
 }
