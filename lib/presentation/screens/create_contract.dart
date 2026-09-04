@@ -1,4 +1,5 @@
 import 'dart:convert';
+
 import 'package:crypto/crypto.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -6,13 +7,12 @@ import 'package:hive/hive.dart';
 import 'package:yack/logic/cubits/contract/temp_contract_cubit.dart';
 import 'package:yack/logic/cubits/contract/temp_contract_state.dart';
 import 'package:yack/logic/services/auth/cryptoService.dart';
-import 'package:yack/presentation/screens/scan_contract.dart';
-import 'package:yack/presentation/screens/shareContract.dart';
-import 'package:yack/logic/services/translation_handler.dart';
 import 'package:yack/logic/services/snackBarHandler.dart';
-import 'package:yack/presentation/theme/theme.dart';
+import 'package:yack/logic/services/translation_handler.dart';
+import 'package:yack/presentation/screens/shareContract.dart';
+import 'package:yack/presentation/screens/scan_contract.dart';
 import 'package:yack/presentation/widgets/primaryActionButton.dart';
-import 'package:yack/presentation/widgets/secondaryActionButton.dart';
+import 'package:yack/presentation/widgets/yack_ui.dart';
 
 class CreateContractScreen extends StatefulWidget {
   const CreateContractScreen({super.key});
@@ -26,6 +26,12 @@ class _CreateContractScreenState extends State<CreateContractScreen> {
   final _titleController = TextEditingController();
   final _descriptionController = TextEditingController();
   final _priceController = TextEditingController();
+  bool _navigating = false;
+
+  bool get _hasDraft =>
+      _titleController.text.trim().isNotEmpty ||
+      _descriptionController.text.trim().isNotEmpty ||
+      _priceController.text.trim().isNotEmpty;
 
   @override
   void dispose() {
@@ -36,281 +42,264 @@ class _CreateContractScreenState extends State<CreateContractScreen> {
   }
 
   String _generateDetailsHash(String title, String description, String price) {
-    final combined = '$title|$description|$price';
-    final bytes = utf8.encode(combined);
-    final digest = sha256.convert(bytes);
-    return digest.toString();
+    return sha256.convert(utf8.encode('$title|$description|$price')).toString();
   }
 
   Future<String?> _getUserPublicKey() async {
     try {
-      final box = await Hive.openBox('user');
-      return box.get('publicKey')?.toString();
+      return (await Hive.openBox('user')).get('publicKey')?.toString();
     } catch (_) {
       return null;
     }
   }
 
-  void _onCreateContract() async {
-    if (!_formKey.currentState!.validate()) return;
+  String? _encryptedFieldValidator(String? value, {bool required = false}) {
+    final text = value?.trim() ?? '';
+    if (required && text.isEmpty) {
+      return TranslationHandler.get('title_required');
+    }
+    if (!CryptoService.canEncryptWithRsa(text)) {
+      return TranslationHandler.get('encrypted_field_too_long');
+    }
+    return null;
+  }
+
+  String? _priceValidator(String? value) {
+    final normalized = (value ?? '').trim().replaceAll(',', '.');
+    final price = double.tryParse(normalized);
+    if (price == null || price < 0) {
+      return TranslationHandler.get('invalid_price');
+    }
+    return null;
+  }
+
+  Future<void> _onCreateContract() async {
+    if (!(_formKey.currentState?.validate() ?? false)) return;
+    FocusScope.of(context).unfocus();
 
     final title = _titleController.text.trim();
     final description = _descriptionController.text.trim();
-    final priceText = _priceController.text.trim();
-    final price = double.tryParse(priceText);
-    if (price == null || price < 0) {
-      SnackBarHandler.showError(context, TranslationHandler.get('invalid_price'));
-      return;
-    }
-    final priceStr = price.toStringAsFixed(2);
-
+    final price = double.parse(
+      _priceController.text.trim().replaceAll(',', '.'),
+    );
+    final priceString = price.toStringAsFixed(2);
     final publicKey = await _getUserPublicKey();
+
+    if (!mounted) return;
     if (publicKey == null || publicKey.isEmpty) {
-      SnackBarHandler.showError(context, TranslationHandler.get('missing_public_key'));
+      SnackBarHandler.showError(
+        context,
+        TranslationHandler.get('missing_public_key'),
+      );
       return;
     }
 
-    final detailsHash = _generateDetailsHash(title, description, priceStr);
+    try {
+      context.read<TempContractCubit>().create(
+        titleUserA: CryptoService.encryptWithPublicKey(
+          plaintext: title,
+          publicKeyBase64: publicKey,
+        ),
+        descriptionUserA: CryptoService.encryptWithPublicKey(
+          plaintext: description,
+          publicKeyBase64: publicKey,
+        ),
+        priceUserA: CryptoService.encryptWithPublicKey(
+          plaintext: priceString,
+          publicKeyBase64: publicKey,
+        ),
+        detailsHash: _generateDetailsHash(title, description, priceString),
+      );
+    } catch (error) {
+      debugPrint('[CreateContractScreen] Encryption failed: $error');
+      SnackBarHandler.showError(
+        context,
+        TranslationHandler.get('encrypted_field_too_long'),
+      );
+    }
+  }
 
-    final titleUserA = CryptoService.encryptWithPublicKey(
-      plaintext: title,
-      publicKeyBase64: publicKey,
-    );
-    final descriptionUserA = CryptoService.encryptWithPublicKey(
-      plaintext: description,
-      publicKeyBase64: publicKey,
-    );
-    final priceUserA = CryptoService.encryptWithPublicKey(
-      plaintext: priceStr,
-      publicKeyBase64: publicKey,
-    );
-
-    context.read<TempContractCubit>().create(
-      titleUserA: titleUserA,
-      descriptionUserA: descriptionUserA,
-      priceUserA: priceUserA,
-      detailsHash: detailsHash,
-    );
+  Future<bool> _confirmDiscard() async {
+    if (!_hasDraft || _navigating) return true;
+    return await showDialog<bool>(
+          context: context,
+          builder: (context) => AlertDialog(
+            icon: const Icon(Icons.edit_note_outlined),
+            title: Text(TranslationHandler.get('discard_draft_title')),
+            content: Text(TranslationHandler.get('discard_draft_message')),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context, false),
+                child: Text(TranslationHandler.get('keep_editing')),
+              ),
+              FilledButton(
+                onPressed: () => Navigator.pop(context, true),
+                style: FilledButton.styleFrom(
+                  backgroundColor: Theme.of(context).colorScheme.error,
+                  foregroundColor: Theme.of(context).colorScheme.onError,
+                ),
+                child: Text(TranslationHandler.get('discard')),
+              ),
+            ],
+          ),
+        ) ??
+        false;
   }
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final colors = theme.colorScheme;
 
     return BlocListener<TempContractCubit, TempContractState>(
-      listener: (context, state) {
-        if (state is TempContractSuccess) {
-          Navigator.push(
+      listener: (context, state) async {
+        if (state is TempContractSuccess && !_navigating) {
+          _navigating = true;
+          await Navigator.push(
             context,
             MaterialPageRoute(
               builder: (_) => ShareContractScreen(
                 tempContract: state.contract,
                 title: _titleController.text.trim(),
                 description: _descriptionController.text.trim(),
-                price: double.tryParse(_priceController.text.trim()) ?? 0,
+                price:
+                    double.tryParse(
+                      _priceController.text.trim().replaceAll(',', '.'),
+                    ) ??
+                    0,
               ),
             ),
           );
+          if (mounted) _navigating = false;
         } else if (state is TempContractError) {
           SnackBarHandler.showError(context, state.message);
         }
       },
-      child: Scaffold(
-        backgroundColor: theme.scaffoldBackgroundColor,
-        appBar: AppBar(
-          backgroundColor: colors.surface,
-          elevation: 0,
-          surfaceTintColor: Colors.transparent,
-          title: Text(
-            TranslationHandler.get('new_contract'),
-            style: theme.textTheme.titleMedium?.copyWith(
-              fontWeight: FontWeight.w700,
+      child: PopScope(
+        canPop: false,
+        onPopInvokedWithResult: (didPop, _) async {
+          if (didPop) return;
+          final discard = await _confirmDiscard();
+          if (discard && context.mounted) Navigator.pop(context);
+        },
+        child: Scaffold(
+          appBar: AppBar(
+            title: Text(TranslationHandler.get('new_contract')),
+            leading: IconButton(
+              icon: const Icon(Icons.arrow_back),
+              onPressed: () async {
+                final discard = await _confirmDiscard();
+                if (discard && context.mounted) Navigator.pop(context);
+              },
             ),
           ),
-          centerTitle: true,
-          leading: IconButton(
-            icon: const Icon(Icons.arrow_back_rounded),
-            onPressed: () => Navigator.of(context).pop(),
-          ),
-        ),
-        body: Form(
-          key: _formKey,
-          child: ListView(
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
-            children: [
-              // --- Header ---
-              Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: colors.primaryContainer.withValues(alpha: 0.3),
-                  borderRadius: BorderRadius.circular(AppTheme.radiusLg),
-                  border: Border.all(
-                    color: colors.primary.withValues(alpha: 0.15),
-                  ),
-                ),
-                child: Row(
+          body: SafeArea(
+            top: false,
+            child: YackContent(
+              maxWidth: 680,
+              padding: const EdgeInsets.fromLTRB(20, 8, 20, 28),
+              child: Form(
+                key: _formKey,
+                autovalidateMode: AutovalidateMode.onUserInteraction,
+                child: ListView(
+                  keyboardDismissBehavior:
+                      ScrollViewKeyboardDismissBehavior.onDrag,
                   children: [
-                    Icon(
-                      Icons.edit_note_rounded,
-                      color: colors.primary,
-                      size: 28,
+                    YackPageHeading(
+                      title: TranslationHandler.get('draft_agreement'),
+                      subtitle: TranslationHandler.get('create_contract_desc'),
                     ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Text(
-                        TranslationHandler.get('create_contract_desc'),
-                        style: theme.textTheme.bodyMedium?.copyWith(
-                          color: colors.onSurface.withValues(alpha: 0.7),
+                    const SizedBox(height: 24),
+                    YackNotice(
+                      message: TranslationHandler.get(
+                        'contract_encryption_note',
+                      ),
+                      icon: Icons.lock_outline,
+                    ),
+                    const SizedBox(height: 28),
+                    Text(
+                      TranslationHandler.get('agreement_terms'),
+                      style: theme.textTheme.titleMedium,
+                    ),
+                    const SizedBox(height: 14),
+                    TextFormField(
+                      controller: _titleController,
+                      maxLines: 1,
+                      textInputAction: TextInputAction.next,
+                      textCapitalization: TextCapitalization.sentences,
+                      autofillHints: const [AutofillHints.name],
+                      validator: (value) =>
+                          _encryptedFieldValidator(value, required: true),
+                      decoration: InputDecoration(
+                        labelText: TranslationHandler.get('title'),
+                        hintText: TranslationHandler.get('title_hint'),
+                        prefixIcon: const Icon(Icons.title),
+                      ),
+                    ),
+                    const SizedBox(height: 18),
+                    TextFormField(
+                      controller: _descriptionController,
+                      minLines: 5,
+                      maxLines: 8,
+                      textInputAction: TextInputAction.newline,
+                      textCapitalization: TextCapitalization.sentences,
+                      validator: _encryptedFieldValidator,
+                      decoration: InputDecoration(
+                        labelText: TranslationHandler.get('description'),
+                        hintText: TranslationHandler.get('description_hint'),
+                        helperText: TranslationHandler.get(
+                          'encrypted_field_helper',
+                        ),
+                        alignLabelWithHint: true,
+                      ),
+                    ),
+                    const SizedBox(height: 18),
+                    Directionality(
+                      textDirection: TextDirection.ltr,
+                      child: TextFormField(
+                        controller: _priceController,
+                        keyboardType: const TextInputType.numberWithOptions(
+                          decimal: true,
+                        ),
+                        textInputAction: TextInputAction.done,
+                        validator: _priceValidator,
+                        onFieldSubmitted: (_) => _onCreateContract(),
+                        decoration: InputDecoration(
+                          labelText: TranslationHandler.get('price'),
+                          hintText: TranslationHandler.get('price_hint'),
+                          prefixIcon: const Icon(Icons.payments_outlined),
+                          suffixText: TranslationHandler.get('currency'),
                         ),
                       ),
+                    ),
+                    const SizedBox(height: 28),
+                    BlocBuilder<TempContractCubit, TempContractState>(
+                      builder: (context, state) => PrimaryActionButton(
+                        isLoading: state is TempContractLoading,
+                        onClick: state is TempContractLoading
+                            ? null
+                            : _onCreateContract,
+                        action: TranslationHandler.get('continue_to_invite'),
+                        icon: Icons.arrow_forward,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    TextButton.icon(
+                      onPressed: () => Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => const ScanContractScreen(),
+                        ),
+                      ),
+                      icon: const Icon(Icons.qr_code_scanner),
+                      label: Text(TranslationHandler.get('join_instead')),
                     ),
                   ],
                 ),
               ),
-              const SizedBox(height: 24),
-
-              // --- Title ---
-              _buildFieldLabel(
-                context,
-                TranslationHandler.get('title'),
-                Icons.title_rounded,
-              ),
-              const SizedBox(height: 8),
-              TextFormField(
-                controller: _titleController,
-                maxLines: 1,
-                textInputAction: TextInputAction.next,
-                style: theme.textTheme.bodyLarge,
-                validator: (v) => (v == null || v.trim().isEmpty)
-                    ? TranslationHandler.get('title_required')
-                    : null,
-                decoration: InputDecoration(
-                  hintText: TranslationHandler.get('title_hint'),
-                  prefixIcon: Icon(
-                    Icons.short_text_rounded,
-                    color: colors.onSurfaceVariant,
-                    size: 20,
-                  ),
-                ),
-              ),
-              const SizedBox(height: 20),
-
-              // --- Description ---
-              _buildFieldLabel(
-                context,
-                TranslationHandler.get('description'),
-                Icons.description_outlined,
-              ),
-              const SizedBox(height: 8),
-              TextFormField(
-                controller: _descriptionController,
-                maxLines: 5,
-                textInputAction: TextInputAction.newline,
-                style: theme.textTheme.bodyLarge,
-                decoration: InputDecoration(
-                  hintText: TranslationHandler.get('description_hint'),
-                  prefixIcon: Padding(
-                    padding: const EdgeInsets.only(left: 16, right: 8, top: 12),
-                    child: Icon(
-                      Icons.notes_rounded,
-                      color: colors.onSurfaceVariant,
-                      size: 20,
-                    ),
-                  ),
-                  prefixIconConstraints: const BoxConstraints(minWidth: 0, minHeight: 0),
-                  alignLabelWithHint: true,
-                ),
-              ),
-              const SizedBox(height: 20),
-
-              // --- Price ---
-              _buildFieldLabel(
-                context,
-                TranslationHandler.get('price'),
-                Icons.attach_money_rounded,
-              ),
-              const SizedBox(height: 8),
-              TextFormField(
-                controller: _priceController,
-                keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                textInputAction: TextInputAction.done,
-                style: theme.textTheme.bodyLarge,
-                decoration: InputDecoration(
-                  hintText: TranslationHandler.get('price_hint'),
-                  prefixIcon: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 14),
-                    decoration: BoxDecoration(
-                      color: colors.primaryContainer.withValues(alpha: 0.4),
-                      borderRadius: BorderRadius.only(
-                        topLeft: Radius.circular(AppTheme.radiusMd),
-                        bottomLeft: Radius.circular(AppTheme.radiusMd),
-                      ),
-                    ),
-                    child: Text(
-                      TranslationHandler.get('currency'),
-                      style: TextStyle(
-                        fontSize: 15,
-                        fontWeight: FontWeight.w700,
-                        color: colors.primary,
-                      ),
-                    ),
-                  ),
-                  prefixIconConstraints: const BoxConstraints(minWidth: 0, minHeight: 0),
-                ),
-              ),
-
-              const SizedBox(height: 32),
-
-              // --- Actions ---
-              BlocBuilder<TempContractCubit, TempContractState>(
-                builder: (context, state) {
-                  final isLoading = state is TempContractLoading;
-                  return Column(
-                    children: [
-                      PrimaryActionButton(
-                        isLoading: isLoading,
-                        onClick: isLoading ? null : _onCreateContract,
-                        action: TranslationHandler.get('add_contract'),
-                      ),
-                      const SizedBox(height: 12),
-                      SecondaryActionButton(
-                        onClick: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => const ScanContractScreen(),
-                            ),
-                          );
-                        },
-                        action: TranslationHandler.get('scan_contract_qr'),
-                      ),
-                    ],
-                  );
-                },
-              ),
-              const SizedBox(height: 16),
-            ],
+            ),
           ),
         ),
       ),
-    );
-  }
-
-  Widget _buildFieldLabel(BuildContext context, String text, IconData icon) {
-    final theme = Theme.of(context);
-    return Row(
-      children: [
-        Icon(icon, size: 16, color: theme.colorScheme.primary),
-        const SizedBox(width: 6),
-        Text(
-          text,
-          style: theme.textTheme.titleSmall?.copyWith(
-            fontWeight: FontWeight.w600,
-            letterSpacing: 0.2,
-          ),
-        ),
-      ],
     );
   }
 }

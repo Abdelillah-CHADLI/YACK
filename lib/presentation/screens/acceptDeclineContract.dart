@@ -1,21 +1,22 @@
-import 'package:flutter/material.dart';
-import 'package:yack/presentation/widgets/primaryActionButtonAutoLoading.dart';
-import 'package:yack/logic/services/snackBarHandler.dart';
-import 'package:yack/presentation/widgets/secondaryActionButtonAutoLoading.dart';
-import 'package:yack/logic/services/translation_handler.dart';
-import 'package:yack/presentation/theme/theme.dart';
-import 'package:http/http.dart' as http;
 import 'dart:convert';
 
-/// Screen for reviewing and accepting/declining a contract
-/// Both User A and User B see this screen before signing
+import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
+import 'package:yack/logic/services/snackBarHandler.dart';
+import 'package:yack/logic/services/translation_handler.dart';
+import 'package:yack/presentation/theme/theme.dart';
+import 'package:yack/presentation/widgets/primaryActionButton.dart';
+import 'package:yack/presentation/widgets/secondaryActionButton.dart';
+import 'package:yack/presentation/widgets/yack_ui.dart';
+
+/// Readable, document-led review used by both agreement participants.
 class AcceptDeclineContractScreen extends StatefulWidget {
   final String title;
   final double price;
   final String? description;
   final String userFirstName;
   final String userLastName;
-  final bool isUserA; // True if this is the contract creator reviewing
+  final bool isUserA;
 
   const AcceptDeclineContractScreen({
     super.key,
@@ -38,228 +39,246 @@ class _AcceptDeclineContractScreenState
   String? _translatedDescription;
   bool _isTranslating = false;
 
+  String get _displayName {
+    final value = '${widget.userFirstName} ${widget.userLastName}'.trim();
+    return value.isEmpty ? TranslationHandler.get('unknown') : value;
+  }
+
+  Future<void> _requestTranslation() async {
+    final approved =
+        await showDialog<bool>(
+          context: context,
+          builder: (context) => AlertDialog(
+            icon: const Icon(Icons.translate),
+            title: Text(TranslationHandler.get('translate_contract')),
+            content: Text(
+              TranslationHandler.get('translation_privacy_disclosure'),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context, false),
+                child: Text(TranslationHandler.get('cancel')),
+              ),
+              FilledButton(
+                onPressed: () => Navigator.pop(context, true),
+                child: Text(TranslationHandler.get('continue_action')),
+              ),
+            ],
+          ),
+        ) ??
+        false;
+    if (approved) await _translateContent();
+  }
+
   Future<void> _translateContent() async {
+    if (_isTranslating) return;
     setState(() => _isTranslating = true);
 
     try {
-      final currentLang = TranslationHandler.currentLanguage;
-      final targetLang = currentLang == 'ar' ? 'ar' : currentLang == 'fr' ? 'fr' : 'en';
-      String sourceLang = 'en';
-      
-      if (widget.title.contains(RegExp(r'[\u0600-\u06FF]'))) {
-        sourceLang = 'ar';
-      } else if (widget.title.contains(RegExp(r'[àâäéèêëïîôùûüÿæœçÀÂÄÉÈÊËÏÎÔÙÛÜŸÆŒÇ]'))) {
-        sourceLang = 'fr';
+      final target = TranslationHandler.currentLanguage;
+      var source = 'en';
+      final sample = '${widget.title} ${widget.description ?? ''}';
+      if (sample.contains(RegExp(r'[\u0600-\u06FF]'))) {
+        source = 'ar';
+      } else if (sample.contains(
+        RegExp(r'[àâäéèêëïîôùûüÿæœçÀÂÄÉÈÊËÏÎÔÙÛÜŸÆŒÇ]'),
+      )) {
+        source = 'fr';
       }
-      
-      if (sourceLang == targetLang) {
-        SnackBarHandler.showMessage(
-          context,
-          'Content is already in ${TranslationHandler.get(targetLang == 'ar' ? 'arabic' : targetLang == 'fr' ? 'french' : 'english')}',
-        );
-        setState(() => _isTranslating = false);
+
+      if (source == target) {
+        if (mounted) {
+          SnackBarHandler.showMessage(
+            context,
+            TranslationHandler.get('content_already_in_language'),
+          );
+        }
         return;
       }
 
-      final titleResponse = await http.get(
-        Uri.parse(
-          'https://api.mymemory.translated.net/get?q=${Uri.encodeComponent(widget.title)}&langpair=$sourceLang|$targetLang',
-        ),
-      );
-
-      final descResponse = await http.get(
-        Uri.parse(
-          'https://api.mymemory.translated.net/get?q=${Uri.encodeComponent(widget.description ?? '')}&langpair=$sourceLang|$targetLang',
-        ),
-      );
-
-      if (titleResponse.statusCode == 200) {
-        final titleJson = json.decode(titleResponse.body);
-        _translatedTitle = titleJson['responseData']['translatedText'];
+      Future<String> translate(String text) async {
+        if (text.trim().isEmpty) return '';
+        final uri = Uri.https('api.mymemory.translated.net', '/get', {
+          'q': text,
+          'langpair': '$source|$target',
+        });
+        final response = await http
+            .get(uri)
+            .timeout(const Duration(seconds: 12));
+        if (response.statusCode != 200) {
+          throw StateError('Translation request failed');
+        }
+        final payload = json.decode(response.body);
+        return payload['responseData']?['translatedText']?.toString() ?? text;
       }
-      if (descResponse.statusCode == 200) {
-        final descJson = json.decode(descResponse.body);
-        _translatedDescription = descJson['responseData']['translatedText'];
+
+      final results = await Future.wait([
+        translate(widget.title),
+        translate(widget.description ?? ''),
+      ]);
+      if (mounted) {
+        setState(() {
+          _translatedTitle = results[0];
+          _translatedDescription = results[1];
+        });
       }
-      setState(() {});
-    } catch (e) {
-      SnackBarHandler.showError(
-        context,
-        TranslationHandler.get('translation_failed'),
-      );
+    } catch (error) {
+      debugPrint('[ContractReview] Translation failed: $error');
+      if (mounted) {
+        SnackBarHandler.showError(
+          context,
+          TranslationHandler.get('translation_failed'),
+        );
+      }
     } finally {
-      setState(() => _isTranslating = false);
+      if (mounted) setState(() => _isTranslating = false);
     }
-  }
-
-  String get _displayName {
-    final name = '${widget.userFirstName} ${widget.userLastName}'.trim();
-    return name.isNotEmpty ? name : 'Unknown';
   }
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final color = theme.colorScheme;
+    final colors = theme.colorScheme;
+    final description = (_translatedDescription?.trim().isNotEmpty ?? false)
+        ? _translatedDescription!
+        : (widget.description?.trim().isNotEmpty ?? false)
+        ? widget.description!
+        : TranslationHandler.get('accept_decline_description');
 
     return Scaffold(
-      appBar: AppBar(
-        title: Text(
-          TranslationHandler.get('contract_review'),
-          style: theme.textTheme.titleMedium,
-        ),
-        backgroundColor: Colors.transparent,
-        centerTitle: true,
-      ),
-      backgroundColor: color.surface,
-      body: Padding(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          children: [
-            // Contract Container
-            Expanded(
-              child: Container(
-                padding: const EdgeInsets.all(20),
+      appBar: AppBar(title: Text(TranslationHandler.get('contract_review'))),
+      body: SafeArea(
+        top: false,
+        child: YackContent(
+          maxWidth: 680,
+          padding: const EdgeInsets.fromLTRB(20, 8, 20, 28),
+          child: ListView(
+            children: [
+              YackPageHeading(
+                eyebrow: TranslationHandler.get('review_before_signing'),
+                title: _translatedTitle ?? widget.title,
+                subtitle: TranslationHandler.resolve(
+                  'from_user',
+                  params: {'name': _displayName},
+                ),
+              ),
+              const SizedBox(height: 22),
+              Container(
                 decoration: BoxDecoration(
-                  border: Border.all(
-                    color: color.outline.withValues(alpha: 0.5),
-                    width: 1.5,
-                  ),
+                  color: colors.surface,
+                  border: Border.all(color: colors.outlineVariant),
                   borderRadius: BorderRadius.circular(AppTheme.radiusMd),
-                  color: color.surface,
-                  boxShadow: AppTheme.cardShadow,
                 ),
                 child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    // Sender info
-                    Row(
-                      children: [
-                        const Icon(Icons.person, size: 22),
-                        const SizedBox(width: 8),
-                        Text(
-                          TranslationHandler.resolve(
-                            'from_user',
-                            params: {'name': _displayName},
-                          ),
-                          style: theme.textTheme.titleSmall?.copyWith(
-                            color: color.onSurface.withValues(alpha: 0.8),
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ],
-                    ),
-                    Divider(height: 25, thickness: 1, color: color.outline.withValues(alpha: 0.3)),
-
-                    // Contract Title
-                    Center(
-                      child: Text(
-                        _translatedTitle ?? widget.title,
-                        textAlign: TextAlign.center,
-                        style: theme.textTheme.titleMedium?.copyWith(
-                          color: color.onSurface,
-                          fontWeight: FontWeight.bold,
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 18,
+                        vertical: 14,
+                      ),
+                      decoration: BoxDecoration(
+                        color: colors.surfaceContainerLow,
+                        border: Border(
+                          bottom: BorderSide(color: colors.outlineVariant),
                         ),
                       ),
-                    ),
-                    Divider(height: 25, thickness: 1, color: color.outline.withValues(alpha: 0.3)),
-
-                    // Description
-                    Expanded(
-                      child: SingleChildScrollView(
-                        child: Text(
-                          _translatedDescription ??
-                              widget.description ??
-                              TranslationHandler.get('accept_decline_description'),
-                          textAlign: TextAlign.justify,
-                          style: theme.textTheme.bodySmall?.copyWith(
-                            color: color.onSurface.withValues(alpha: 0.85),
-                            height: 1.5,
+                      child: Row(
+                        children: [
+                          Icon(
+                            Icons.description_outlined,
+                            color: colors.primary,
                           ),
-                        ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Text(
+                              TranslationHandler.get('agreement_terms'),
+                              style: theme.textTheme.titleMedium,
+                            ),
+                          ),
+                          if (_translatedTitle != null)
+                            Text(
+                              TranslationHandler.get('translated'),
+                              style: theme.textTheme.labelSmall?.copyWith(
+                                color: colors.primary,
+                              ),
+                            ),
+                        ],
                       ),
                     ),
-                    const SizedBox(height: 20),
-
-                    // Price
-                    Align(
-                      alignment: Alignment.bottomRight,
-                      child: Text(
-                        "${TranslationHandler.get('price_label')}: ${widget.price.toStringAsFixed(2)} ${TranslationHandler.get('currency')}",
-                        style: theme.textTheme.titleMedium?.copyWith(
-                          color: color.primary,
-                          fontWeight: FontWeight.bold,
-                        ),
+                    Padding(
+                      padding: const EdgeInsets.all(20),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            TranslationHandler.get('description'),
+                            style: theme.textTheme.labelMedium?.copyWith(
+                              color: colors.onSurfaceVariant,
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          SelectableText(
+                            description,
+                            textAlign: TextAlign.start,
+                            style: theme.textTheme.bodyLarge,
+                          ),
+                          const SizedBox(height: 24),
+                          const Divider(),
+                          const SizedBox(height: 18),
+                          Text(
+                            TranslationHandler.get('price_label'),
+                            style: theme.textTheme.labelMedium?.copyWith(
+                              color: colors.onSurfaceVariant,
+                            ),
+                          ),
+                          const SizedBox(height: 5),
+                          Text(
+                            '${widget.price.toStringAsFixed(2)} '
+                            '${TranslationHandler.get('currency')}',
+                            textDirection: TextDirection.ltr,
+                            style: theme.textTheme.headlineSmall?.copyWith(
+                              color: colors.primary,
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                   ],
                 ),
               ),
-            ),
-            const SizedBox(height: 20),
-
-            // Warning message
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-              decoration: BoxDecoration(
-                color: color.errorContainer.withValues(alpha: 0.15),
-                borderRadius: BorderRadius.circular(AppTheme.radiusSm),
-                border: Border.all(color: color.error.withValues(alpha: 0.4)),
+              const SizedBox(height: 16),
+              YackNotice(
+                message: TranslationHandler.get('binding_warning'),
+                tone: YackNoticeTone.warning,
+                icon: Icons.draw_outlined,
               ),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Icon(
-                    Icons.warning_amber_rounded,
-                    color: color.error,
-                    size: 22,
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: Text(
-                      TranslationHandler.get('binding_warning'),
-                      style: theme.textTheme.bodySmall?.copyWith(
-                        color: color.error,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                  ),
-                ],
+              const SizedBox(height: 10),
+              TextButton.icon(
+                onPressed: _isTranslating ? null : _requestTranslation,
+                icon: _isTranslating
+                    ? const SizedBox.square(
+                        dimension: 17,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Icon(Icons.translate),
+                label: Text(TranslationHandler.get('translate_contract')),
               ),
-            ),
-            const SizedBox(height: 12),
-
-            // Translation button
-            TextButton.icon(
-              onPressed: _isTranslating ? null : _translateContent,
-              icon: _isTranslating
-                  ? const SizedBox(
-                      width: 16,
-                      height: 16,
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    )
-                  : const Icon(Icons.translate, size: 18),
-              label: Text(TranslationHandler.get('translate_contract')),
-            ),
-            const SizedBox(height: 12),
-
-            // Accept / Decline buttons
-            PrimaryActionButtonAutoReload(
-              action: TranslationHandler.get('accept_contract'),
-              onClick: () async {
-                await Future.delayed(const Duration(milliseconds: 300));
-                Navigator.pop(context, true);
-              },
-            ),
-            const SizedBox(height: 8),
-
-            SecondaryActionButtonAutoReload(
-              action: TranslationHandler.get('decline_contract'),
-              onClick: () {
-                Navigator.pop(context, false);
-              },
-            ),
-          ],
+              const SizedBox(height: 18),
+              PrimaryActionButton(
+                action: TranslationHandler.get('accept_contract'),
+                icon: Icons.draw_outlined,
+                onClick: () => Navigator.pop(context, true),
+              ),
+              const SizedBox(height: 10),
+              SecondaryActionButton(
+                action: TranslationHandler.get('decline_contract'),
+                destructive: true,
+                icon: Icons.close,
+                onClick: () => Navigator.pop(context, false),
+              ),
+            ],
+          ),
         ),
       ),
     );

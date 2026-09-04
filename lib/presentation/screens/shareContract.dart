@@ -1,24 +1,27 @@
 import 'dart:async';
 import 'dart:convert';
+
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:qr_flutter/qr_flutter.dart';
-import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:yack/data/models/contract/temp_contract.dart';
+import 'package:yack/logic/cubits/contract/contract_sync_cubit.dart';
 import 'package:yack/logic/cubits/contract/temp_contract_cubit.dart';
 import 'package:yack/logic/cubits/contract/temp_contract_state.dart';
-import 'package:yack/logic/cubits/contract/contract_sync_cubit.dart';
 import 'package:yack/logic/services/notification/contract_notification_handler.dart';
 import 'package:yack/logic/services/notification/notification_service.dart';
 import 'package:yack/logic/services/snackBarHandler.dart';
 import 'package:yack/logic/services/translation_handler.dart';
 import 'package:yack/presentation/screens/acceptDeclineContract.dart';
 import 'package:yack/presentation/theme/theme.dart';
+import 'package:yack/presentation/widgets/primaryActionButton.dart';
 import 'package:yack/presentation/widgets/secondaryActionButton.dart';
+import 'package:yack/presentation/widgets/yack_ui.dart';
 
-/// Screen for sharing a temp contract via QR code or text link
-/// User A creates the contract and shares it with User B
+/// Invitation hand-off for the creator of a temporary agreement.
 class ShareContractScreen extends StatefulWidget {
   final TempContract tempContract;
   final String title;
@@ -38,13 +41,13 @@ class ShareContractScreen extends StatefulWidget {
 }
 
 class _ShareContractScreenState extends State<ShareContractScreen> {
-  late String _qrData;
-  late String _shareText;
-  bool _isWaitingForUserB = true; // User A always waits for User B to join first
-  bool _isWaitingForSign = false;
+  late final String _qrData;
+  late final String _shareText;
   bool _userBJoined = false;
   bool _userASigned = false;
   bool _userBSigned = false;
+  bool _isSigning = false;
+  bool _allowPop = false;
   String? _userBName;
   StreamSubscription<ContractNotificationEvent>? _notificationSubscription;
   StreamSubscription<RemoteMessage>? _firebaseSubscription;
@@ -63,40 +66,25 @@ class _ShareContractScreenState extends State<ShareContractScreen> {
     super.dispose();
   }
 
-  /// Listen for contract notifications using both ContractNotificationHandler and direct Firebase
   void _setupNotificationListener() {
     final handler = NotificationService().contractHandler;
-
-    // Listen via ContractNotificationHandler
     _notificationSubscription = handler
         .eventsForTempContract(widget.tempContract.tempId)
         .listen(_handleContractEvent);
-
-    // Also listen directly to Firebase messages as fallback
     _firebaseSubscription = FirebaseMessaging.onMessage.listen((message) {
       final data = message.data;
-
-
-      if (data.isEmpty) return;
-
-      final tempId = data['tempId']?.toString();
-      // Only handle notifications for our temp contract
-      if (tempId != widget.tempContract.tempId) {
-        return;
-      }
-
-      final type = data['type']?.toString() ?? '';
-
-      if (type == 'contractJoin') {
-        _handleUserBJoined(data['username']?.toString() ?? '');
-      } else if (type == 'contractSign') {
-        _handleUserBSigned(data['contractId']?.toString());
+      if (data['tempId']?.toString() != widget.tempContract.tempId) return;
+      switch (data['type']?.toString()) {
+        case 'contractJoin':
+          _handleUserBJoined(data['username']?.toString() ?? '');
+          break;
+        case 'contractSign':
+          _handleUserBSigned(data['contractId']?.toString());
+          break;
       }
     });
-
   }
 
-  /// Handle contract notification event from handler
   void _handleContractEvent(ContractNotificationEvent event) {
     switch (event.type) {
       case ContractNotificationType.contractJoin:
@@ -110,62 +98,51 @@ class _ShareContractScreenState extends State<ShareContractScreen> {
     }
   }
 
-  /// Handle when User B joins the contract
   void _handleUserBJoined(String username) {
-    if (_userBJoined) return; // Prevent duplicate handling
-
+    if (!mounted || _userBJoined) return;
     setState(() {
       _userBJoined = true;
-      _userBName = username;
-      _isWaitingForUserB = false;
+      _userBName = username.trim();
     });
-
-    // Navigate to accept/decline screen for User A
-    _showAcceptDeclineForUserA();
+    SnackBarHandler.showMessage(
+      context,
+      TranslationHandler.get('participant_joined_ready'),
+    );
   }
 
-  /// Handle when User B signs the contract
   void _handleUserBSigned(String? contractId) {
-    if (!mounted) return;
-
-    setState(() {
-      _userBSigned = true;
-    });
-
+    if (!mounted || _userBSigned) return;
+    setState(() => _userBSigned = true);
     SnackBarHandler.showMessage(
       context,
       '${_userBName ?? ''} ${TranslationHandler.get('has_signed_contract')}',
     );
-
-    // Check if both users have signed
-    if (_userASigned && _userBSigned) {
-      _completeContract();
-    }
+    if (_userASigned) _completeContract();
   }
 
-  /// Complete the contract when both users have signed
   void _completeContract() {
-    // Sync will fetch the completed contract from backend
     context.read<ContractSyncCubit>().sync();
-
-    setState(() => _isWaitingForSign = false);
-
     SnackBarHandler.showSuccess(
       context,
       TranslationHandler.get('contract_saved_successfully'),
     );
-    Navigator.of(context).popUntil((route) => route.isFirst);
+    Navigator.of(
+      context,
+      rootNavigator: true,
+    ).pushNamedAndRemoveUntil('/home', (_) => false);
   }
 
-  /// Show accept/decline screen for User A after User B joins
-  Future<void> _showAcceptDeclineForUserA() async {
+  Future<void> _reviewAndSign() async {
+    if (_isSigning) return;
     final result = await Navigator.push<bool>(
       context,
       MaterialPageRoute(
         builder: (_) => AcceptDeclineContractScreen(
           title: widget.title,
           price: widget.price,
-          userFirstName: _userBName ?? '',
+          userFirstName: (_userBName?.isNotEmpty ?? false)
+              ? _userBName!
+              : TranslationHandler.get('unknown'),
           userLastName: '',
           description: widget.description,
           isUserA: true,
@@ -173,315 +150,276 @@ class _ShareContractScreenState extends State<ShareContractScreen> {
       ),
     );
 
-    if (result == true) {
-      // User A accepted - now sign the contract
-      _signContract();
-    } else if (result == false) {
-      // User A declined - go back home
-      SnackBarHandler.showMessage(context, TranslationHandler.get('contract_declined'));
-      Navigator.of(context).popUntil((route) => route.isFirst);
+    if (!mounted || result == null) return;
+    if (result == false) {
+      SnackBarHandler.showMessage(
+        context,
+        TranslationHandler.get('contract_declined'),
+      );
+      await _leave(force: true);
+      return;
     }
+
+    setState(() {
+      _isSigning = true;
+      _userASigned = true;
+    });
+    context.read<TempContractCubit>().sign(widget.tempContract.tempId);
   }
 
   void _generateShareData() {
-    // Create shareable data with tempId and contract preview info
     final shareData = {
       'tempId': widget.tempContract.tempId,
       'title': widget.title,
       'description': widget.description,
       'price': widget.price,
       'userAName': widget.tempContract.userAName ?? '',
+      'creatorId': FirebaseAuth.instance.currentUser?.uid ?? '',
     };
-
-    final jsonString = json.encode(shareData);
-    final encodedData = base64Url.encode(utf8.encode(jsonString));
-
-    // QR code uses same data format as share text for now
-    _qrData = 'yack://contract?data=$encodedData';
-    // Share text uses full data URL so user B gets contract preview info when pasting
-    _shareText = 'yack://contract?data=$encodedData';
+    final encoded = base64Url.encode(utf8.encode(json.encode(shareData)));
+    _qrData = 'yack://contract?data=$encoded';
+    _shareText = _qrData;
   }
 
-  void _copyToClipboard() {
-    Clipboard.setData(ClipboardData(text: _shareText));
-    SnackBarHandler.showSuccess(context, TranslationHandler.get('link_copied'));
+  Future<void> _copyToClipboard() async {
+    await Clipboard.setData(ClipboardData(text: _shareText));
+    if (mounted) {
+      SnackBarHandler.showSuccess(
+        context,
+        TranslationHandler.get('link_copied'),
+      );
+    }
   }
 
-  void _signContract() {
-    setState(() {
-      _isWaitingForSign = true;
-      _userASigned = true;
-    });
-    context.read<TempContractCubit>().sign(widget.tempContract.tempId);
+  Future<void> _leave({bool force = false}) async {
+    var confirmed = force;
+    if (!force) {
+      confirmed =
+          await showDialog<bool>(
+            context: context,
+            builder: (context) => AlertDialog(
+              icon: const Icon(Icons.logout_outlined),
+              title: Text(TranslationHandler.get('leave_invitation_title')),
+              content: Text(TranslationHandler.get('leave_invitation_message')),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context, false),
+                  child: Text(TranslationHandler.get('stay')),
+                ),
+                FilledButton(
+                  onPressed: () => Navigator.pop(context, true),
+                  child: Text(TranslationHandler.get('leave')),
+                ),
+              ],
+            ),
+          ) ??
+          false;
+    }
+    if (!mounted || !confirmed) return;
+    setState(() => _allowPop = true);
+    Navigator.of(context).pop();
   }
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final color = theme.colorScheme;
+    final colors = theme.colorScheme;
 
     return BlocListener<TempContractCubit, TempContractState>(
-      listener: (context, state) async {
-
+      listener: (context, state) {
         if (state is TempContractSignSuccess) {
-
+          if (state.contract.tempId != widget.tempContract.tempId) return;
           setState(() {
             _userASigned = true;
+            _isSigning = false;
           });
-
-          if (state.contractId != null && state.contractId!.isNotEmpty) {
-            // Both users signed - contract is finalized, sync from backend
+          if ((state.contractId?.isNotEmpty ?? false) || _userBSigned) {
             _completeContract();
-          } else if (_userASigned && _userBSigned) {
-            // Both users signed locally - complete the contract
-            _completeContract();
-          } else {
-            // Only this user signed - waiting for other user
-            setState(() => _isWaitingForSign = true);
-            SnackBarHandler.showMessage(
-              context,
-              TranslationHandler.get('waiting_for_acceptance'),
-            );
           }
-        } else if (state is TempContractError) {
-          setState(() => _isWaitingForSign = false);
+        } else if (state is TempContractError && _isSigning) {
+          setState(() => _isSigning = false);
           SnackBarHandler.showError(context, state.message);
         }
       },
       child: PopScope(
-        canPop: !_isWaitingForSign,
-        onPopInvokedWithResult: (didPop, result) {
-          if (!didPop && _isWaitingForSign) {
-            SnackBarHandler.showWarning(
-              context,
-              TranslationHandler.get('waiting_for_acceptance'),
-            );
-          }
+        canPop: _allowPop,
+        onPopInvokedWithResult: (didPop, _) {
+          if (!didPop) _leave();
         },
         child: Scaffold(
           appBar: AppBar(
-            title: Text(
-              TranslationHandler.get('share_contract'),
-              style: theme.textTheme.titleMedium,
+            title: Text(TranslationHandler.get('share_contract')),
+            leading: IconButton(
+              tooltip: MaterialLocalizations.of(context).backButtonTooltip,
+              onPressed: _leave,
+              icon: const Icon(Icons.arrow_back),
             ),
-            backgroundColor: Colors.transparent,
-            centerTitle: true,
           ),
-          backgroundColor: color.surface,
-          body: SingleChildScrollView(
-            padding: const EdgeInsets.all(20),
-            child: Column(
-              children: [
-                // Contract preview card
-                Container(
-                  padding: const EdgeInsets.all(20),
-                  decoration: BoxDecoration(
-                    border: Border.all(
-                      color: color.outline.withValues(alpha: 0.5),
-                      width: 1.5,
-                    ),
-                    borderRadius: BorderRadius.circular(AppTheme.radiusMd),
-                    color: color.surface,
-                    boxShadow: AppTheme.cardShadow,
+          body: SafeArea(
+            top: false,
+            child: YackContent(
+              maxWidth: 680,
+              padding: const EdgeInsets.fromLTRB(20, 8, 20, 28),
+              child: ListView(
+                children: [
+                  YackPageHeading(
+                    eyebrow: TranslationHandler.get('invitation_ready'),
+                    title: widget.title,
+                    subtitle:
+                        '${widget.price.toStringAsFixed(2)} ${TranslationHandler.get('currency')}',
                   ),
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                        // Contract title
-                        Text(
-                          widget.title,
-                          style: theme.textTheme.titleMedium?.copyWith(
-                            fontWeight: FontWeight.bold,
-                          ),
-                          textAlign: TextAlign.center,
-                        ),
-                        const SizedBox(height: 8),
-
-                        // Price
-                        Text(
-                          '${widget.price.toStringAsFixed(2)} ${TranslationHandler.get('currency')}',
-                          style: theme.textTheme.titleSmall?.copyWith(
-                            color: color.primary,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                        const SizedBox(height: 20),
-
-                        // QR Code
-                        Container(
-                          padding: const EdgeInsets.all(12),
-                          decoration: BoxDecoration(
-                            color: color.surface,
-                            borderRadius: BorderRadius.circular(AppTheme.radiusMd),
-                          ),
-                          child: QrImageView(
-                            data: _qrData,
-                            version: QrVersions.auto,
-                            size: 180,
-                            backgroundColor: color.surface,
-                          ),
-                        ),
-                        const SizedBox(height: 20),
-
-                        // Status indicator
-                        if (_isWaitingForSign) ...[
-                          const CircularProgressIndicator(),
-                          const SizedBox(height: 12),
-                          Text(
-                            TranslationHandler.get('waiting_for_acceptance'),
-                            style: theme.textTheme.bodyMedium?.copyWith(
-                              color: color.primary,
-                            ),
-                            textAlign: TextAlign.center,
-                          ),
-                        ] else if (_userBJoined) ...[
-                          Icon(
-                            Icons.check_circle,
-                            color: color.primary,
-                            size: 40,
-                          ),
-                          const SizedBox(height: 12),
-                          Text(
-                            '${_userBName ?? ''} ${TranslationHandler.get('contract_joined')}',
-                            style: theme.textTheme.bodyMedium?.copyWith(
-                              color: color.primary,
-                            ),
-                            textAlign: TextAlign.center,
-                          ),
-                        ] else ...[
-                          Icon(
-                            Icons.hourglass_empty,
-                            color: color.onSurface.withValues(alpha: 0.5),
-                            size: 32,
-                          ),
-                          const SizedBox(height: 12),
-                          Text(
-                            TranslationHandler.get('scan_contract_prompt'),
-                            style: theme.textTheme.bodyMedium?.copyWith(
-                              color: color.onSurface.withValues(alpha: 0.7),
-                            ),
-                            textAlign: TextAlign.center,
-                          ),
-                        ],
-
-                        const SizedBox(height: 20),
-                        Divider(thickness: 1, color: color.outline.withValues(alpha: 0.3)),
-                        const SizedBox(height: 12),
-
-                        // Share text / link
-                        Row(
-                          children: [
-                            Expanded(
-                              child: Text(
-                                _shareText,
-                                style: theme.textTheme.bodySmall?.copyWith(
-                                  color: color.onSurface.withValues(alpha: 0.6),
-                                  fontFamily: 'monospace',
-                                ),
-                                overflow: TextOverflow.ellipsis,
+                  const SizedBox(height: 22),
+                  _buildProgress(context),
+                  const SizedBox(height: 18),
+                  Container(
+                    padding: const EdgeInsets.all(20),
+                    decoration: BoxDecoration(
+                      color: colors.surface,
+                      border: Border.all(color: colors.outlineVariant),
+                      borderRadius: BorderRadius.circular(AppTheme.radiusMd),
+                    ),
+                    child: Column(
+                      children: [
+                        Semantics(
+                          label: TranslationHandler.get('contract_qr_label'),
+                          image: true,
+                          child: Container(
+                            color: Colors.white,
+                            padding: const EdgeInsets.all(16),
+                            child: QrImageView(
+                              data: _qrData,
+                              version: QrVersions.auto,
+                              size: 210,
+                              backgroundColor: Colors.white,
+                              eyeStyle: const QrEyeStyle(
+                                color: Colors.black,
+                                eyeShape: QrEyeShape.square,
+                              ),
+                              dataModuleStyle: const QrDataModuleStyle(
+                                color: Colors.black,
+                                dataModuleShape: QrDataModuleShape.square,
                               ),
                             ),
-                            IconButton(
-                              onPressed: _copyToClipboard,
-                              icon: Icon(Icons.copy, color: color.primary),
-                              tooltip: TranslationHandler.get('link_copied'),
-                            ),
-                          ],
-                        ),
-
-                        const SizedBox(height: 12),
-
-                        // Warning
-                        Text(
-                          TranslationHandler.get('share_warning'),
-                          style: theme.textTheme.bodySmall?.copyWith(
-                            color: color.error,
-                            fontWeight: FontWeight.w500,
                           ),
+                        ),
+                        const SizedBox(height: 18),
+                        Text(
+                          _userBJoined
+                              ? TranslationHandler.resolve(
+                                  'participant_joined',
+                                  params: {
+                                    'name': (_userBName?.isNotEmpty ?? false)
+                                        ? _userBName!
+                                        : TranslationHandler.get('other_party'),
+                                  },
+                                )
+                              : TranslationHandler.get('scan_contract_prompt'),
                           textAlign: TextAlign.center,
+                          style: theme.textTheme.bodyLarge,
+                        ),
+                        const SizedBox(height: 14),
+                        OutlinedButton.icon(
+                          onPressed: _copyToClipboard,
+                          icon: const Icon(Icons.copy_outlined),
+                          label: Text(TranslationHandler.get('copy_link')),
                         ),
                       ],
                     ),
                   ),
-
-                const SizedBox(height: 20),
-                if (_isWaitingForUserB && !_userBJoined)
-                  Container(
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      color: color.primaryContainer.withValues(alpha: 0.3),
-                      borderRadius: BorderRadius.circular(AppTheme.radiusMd),
-                    ),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        SizedBox(
-                          width: 20,
-                          height: 20,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                            color: color.primary,
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        Text(
-                          TranslationHandler.get('waiting_for_user_b'),
-                          style: theme.textTheme.bodyMedium?.copyWith(
-                            color: color.primary,
-                          ),
-                        ),
-                      ],
-                    ),
+                  const SizedBox(height: 16),
+                  YackNotice(
+                    message: TranslationHandler.get('invitation_expiry_note'),
+                    tone: YackNoticeTone.warning,
+                    icon: Icons.timer_outlined,
                   ),
-
-                if (_isWaitingForSign)
-                  Container(
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      color: color.primaryContainer.withValues(alpha: 0.3),
-                      borderRadius: BorderRadius.circular(AppTheme.radiusMd),
+                  const SizedBox(height: 22),
+                  if (_userBJoined && !_userASigned)
+                    PrimaryActionButton(
+                      action: TranslationHandler.get('review_and_sign'),
+                      icon: Icons.fact_check_outlined,
+                      onClick: _isSigning ? null : _reviewAndSign,
+                      isLoading: _isSigning,
+                    )
+                  else if (_userASigned && !_userBSigned)
+                    YackNotice(
+                      message: TranslationHandler.get(
+                        'waiting_for_signature_desc',
+                      ),
+                      tone: YackNoticeTone.neutral,
+                      icon: Icons.hourglass_top_outlined,
+                    )
+                  else if (!_userBJoined)
+                    YackNotice(
+                      message: TranslationHandler.get('waiting_for_user_b'),
+                      icon: Icons.person_search_outlined,
                     ),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        SizedBox(
-                          width: 20,
-                          height: 20,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                            color: color.primary,
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        Text(
-                          TranslationHandler.get('waiting_for_acceptance'),
-                          style: theme.textTheme.bodyMedium?.copyWith(
-                            color: color.primary,
-                          ),
-                        ),
-                      ],
-                    ),
+                  const SizedBox(height: 12),
+                  SecondaryActionButton(
+                    action: TranslationHandler.get('leave'),
+                    icon: Icons.arrow_back,
+                    onClick: _leave,
                   ),
-
-                const SizedBox(height: 12),
-
-                // Cancel button - always available
-                SecondaryActionButton(
-                  action: TranslationHandler.get('cancel'),
-                  onClick: () {
-                    if (_isWaitingForSign) {
-                      SnackBarHandler.showWarning(
-                        context,
-                        TranslationHandler.get('waiting_for_acceptance'),
-                      );
-                    } else {
-                      Navigator.of(context).pop();
-                    }
-                  },
-                ),
-              ],
+                ],
+              ),
             ),
           ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildProgress(BuildContext context) {
+    final steps = [
+      (TranslationHandler.get('created'), true),
+      (TranslationHandler.get('participant_joined_step'), _userBJoined),
+      (TranslationHandler.get('you_signed'), _userASigned),
+      (TranslationHandler.get('both_signed'), _userASigned && _userBSigned),
+    ];
+    final colors = Theme.of(context).colorScheme;
+
+    return Semantics(
+      label: steps.where((step) => step.$2).map((step) => step.$1).join(', '),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 16),
+        decoration: BoxDecoration(
+          color: colors.surface,
+          border: Border.all(color: colors.outlineVariant),
+          borderRadius: BorderRadius.circular(AppTheme.radiusMd),
+        ),
+        child: Row(
+          children: [
+            for (var index = 0; index < steps.length; index++) ...[
+              Expanded(
+                child: Column(
+                  children: [
+                    Icon(
+                      steps[index].$2
+                          ? Icons.check_circle
+                          : Icons.radio_button_unchecked,
+                      color: steps[index].$2
+                          ? colors.primary
+                          : colors.onSurfaceVariant,
+                      size: 22,
+                    ),
+                    const SizedBox(height: 7),
+                    Text(
+                      steps[index].$1,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      textAlign: TextAlign.center,
+                      style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                        color: steps[index].$2
+                            ? colors.onSurface
+                            : colors.onSurfaceVariant,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              if (index < steps.length - 1)
+                Container(width: 12, height: 1, color: colors.outlineVariant),
+            ],
+          ],
         ),
       ),
     );

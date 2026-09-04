@@ -3,6 +3,7 @@ import 'package:flutter/scheduler.dart';
 import 'dart:async';
 import 'dart:convert';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:hive/hive.dart';
 import 'package:yack/logic/cubits/contract/temp_contract_cubit.dart';
@@ -18,6 +19,7 @@ import 'package:yack/presentation/widgets/secondaryActionButton.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:yack/logic/services/translation_handler.dart';
 import 'package:yack/presentation/screens/acceptDeclineContract.dart';
+import 'package:yack/presentation/widgets/yack_ui.dart';
 
 class ScanContractScreen extends StatefulWidget {
   const ScanContractScreen({super.key});
@@ -33,6 +35,7 @@ class _ScanContractScreenState extends State<ScanContractScreen>
   bool _navigatingAway = false;
   bool _isWaitingForUserASign = false;
   bool _userBSigned = false; // Track if User B has signed
+  bool _reviewApproved = false;
   bool _showManualInput = false;
   MobileScannerController? scannerController;
   StreamSubscription<ContractNotificationEvent>? _notificationSubscription;
@@ -44,6 +47,8 @@ class _ScanContractScreenState extends State<ScanContractScreen>
   String? _scannedTitle;
   String? _scannedDescription;
   double? _scannedPrice;
+  String? _scannedUserAName;
+  String? _scannedCreatorId;
 
   @override
   void initState() {
@@ -52,18 +57,13 @@ class _ScanContractScreenState extends State<ScanContractScreen>
   }
 
   @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    _resetState();
-  }
-
-  void _resetState() {
-    if (_navigatingAway || _isProcessing) {
-      setState(() {
-        _navigatingAway = false;
-        _isProcessing = false;
-        _isScanning = false;
-      });
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (!_isScanning || scannerController == null) return;
+    if (state == AppLifecycleState.paused ||
+        state == AppLifecycleState.inactive) {
+      scannerController?.stop();
+    } else if (state == AppLifecycleState.resumed) {
+      scannerController?.start();
     }
   }
 
@@ -99,8 +99,9 @@ class _ScanContractScreenState extends State<ScanContractScreen>
     final handler = NotificationService().contractHandler;
 
     // Listen via ContractNotificationHandler
-    _notificationSubscription = handler.eventsForTempContract(tempId).listen((event) async {
-
+    _notificationSubscription = handler.eventsForTempContract(tempId).listen((
+      event,
+    ) async {
       switch (event.type) {
         case ContractNotificationType.contractSign:
           // User A signed the contract
@@ -136,13 +137,6 @@ class _ScanContractScreenState extends State<ScanContractScreen>
 
   /// Sync contracts and navigate home
   Future<void> _syncAndNavigateHome() async {
-    // Dismiss loading if showing
-    if (mounted) {
-      try {
-        Navigator.of(context, rootNavigator: true).pop();
-      } catch (_) {}
-    }
-
     // Sync contracts from backend to get the finalized contract with decrypted data
     context.read<ContractSyncCubit>().sync();
 
@@ -156,8 +150,6 @@ class _ScanContractScreenState extends State<ScanContractScreen>
   }
 
   void _startScanning() {
-
-
     setState(() {
       _isScanning = true;
       scannerController = MobileScannerController();
@@ -165,7 +157,6 @@ class _ScanContractScreenState extends State<ScanContractScreen>
   }
 
   void _stopScanning() {
-
     scannerController?.stop();
     scannerController?.dispose();
     scannerController = null;
@@ -188,9 +179,8 @@ class _ScanContractScreenState extends State<ScanContractScreen>
 
   // Process scanned QR code - store and process like manual input
   void _onQRScanned(String code) {
-
     _isProcessing = false;
-    
+
     // Stop scanning first
     _stopScanning();
 
@@ -214,7 +204,10 @@ class _ScanContractScreenState extends State<ScanContractScreen>
   void _onManualLinkSubmit() async {
     final input = _linkController.text.trim();
     if (input.isEmpty) {
-      SnackBarHandler.showError(context, TranslationHandler.get('field_required_generic'));
+      SnackBarHandler.showError(
+        context,
+        TranslationHandler.get('field_required_generic'),
+      );
       return;
     }
 
@@ -227,8 +220,12 @@ class _ScanContractScreenState extends State<ScanContractScreen>
     if (input.startsWith('yack://contract?data=')) {
       await _processFullDataUrl(input);
     } else {
-      SnackBarHandler.showError(context, TranslationHandler.get('invalid_contract_qr'));
+      SnackBarHandler.showError(
+        context,
+        TranslationHandler.get('invalid_contract_qr'),
+      );
       _isProcessing = false;
+      if (mounted) setState(() {});
     }
   }
 
@@ -252,30 +249,63 @@ class _ScanContractScreenState extends State<ScanContractScreen>
       _scannedPrice = (jsonMap['price'] is num)
           ? (jsonMap['price'] as num).toDouble()
           : double.tryParse(jsonMap['price']?.toString() ?? '0') ?? 0;
+      _scannedUserAName = jsonMap['userAName']?.toString();
+      _scannedCreatorId = jsonMap['creatorId']?.toString();
 
       if (_scannedTempId == null || _scannedTempId!.isEmpty) {
         throw FormatException('Missing tempId');
       }
 
+      if (_scannedCreatorId != null &&
+          _scannedCreatorId == FirebaseAuth.instance.currentUser?.uid) {
+        throw const FormatException('Cannot join your own contract');
+      }
+
+      if (!CryptoService.canEncryptWithRsa(_scannedTitle!) ||
+          !CryptoService.canEncryptWithRsa(_scannedDescription!)) {
+        throw const FormatException('Contract content is too long');
+      }
+
       if (!mounted) return;
 
-      // Show loading dialog
-      showDialog(
-        context: context,
-        barrierDismissible: false,
-        useRootNavigator: true,
-        builder: (_) => const Center(child: CircularProgressIndicator()),
+      // Review before joining. Dismissing or declining does not bind the user
+      // to the temporary contract on the backend.
+      final approved = await Navigator.push<bool>(
+        context,
+        MaterialPageRoute(
+          builder: (_) => AcceptDeclineContractScreen(
+            title: _scannedTitle!.isEmpty
+                ? TranslationHandler.get('contract')
+                : _scannedTitle!,
+            price: _scannedPrice ?? 0,
+            userFirstName: (_scannedUserAName?.trim().isNotEmpty ?? false)
+                ? _scannedUserAName!
+                : TranslationHandler.get('unknown'),
+            userLastName: '',
+            description: _scannedDescription ?? '',
+          ),
+        ),
       );
+
+      if (approved != true || !mounted) {
+        _isProcessing = false;
+        setState(() {});
+        return;
+      }
+      _reviewApproved = true;
+      setState(() {});
 
       // Get user B's public key for encryption
       final publicKey = await _getUserPublicKey();
       if (publicKey == null || publicKey.isEmpty) {
         if (mounted) {
-          Navigator.of(context, rootNavigator: true).pop();
-          SnackBarHandler.showError(context, TranslationHandler.get('missing_public_key'));
+          SnackBarHandler.showError(
+            context,
+            TranslationHandler.get('missing_public_key'),
+          );
         }
         _isProcessing = false;
-        _navigateToHome();
+        if (mounted) setState(() {});
         return;
       }
 
@@ -293,22 +323,37 @@ class _ScanContractScreenState extends State<ScanContractScreen>
         publicKeyBase64: publicKey,
       );
 
-      // Join the temp contract immediately after scanning
+      // Join only after explicit review and approval.
+      if (!mounted) return;
       context.read<TempContractCubit>().join(
         tempId: _scannedTempId!,
         titleUserB: titleUserB,
         descriptionUserB: descriptionUserB,
         priceUserB: priceUserB,
       );
-
-    } catch (e) {
+    } on FormatException catch (error) {
+      if (mounted) {
+        SnackBarHandler.showError(
+          context,
+          TranslationHandler.get(
+            error.message == 'Cannot join your own contract'
+                ? 'cannot_join_own_contract'
+                : error.message == 'Contract content is too long'
+                ? 'contract_content_invalid'
+                : 'failed_to_decode_contract',
+          ),
+        );
+        setState(() => _isProcessing = false);
+      }
+    } catch (error) {
+      debugPrint('[ScanContractScreen] Could not process invite: $error');
       if (mounted) {
         SnackBarHandler.showError(
           context,
           TranslationHandler.get('failed_to_decode_contract'),
         );
+        setState(() => _isProcessing = false);
       }
-      _isProcessing = false;
     }
   }
 
@@ -316,55 +361,21 @@ class _ScanContractScreenState extends State<ScanContractScreen>
   Widget build(BuildContext context) {
     return BlocListener<TempContractCubit, TempContractState>(
       listener: (context, state) async {
+        if (state is TempContractJoinSuccess &&
+            state.contract.tempId != _scannedTempId) {
+          return;
+        }
+        if (state is TempContractSignSuccess &&
+            state.contract.tempId != _scannedTempId) {
+          return;
+        }
         if (state is TempContractJoinSuccess) {
-          // Dismiss loading dialog
-          if (mounted) {
-            try {
-              Navigator.of(context, rootNavigator: true).pop();
-            } catch (_) {}
-          }
-
           // Setup notification listener for User A's signature
           _setupNotificationListenerForTempContract(state.contract.tempId);
-
-          // Use userA name from server response if we don't have it from scan
-          final userAName = state.userAName ?? 'Unknown';
-
-          // Show accept/decline screen after successfully joining
-          final result = await Navigator.push<bool>(
-            context,
-            MaterialPageRoute(
-              builder: (_) => AcceptDeclineContractScreen(
-                title: _scannedTitle?.isNotEmpty == true ? _scannedTitle! : 'Contract',
-                price: _scannedPrice ?? 0,
-                userFirstName: userAName,
-                userLastName: '',
-                description: _scannedDescription ?? '',
-              ),
-            ),
-          );
-
-          if (result == true) {
-            // User B accepted - show loading and sign the contract
-            if (mounted) {
-              showDialog(
-                context: context,
-                barrierDismissible: false,
-                useRootNavigator: true,
-                builder: (_) => const Center(child: CircularProgressIndicator()),
-              );
-            }
+          if (_reviewApproved) {
             context.read<TempContractCubit>().sign(state.contract.tempId);
-          } else {
-            // User B declined
-            SnackBarHandler.showMessage(
-              context,
-              TranslationHandler.get('contract_declined'),
-            );
-            _navigateToHome();
           }
         } else if (state is TempContractSignSuccess) {
-
           // User B has signed
           setState(() {
             _userBSigned = true;
@@ -377,6 +388,7 @@ class _ScanContractScreenState extends State<ScanContractScreen>
             // User B signed but User A hasn't signed yet - wait for notification
             setState(() {
               _isWaitingForUserASign = true;
+              _isProcessing = false;
             });
 
             // Keep loading dialog showing while waiting
@@ -388,15 +400,14 @@ class _ScanContractScreenState extends State<ScanContractScreen>
             }
           }
         } else if (state is TempContractError) {
-          // Dismiss loading dialog
           if (mounted) {
-            try {
-              Navigator.of(context, rootNavigator: true).pop();
-            } catch (_) {}
             SnackBarHandler.showError(context, state.message);
+            setState(() {
+              _isProcessing = false;
+              _isWaitingForUserASign = false;
+              _reviewApproved = false;
+            });
           }
-          _isProcessing = false;
-          _navigateToHome();
         }
       },
       child: Scaffold(
@@ -427,80 +438,115 @@ class _ScanContractScreenState extends State<ScanContractScreen>
                     },
                   ),
                   Center(
-                    child: Container(
-                      width: MediaQuery.of(context).size.width * 0.8,
-                      height: MediaQuery.of(context).size.width * 0.8,
-                      decoration: BoxDecoration(
-                        border: Border.all(color: AppTheme.yackGreen, width: 4),
-                        borderRadius: BorderRadius.circular(16),
-                      ),
-                      child: Stack(
-                        children: [
-                          // Corner decorations
-                          Positioned(
-                            top: -2,
-                            left: -2,
-                            child: Container(
-                              width: 40,
-                              height: 40,
-                              decoration: BoxDecoration(
-                                border: Border(
-                                  top: BorderSide(color: AppTheme.yackGreen, width: 8),
-                                  left: BorderSide(color: AppTheme.yackGreen, width: 8),
+                    child: LayoutBuilder(
+                      builder: (context, constraints) {
+                        final frameSize =
+                            (constraints.biggest.shortestSide * .72)
+                                .clamp(220.0, 340.0)
+                                .toDouble();
+                        return Container(
+                          width: frameSize,
+                          height: frameSize,
+                          decoration: BoxDecoration(
+                            border: Border.all(
+                              color: AppTheme.yackGreen,
+                              width: 4,
+                            ),
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                          child: Stack(
+                            children: [
+                              // Corner decorations
+                              Positioned(
+                                top: -2,
+                                left: -2,
+                                child: Container(
+                                  width: 40,
+                                  height: 40,
+                                  decoration: BoxDecoration(
+                                    border: Border(
+                                      top: BorderSide(
+                                        color: AppTheme.yackGreen,
+                                        width: 8,
+                                      ),
+                                      left: BorderSide(
+                                        color: AppTheme.yackGreen,
+                                        width: 8,
+                                      ),
+                                    ),
+                                  ),
                                 ),
                               ),
-                            ),
-                          ),
-                          Positioned(
-                            top: -2,
-                            right: -2,
-                            child: Container(
-                              width: 40,
-                              height: 40,
-                              decoration: BoxDecoration(
-                                border: Border(
-                                  top: BorderSide(color: AppTheme.yackGreen, width: 8),
-                                  right: BorderSide(color: AppTheme.yackGreen, width: 8),
+                              Positioned(
+                                top: -2,
+                                right: -2,
+                                child: Container(
+                                  width: 40,
+                                  height: 40,
+                                  decoration: BoxDecoration(
+                                    border: Border(
+                                      top: BorderSide(
+                                        color: AppTheme.yackGreen,
+                                        width: 8,
+                                      ),
+                                      right: BorderSide(
+                                        color: AppTheme.yackGreen,
+                                        width: 8,
+                                      ),
+                                    ),
+                                  ),
                                 ),
                               ),
-                            ),
-                          ),
-                          Positioned(
-                            bottom: -2,
-                            left: -2,
-                            child: Container(
-                              width: 40,
-                              height: 40,
-                              decoration: BoxDecoration(
-                                border: Border(
-                                  bottom: BorderSide(color: AppTheme.yackGreen, width: 8),
-                                  left: BorderSide(color: AppTheme.yackGreen, width: 8),
+                              Positioned(
+                                bottom: -2,
+                                left: -2,
+                                child: Container(
+                                  width: 40,
+                                  height: 40,
+                                  decoration: BoxDecoration(
+                                    border: Border(
+                                      bottom: BorderSide(
+                                        color: AppTheme.yackGreen,
+                                        width: 8,
+                                      ),
+                                      left: BorderSide(
+                                        color: AppTheme.yackGreen,
+                                        width: 8,
+                                      ),
+                                    ),
+                                  ),
                                 ),
                               ),
-                            ),
-                          ),
-                          Positioned(
-                            bottom: -2,
-                            right: -2,
-                            child: Container(
-                              width: 40,
-                              height: 40,
-                              decoration: BoxDecoration(
-                                border: Border(
-                                  bottom: BorderSide(color: AppTheme.yackGreen, width: 8),
-                                  right: BorderSide(color: AppTheme.yackGreen, width: 8),
+                              Positioned(
+                                bottom: -2,
+                                right: -2,
+                                child: Container(
+                                  width: 40,
+                                  height: 40,
+                                  decoration: BoxDecoration(
+                                    border: Border(
+                                      bottom: BorderSide(
+                                        color: AppTheme.yackGreen,
+                                        width: 8,
+                                      ),
+                                      right: BorderSide(
+                                        color: AppTheme.yackGreen,
+                                        width: 8,
+                                      ),
+                                    ),
+                                  ),
                                 ),
                               ),
-                            ),
+                            ],
                           ),
-                        ],
-                      ),
+                        );
+                      },
                     ),
                   ),
-                  Positioned(
+                  PositionedDirectional(
                     bottom: 100,
-                    left: 0,
-                    right: 0,
+                    start: 20,
+                    end: 20,
                     child: Center(
                       child: Container(
                         padding: const EdgeInsets.symmetric(
@@ -509,7 +555,9 @@ class _ScanContractScreenState extends State<ScanContractScreen>
                         ),
                         decoration: BoxDecoration(
                           color: Colors.black54,
-                          borderRadius: BorderRadius.circular(AppTheme.radiusLg),
+                          borderRadius: BorderRadius.circular(
+                            AppTheme.radiusSm,
+                          ),
                         ),
                         child: Text(
                           TranslationHandler.get('place_code_in_frame'),
@@ -518,20 +566,76 @@ class _ScanContractScreenState extends State<ScanContractScreen>
                       ),
                     ),
                   ),
-                  Positioned(
+                  PositionedDirectional(
                     bottom: 30,
-                    left: 0,
-                    right: 0,
+                    start: 20,
+                    end: 20,
                     child: Center(
-                      child: SecondaryActionButton(
-                        action: TranslationHandler.get('stop_scanning'),
-                        onClick: _stopScanning,
+                      child: ConstrainedBox(
+                        constraints: const BoxConstraints(maxWidth: 360),
+                        child: SecondaryActionButton(
+                          action: TranslationHandler.get('stop_scanning'),
+                          icon: Icons.close,
+                          onClick: _stopScanning,
+                        ),
                       ),
                     ),
                   ),
                 ],
               )
+            : _isWaitingForUserASign
+            ? _buildWaitingState(context)
+            : _isProcessing
+            ? _buildProcessingState(context)
             : _buildInstructions(context),
+      ),
+    );
+  }
+
+  Widget _buildProcessingState(BuildContext context) {
+    return YackContent(
+      maxWidth: 560,
+      child: Center(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 48),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const SizedBox.square(
+                dimension: 32,
+                child: CircularProgressIndicator(strokeWidth: 2.5),
+              ),
+              const SizedBox(height: 20),
+              Text(
+                TranslationHandler.get('joining_contract'),
+                style: Theme.of(context).textTheme.titleLarge,
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 8),
+              Text(
+                TranslationHandler.get('joining_contract_desc'),
+                style: Theme.of(context).textTheme.bodyMedium,
+                textAlign: TextAlign.center,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildWaitingState(BuildContext context) {
+    return YackContent(
+      maxWidth: 560,
+      child: YackEmptyState(
+        icon: Icons.hourglass_top_outlined,
+        title: TranslationHandler.get('waiting_for_user_a_sign'),
+        message: TranslationHandler.get('waiting_for_signature_desc'),
+        action: OutlinedButton.icon(
+          onPressed: _navigateToHome,
+          icon: const Icon(Icons.home_outlined),
+          label: Text(TranslationHandler.get('back_to_contracts')),
+        ),
       ),
     );
   }
@@ -540,155 +644,172 @@ class _ScanContractScreenState extends State<ScanContractScreen>
     final theme = Theme.of(context);
     final color = theme.colorScheme;
 
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(24.0),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          const SizedBox(height: 20),
-          Icon(
-            Icons.qr_code_scanner,
-            size: 80,
-            color: color.primary,
-          ),
-          const SizedBox(height: 24),
-          Text(
-            TranslationHandler.get('scan_contract_qr_code'),
-            style: theme.textTheme.headlineSmall,
-            textAlign: TextAlign.center,
-          ),
-          const SizedBox(height: 16),
-          Text(
-            TranslationHandler.get('scan_instructions'),
-            style: theme.textTheme.bodyMedium,
-            textAlign: TextAlign.center,
-          ),
-          const SizedBox(height: 32),
-          _buildInstructionItem(
-            context,
-            Icons.lightbulb_outline,
-            TranslationHandler.get('instruction_good_lighting'),
-          ),
-          const SizedBox(height: 12),
-          _buildInstructionItem(
-            context,
-            Icons.center_focus_strong,
-            TranslationHandler.get('instruction_center_code'),
-          ),
-          const SizedBox(height: 12),
-          _buildInstructionItem(
-            context,
-            Icons.flash_auto,
-            TranslationHandler.get('instruction_auto_scan'),
-          ),
-          const SizedBox(height: 32),
-          PrimaryActionButton(
-            action: TranslationHandler.get('start_scanning'),
-            onClick: _startScanning,
-          ),
-          const SizedBox(height: 24),
-
-          // Divider with "OR" text
-          Row(
-            children: [
-              Expanded(child: Divider(color: color.outline.withValues(alpha: 0.5))),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                child: Text(
-                  TranslationHandler.get('or'),
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    color: color.onSurface.withValues(alpha: 0.6),
-                  ),
-                ),
-              ),
-              Expanded(child: Divider(color: color.outline.withValues(alpha: 0.5))),
-            ],
-          ),
-          const SizedBox(height: 24),
-
-          // Manual link paste section
-          if (!_showManualInput)
-            SecondaryActionButton(
-              action: TranslationHandler.get('enter_link_manually'),
-              onClick: () => setState(() => _showManualInput = true),
+    return YackContent(
+      maxWidth: 620,
+      padding: const EdgeInsets.fromLTRB(20, 8, 20, 32),
+      child: SingleChildScrollView(
+        keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            YackPageHeading(
+              eyebrow: TranslationHandler.get('join_agreement'),
+              title: TranslationHandler.get('scan_contract_qr_code'),
+              subtitle: TranslationHandler.get('scan_instructions'),
             ),
-
-          if (_showManualInput) ...[
+            const SizedBox(height: 28),
             Container(
-              padding: const EdgeInsets.all(16),
+              padding: const EdgeInsets.all(18),
               decoration: BoxDecoration(
-                border: Border.all(color: color.outline.withValues(alpha: 0.5)),
+                color: color.surface,
+                border: Border.all(color: color.outlineVariant),
                 borderRadius: BorderRadius.circular(AppTheme.radiusMd),
               ),
               child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    TranslationHandler.get('paste_contract_link'),
-                    style: theme.textTheme.titleSmall?.copyWith(
-                      fontWeight: FontWeight.w600,
-                    ),
+                  _buildInstructionItem(
+                    context,
+                    Icons.lightbulb_outline,
+                    TranslationHandler.get('instruction_good_lighting'),
                   ),
                   const SizedBox(height: 12),
-                  TextField(
-                    controller: _linkController,
-                    decoration: InputDecoration(
-                      hintText: 'yack://...',
-                      prefixIcon: const Icon(Icons.link),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(AppTheme.radiusSm),
-                      ),
-                      contentPadding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 12,
-                      ),
-                    ),
-                    keyboardType: TextInputType.url,
-                    textInputAction: TextInputAction.done,
-                    onSubmitted: (_) => _onManualLinkSubmit(),
+                  _buildInstructionItem(
+                    context,
+                    Icons.center_focus_strong,
+                    TranslationHandler.get('instruction_center_code'),
                   ),
-                  const SizedBox(height: 16),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: SecondaryActionButton(
-                          action: TranslationHandler.get('cancel'),
-                          onClick: () {
-                            setState(() {
-                              _showManualInput = false;
-                              _linkController.clear();
-                            });
-                          },
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: PrimaryActionButton(
-                          action: TranslationHandler.get('join_contract'),
-                          onClick: _onManualLinkSubmit,
-                        ),
-                      ),
-                    ],
+                  const SizedBox(height: 12),
+                  _buildInstructionItem(
+                    context,
+                    Icons.flash_auto,
+                    TranslationHandler.get('instruction_auto_scan'),
                   ),
                 ],
               ),
             ),
+            const SizedBox(height: 32),
+            PrimaryActionButton(
+              action: TranslationHandler.get('start_scanning'),
+              icon: Icons.qr_code_scanner,
+              onClick: _startScanning,
+            ),
+            const SizedBox(height: 24),
+
+            // Divider with "OR" text
+            Row(
+              children: [
+                Expanded(
+                  child: Divider(color: color.outline.withValues(alpha: 0.5)),
+                ),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  child: Text(
+                    TranslationHandler.get('or'),
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: color.onSurface.withValues(alpha: 0.6),
+                    ),
+                  ),
+                ),
+                Expanded(
+                  child: Divider(color: color.outline.withValues(alpha: 0.5)),
+                ),
+              ],
+            ),
+            const SizedBox(height: 24),
+
+            // Manual link paste section
+            if (!_showManualInput)
+              SecondaryActionButton(
+                action: TranslationHandler.get('enter_link_manually'),
+                icon: Icons.link,
+                onClick: () => setState(() => _showManualInput = true),
+              ),
+
+            if (_showManualInput) ...[
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  border: Border.all(
+                    color: color.outline.withValues(alpha: 0.5),
+                  ),
+                  borderRadius: BorderRadius.circular(AppTheme.radiusMd),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      TranslationHandler.get('paste_contract_link'),
+                      style: theme.textTheme.titleSmall?.copyWith(
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    TextField(
+                      controller: _linkController,
+                      decoration: InputDecoration(
+                        hintText: 'yack://...',
+                        prefixIcon: const Icon(Icons.link),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(
+                            AppTheme.radiusSm,
+                          ),
+                        ),
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 12,
+                        ),
+                      ),
+                      keyboardType: TextInputType.url,
+                      textInputAction: TextInputAction.done,
+                      onSubmitted: (_) => _onManualLinkSubmit(),
+                    ),
+                    const SizedBox(height: 16),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: SecondaryActionButton(
+                            action: TranslationHandler.get('cancel'),
+                            onClick: () {
+                              setState(() {
+                                _showManualInput = false;
+                                _linkController.clear();
+                              });
+                            },
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: PrimaryActionButton(
+                            action: TranslationHandler.get('join_contract'),
+                            icon: Icons.arrow_forward,
+                            onClick: _onManualLinkSubmit,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ],
+            const SizedBox(height: 40),
           ],
-          const SizedBox(height: 40),
-        ],
+        ),
       ),
     );
   }
 
-  Widget _buildInstructionItem(BuildContext context, IconData icon, String text) {
+  Widget _buildInstructionItem(
+    BuildContext context,
+    IconData icon,
+    String text,
+  ) {
     final theme = Theme.of(context);
     return Row(
       children: [
         Icon(icon, color: theme.colorScheme.primary),
         const SizedBox(width: 12),
-        Expanded(
-          child: Text(text, style: theme.textTheme.bodyMedium),
-        ),
+        Expanded(child: Text(text, style: theme.textTheme.bodyMedium)),
       ],
     );
   }
