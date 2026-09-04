@@ -14,12 +14,12 @@ import 'package:yack/data/db/models/message.dart';
 import 'package:yack/data/db/models/mediaFile.dart';
 import 'package:yack/data/repositories/isar_adapter.dart';
 import 'package:yack/logic/cubits/contract/contract_state_cubit.dart';
-import 'package:yack/logic/cubits/contract/contract_state_state.dart';
 import 'package:yack/logic/cubits/message/message_cubit.dart';
 import 'package:yack/logic/cubits/message/message_state.dart';
 import 'package:yack/logic/cubits/media/media_cubit.dart';
 import 'package:yack/logic/cubits/media/media_state.dart';
 import 'package:yack/logic/services/auth/cryptoService.dart';
+import 'package:yack/logic/services/auth/decrypted_key_cache.dart';
 import 'package:yack/logic/services/contract/contract_sync_service.dart';
 import 'package:yack/logic/services/notification/contract_notification_handler.dart';
 import 'package:yack/logic/services/notification/notification_service.dart';
@@ -37,9 +37,12 @@ class ContractAgreement extends StatefulWidget {
 }
 
 class _ContractAgreementState extends State<ContractAgreement> {
+  static const int _maxAttachmentBytes = 6 * 1024 * 1024;
+
   final TextEditingController _messageController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
   final ImagePicker _picker = ImagePicker();
+  final ContractSyncService _contractSyncService = ContractSyncService();
 
   String _currentUserId = '';
   String? _externalContractId;
@@ -49,6 +52,8 @@ class _ContractAgreementState extends State<ContractAgreement> {
   StreamSubscription<ContractNotificationEvent>? _notificationSubscription;
   bool _isLoading = true;
   bool _isSendingMessage = false;
+  bool _isUploadingMedia = false;
+  bool _isUpdatingContract = false;
 
   @override
   void initState() {
@@ -71,7 +76,7 @@ class _ContractAgreementState extends State<ContractAgreement> {
       // Load contract from Isar
       final contract = await isar.contracts.get(widget.contractId);
       if (contract == null) {
-        setState(() => _isLoading = false);
+        if (mounted) setState(() => _isLoading = false);
         return;
       }
 
@@ -81,15 +86,8 @@ class _ContractAgreementState extends State<ContractAgreement> {
       final userBox = await Hive.openBox('user');
       _currentUserId = userBox.get('userId')?.toString() ?? '';
 
-      // Get decrypted private key from Hive (set during account unlock)
-      final cachedKey = userBox.get('decryptedPrivateKey');
-      if (cachedKey != null) {
-        if (cachedKey is Uint8List) {
-          _privateKeyBytes = cachedKey;
-        } else if (cachedKey is List) {
-          _privateKeyBytes = Uint8List.fromList(cachedKey.cast<int>());
-        }
-      }
+      // Read the private key from the process-memory unlock cache.
+      _privateKeyBytes = DecryptedKeyCache.value;
 
       // Determine other user's public key
       final isUserA = contract.userAId == _currentUserId;
@@ -97,13 +95,13 @@ class _ContractAgreementState extends State<ContractAgreement> {
           ? contract.userBPublicKey
           : contract.userAPublicKey;
 
-      // Sync messages from backend
-      await _syncMessages();
-
-      setState(() => _isLoading = false);
+      if (mounted) setState(() => _isLoading = false);
+      // Render cached activity immediately, then refresh both streams without
+      // holding the agreement behind a network request.
+      unawaited(Future.wait([_syncMessages(), _syncMedia()]));
     } catch (e) {
-      print('[ContractAgreement] Error loading contract: $e');
-      setState(() => _isLoading = false);
+      debugPrint('[ContractAgreement] Error loading contract: $e');
+      if (mounted) setState(() => _isLoading = false);
     }
   }
 
@@ -112,18 +110,22 @@ class _ContractAgreementState extends State<ContractAgreement> {
     final handler = NotificationService().contractHandler;
 
     _notificationSubscription = handler.events.listen((event) async {
+      if (!mounted) return;
       // Only process events for this contract
       if (_externalContractId == null) return;
       if (event.contractId != _externalContractId) return;
 
-      print('[ContractAgreement] Received notification: ${event.type}, userId: ${event.userId}');
+      debugPrint(
+        '[ContractAgreement] Received notification: ${event.type}, userId: ${event.userId}',
+      );
 
       switch (event.type) {
         case ContractNotificationType.contractAccept:
           SnackBarHandler.showSuccess(
             context,
-            TranslationHandler.get('notification_other_accepted')
-                .replaceAll('{name}', event.username ?? 'User'),
+            TranslationHandler.get(
+              'notification_other_accepted',
+            ).replaceAll('{name}', event.username ?? 'User'),
           );
           // Sync is handled by notification handler - UI will update via StreamBuilder
           break;
@@ -131,8 +133,9 @@ class _ContractAgreementState extends State<ContractAgreement> {
         case ContractNotificationType.contractDispute:
           SnackBarHandler.showError(
             context,
-            TranslationHandler.get('notification_contract_disputed')
-                .replaceAll('{name}', event.username ?? 'User'),
+            TranslationHandler.get(
+              'notification_contract_disputed',
+            ).replaceAll('{name}', event.username ?? 'User'),
           );
           // Sync is handled by notification handler - UI will update via StreamBuilder
           break;
@@ -152,7 +155,6 @@ class _ContractAgreementState extends State<ContractAgreement> {
       }
     });
   }
-
 
   /// Sync messages from backend and decrypt them
   Future<void> _syncMessages() async {
@@ -191,7 +193,7 @@ class _ContractAgreementState extends State<ContractAgreement> {
         _scrollToBottom();
       }
     } catch (e) {
-      print('[ContractAgreement] Error syncing messages: $e');
+      debugPrint('[ContractAgreement] Error syncing messages: $e');
     }
   }
 
@@ -220,7 +222,7 @@ class _ContractAgreementState extends State<ContractAgreement> {
         }
       }
     } catch (e) {
-      print('[ContractAgreement] Error syncing media: $e');
+      debugPrint('[ContractAgreement] Error syncing media: $e');
     }
   }
 
@@ -248,9 +250,16 @@ class _ContractAgreementState extends State<ContractAgreement> {
       );
       return;
     }
+    if (!CryptoService.canEncryptWithRsa(text)) {
+      SnackBarHandler.showWarning(
+        context,
+        TranslationHandler.get('message_too_long_to_encrypt'),
+      );
+      return;
+    }
 
-    _messageController.clear();
     setState(() => _isSendingMessage = true);
+    final messageCubit = context.read<MessageCubit>();
 
     try {
       // Get sender's public key from Hive
@@ -275,26 +284,39 @@ class _ContractAgreementState extends State<ContractAgreement> {
       final contentHash = sha256.convert(utf8.encode(text)).toString();
 
       // Send to backend
-      await context.read<MessageCubit>().sendMessage(
+      final sent = await messageCubit.sendMessage(
         contractId: _externalContractId!,
         contentForSender: contentForSender,
         contentForRecipient: contentForRecipient,
         contentHash: contentHash,
       );
+      if (!sent) {
+        if (mounted) {
+          SnackBarHandler.showError(
+            context,
+            TranslationHandler.get('error_sending_message'),
+          );
+        }
+        return;
+      }
 
       // Sync messages from server to get all messages including the one we just sent
       await _syncMessages();
 
+      if (_messageController.text.trim() == text) {
+        _messageController.clear();
+      }
       _scrollToBottom();
-
     } catch (e) {
-      print('[ContractAgreement] Error sending message: $e');
-      SnackBarHandler.showError(
-        context,
-        TranslationHandler.get('error_sending_message'),
-      );
+      debugPrint('[ContractAgreement] Error sending message: $e');
+      if (mounted) {
+        SnackBarHandler.showError(
+          context,
+          TranslationHandler.get('error_sending_message'),
+        );
+      }
     } finally {
-      setState(() => _isSendingMessage = false);
+      if (mounted) setState(() => _isSendingMessage = false);
     }
   }
 
@@ -302,31 +324,56 @@ class _ContractAgreementState extends State<ContractAgreement> {
   Future<void> _sendMedia(String filePath) async {
     if (_externalContractId == null) return;
 
+    setState(() => _isUploadingMedia = true);
+    final mediaCubit = context.read<MediaCubit>();
     try {
       final file = File(filePath);
       final filename = filePath.split(Platform.pathSeparator).last;
-
+      if (await file.length() > _maxAttachmentBytes) {
+        if (mounted) {
+          SnackBarHandler.showWarning(
+            context,
+            TranslationHandler.get('attachment_too_large'),
+          );
+        }
+        return;
+      }
 
       // Upload to backend
-      await context.read<MediaCubit>().uploadMedia(
+      final uploaded = await mediaCubit.uploadMedia(
         contractId: _externalContractId!,
         file: file,
         filename: filename,
       );
+      if (!uploaded) {
+        if (mounted) {
+          SnackBarHandler.showError(
+            context,
+            TranslationHandler.get('error_uploading_media'),
+          );
+        }
+        return;
+      }
 
       // Sync to get the real data from server
       await _syncMedia();
 
-      SnackBarHandler.showSuccess(
-        context,
-        TranslationHandler.get('media_uploaded_success'),
-      );
+      if (mounted) {
+        SnackBarHandler.showSuccess(
+          context,
+          TranslationHandler.get('media_uploaded_success'),
+        );
+      }
     } catch (e) {
-      print('[ContractAgreement] Error sending media: $e');
-      SnackBarHandler.showError(
-        context,
-        TranslationHandler.get('error_uploading_media'),
-      );
+      debugPrint('[ContractAgreement] Error sending media: $e');
+      if (mounted) {
+        SnackBarHandler.showError(
+          context,
+          TranslationHandler.get('error_uploading_media'),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isUploadingMedia = false);
     }
   }
 
@@ -334,21 +381,38 @@ class _ContractAgreementState extends State<ContractAgreement> {
   Future<void> _acceptContract() async {
     if (_externalContractId == null) return;
 
+    setState(() => _isUpdatingContract = true);
+    final contractCubit = context.read<ContractStateCubit>();
     try {
-      await context.read<ContractStateCubit>().accept(_externalContractId!);
+      final accepted = await contractCubit.accept(_externalContractId!);
+      if (!accepted) {
+        if (mounted) {
+          SnackBarHandler.showError(
+            context,
+            TranslationHandler.get('error_accepting_contract'),
+          );
+        }
+        return;
+      }
 
-      SnackBarHandler.showSuccess(
-        context,
-        TranslationHandler.get('contract_accepted'),
-      );
+      if (mounted) {
+        SnackBarHandler.showSuccess(
+          context,
+          TranslationHandler.get('contract_accepted'),
+        );
+      }
 
       // Sync from backend to get updated status
       await _syncContract();
     } catch (e) {
-      SnackBarHandler.showError(
-        context,
-        TranslationHandler.get('error_accepting_contract'),
-      );
+      if (mounted) {
+        SnackBarHandler.showError(
+          context,
+          TranslationHandler.get('error_accepting_contract'),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isUpdatingContract = false);
     }
   }
 
@@ -356,35 +420,51 @@ class _ContractAgreementState extends State<ContractAgreement> {
   Future<void> _disputeContract({String? reason}) async {
     if (_externalContractId == null) return;
 
+    setState(() => _isUpdatingContract = true);
+    final contractCubit = context.read<ContractStateCubit>();
     try {
-      await context.read<ContractStateCubit>().dispute(
+      final disputed = await contractCubit.dispute(
         _externalContractId!,
         reason: reason,
       );
+      if (!disputed) {
+        if (mounted) {
+          SnackBarHandler.showError(
+            context,
+            TranslationHandler.get('error_disputing_contract'),
+          );
+        }
+        return;
+      }
 
-      SnackBarHandler.showWarning(
-        context,
-        TranslationHandler.get('contract_disputed'),
-      );
+      if (mounted) {
+        SnackBarHandler.showWarning(
+          context,
+          TranslationHandler.get('contract_disputed'),
+        );
+      }
 
       // Sync from backend to get updated status
       await _syncContract();
     } catch (e) {
-      SnackBarHandler.showError(
-        context,
-        TranslationHandler.get('error_disputing_contract'),
-      );
+      if (mounted) {
+        SnackBarHandler.showError(
+          context,
+          TranslationHandler.get('error_disputing_contract'),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isUpdatingContract = false);
     }
   }
 
   /// Sync contract from backend
   Future<void> _syncContract() async {
     try {
-      final syncService = ContractSyncService();
-      await syncService.syncContracts();
-      print('[ContractAgreement] Contract synced from backend');
+      await _contractSyncService.syncContracts();
+      debugPrint('[ContractAgreement] Contract synced from backend');
     } catch (e) {
-      print('[ContractAgreement] Error syncing contract: $e');
+      debugPrint('[ContractAgreement] Error syncing contract: $e');
     }
   }
 
@@ -433,32 +513,38 @@ class _ContractAgreementState extends State<ContractAgreement> {
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
       appBar: AppBar(
-        title: Text(
-          contract.title,
-          style: theme.textTheme.titleMedium,
-          overflow: TextOverflow.ellipsis,
-        ),
-        centerTitle: true,
-        backgroundColor: colors.surface,
-        elevation: 0,
-        leading: IconButton(
-          onPressed: () => Navigator.pop(context),
-          icon: Icon(Icons.arrow_back, color: colors.onSurface),
-        ),
+        title: Text(contract.title, overflow: TextOverflow.ellipsis),
         actions: [
           IconButton(
+            tooltip: TranslationHandler.get('contract_details'),
             onPressed: () => _showContractDetails(contract),
-            icon: Icon(Icons.info_outline, size: 25, color: colors.primary),
+            icon: const Icon(Icons.info_outline),
           ),
+          const SizedBox(width: 4),
         ],
       ),
       body: SafeArea(
-        child: Column(
-          children: [
-            _buildStatusSection(context, contract),
-            Expanded(child: _buildMessagesList()),
-            _buildChatInputBar(colors),
-          ],
+        top: false,
+        child: Align(
+          alignment: Alignment.topCenter,
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 920),
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                color: theme.scaffoldBackgroundColor,
+                border: Border.symmetric(
+                  vertical: BorderSide(color: colors.outlineVariant),
+                ),
+              ),
+              child: Column(
+                children: [
+                  _buildStatusSection(context, contract),
+                  Expanded(child: _buildMessagesList()),
+                  _buildChatInputBar(colors),
+                ],
+              ),
+            ),
+          ),
         ),
       ),
     );
@@ -467,134 +553,128 @@ class _ContractAgreementState extends State<ContractAgreement> {
   Widget _buildStatusSection(BuildContext context, Contract contract) {
     final theme = Theme.of(context);
     final colors = theme.colorScheme;
-
-    // Show status badges for terminal states
-    if (contract.status == ContractStatus.disputed) {
-      return _buildStatusBadge(
-        colors,
-        Colors.red,
-        Icons.gavel,
-        'status_disputed',
-      );
-    }
-    if (contract.status == ContractStatus.completed) {
-      return _buildStatusBadge(
-        colors,
-        Colors.green,
-        Icons.check_circle,
-        'status_completed',
-      );
-    }
-    if (contract.status == ContractStatus.accepted) {
-      return _buildStatusBadge(
-        colors,
-        Colors.green,
-        Icons.check_circle,
-        'status_accepted',
-      );
-    }
-    if (contract.status == ContractStatus.rejected) {
-      return _buildStatusBadge(
-        colors,
-        Colors.grey,
-        Icons.cancel,
-        'status_rejected',
-      );
-    }
-
-    // Show pending acceptance status
     final isUserA = contract.userAId == _currentUserId;
-    final myAccepted = isUserA ? contract.userAAccepted : contract.userBAccepted;
-    final otherAccepted = isUserA ? contract.userBAccepted : contract.userAAccepted;
+    final myAccepted = isUserA
+        ? contract.userAAccepted
+        : contract.userBAccepted;
+    final otherAccepted = isUserA
+        ? contract.userBAccepted
+        : contract.userAAccepted;
+    final isActionable =
+        contract.status == ContractStatus.active ||
+        contract.status == ContractStatus.pending;
+    final waiting = myAccepted && !otherAccepted && isActionable;
+    final statusColor = waiting
+        ? AppTheme.statusOrange
+        : _statusColor(contract.status, colors);
+    final statusText = waiting
+        ? TranslationHandler.get('waiting_for_other_accept')
+        : _getStatusText(contract.status);
 
-    if (myAccepted && !otherAccepted) {
-      return _buildStatusBadge(
-        colors,
-        Colors.orange,
-        Icons.hourglass_empty,
-        'waiting_for_other_accept',
-      );
-    }
-
-    // Show action buttons for active contracts
-    return BlocListener<ContractStateCubit, ContractStateState>(
-      listener: (context, state) {
-        if (state is ContractStateError) {
-          SnackBarHandler.showError(context, state.message);
-        }
-      },
-      child: Container(
-        color: colors.surface,
-        padding: const EdgeInsets.all(20),
-        child: Row(
-          children: [
-            Expanded(
-              child: _buildActionButton(
-                TranslationHandler.get('dispute'),
-                Icons.gavel,
-                Colors.white,
-                Colors.red,
-                () => _showDisputeConfirmation(context),
-              ),
-            ),
-            const SizedBox(width: 20),
-            Expanded(
-              child: _buildActionButton(
-                myAccepted
-                    ? TranslationHandler.get('accepted')
-                    : TranslationHandler.get('accept'),
-                Icons.check_circle,
-                Colors.white,
-                myAccepted ? Colors.grey : Colors.green,
-                myAccepted ? null : () => _showAcceptConfirmation(context),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildStatusBadge(
-    ColorScheme colors,
-    Color statusColor,
-    IconData icon,
-    String statusKey,
-  ) {
     return Container(
       color: colors.surface,
-      padding: const EdgeInsets.all(16),
-      child: Center(
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-          decoration: BoxDecoration(
-            color: statusColor.withValues(alpha: 0.12),
-            borderRadius: BorderRadius.circular(50),
-            border: Border.all(color: statusColor.withValues(alpha: 0.4)),
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
+      padding: const EdgeInsets.fromLTRB(18, 14, 18, 16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
             children: [
-              Icon(icon, color: statusColor),
-              const SizedBox(width: 8),
-              Text(
-                TranslationHandler.get(statusKey).toUpperCase(),
-                style: TextStyle(
-                  color: statusColor,
-                  fontWeight: FontWeight.w700,
-                  fontSize: 13,
-                  letterSpacing: 0.5,
+              Container(
+                width: 36,
+                height: 36,
+                decoration: BoxDecoration(
+                  color: statusColor.withValues(alpha: .11),
+                  borderRadius: BorderRadius.circular(AppTheme.radiusSm),
                 ),
+                child: Icon(
+                  waiting
+                      ? Icons.hourglass_empty
+                      : _statusIcon(contract.status),
+                  color: statusColor,
+                  size: 20,
+                ),
+              ),
+              const SizedBox(width: 11),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      statusText,
+                      style: theme.textTheme.titleSmall?.copyWith(
+                        color: statusColor,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      TranslationHandler.get('agreement_activity_desc'),
+                      style: theme.textTheme.bodySmall,
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 12),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  Text(
+                    TranslationHandler.get('price'),
+                    style: theme.textTheme.labelSmall,
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    '${contract.price} ${TranslationHandler.get('currency')}',
+                    style: theme.textTheme.titleMedium,
+                  ),
+                ],
               ),
             ],
           ),
-        ),
+          if (isActionable && !waiting) ...[
+            const SizedBox(height: 14),
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton.icon(
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: colors.error,
+                    ),
+                    onPressed: _isUpdatingContract
+                        ? null
+                        : () => _showDisputeConfirmation(context),
+                    icon: const Icon(Icons.report_problem_outlined),
+                    label: Text(TranslationHandler.get('dispute')),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: FilledButton.icon(
+                    onPressed: _isUpdatingContract || myAccepted
+                        ? null
+                        : () => _showAcceptConfirmation(context),
+                    icon: _isUpdatingContract
+                        ? const SizedBox.square(
+                            dimension: 18,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        : const Icon(Icons.check),
+                    label: Text(
+                      myAccepted
+                          ? TranslationHandler.get('accepted')
+                          : TranslationHandler.get('accept'),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ],
       ),
     );
   }
 
-  void _showAcceptConfirmation(BuildContext context) {
-    showDialog(
+  Future<void> _showAcceptConfirmation(BuildContext context) async {
+    final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
         title: Text(TranslationHandler.get('accept_contract')),
@@ -604,26 +684,19 @@ class _ContractAgreementState extends State<ContractAgreement> {
             onPressed: () => Navigator.pop(ctx),
             child: Text(TranslationHandler.get('cancel')),
           ),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.green),
-            onPressed: () {
-              Navigator.pop(ctx);
-              _acceptContract();
-            },
-            child: Text(
-              TranslationHandler.get('accept'),
-              style: const TextStyle(color: Colors.white),
-            ),
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: Text(TranslationHandler.get('accept')),
           ),
         ],
       ),
     );
+    if (confirmed == true && mounted) await _acceptContract();
   }
 
-  void _showDisputeConfirmation(BuildContext context) {
+  Future<void> _showDisputeConfirmation(BuildContext context) async {
     final reasonController = TextEditingController();
-
-    showDialog(
+    final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
         title: Text(TranslationHandler.get('dispute_contract')),
@@ -636,8 +709,7 @@ class _ContractAgreementState extends State<ContractAgreement> {
             TextField(
               controller: reasonController,
               decoration: InputDecoration(
-                hintText: TranslationHandler.get('dispute_reason_optional'),
-                border: const OutlineInputBorder(),
+                labelText: TranslationHandler.get('dispute_reason_optional'),
               ),
               maxLines: 3,
             ),
@@ -648,66 +720,27 @@ class _ContractAgreementState extends State<ContractAgreement> {
             onPressed: () => Navigator.pop(ctx),
             child: Text(TranslationHandler.get('cancel')),
           ),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
-            onPressed: () {
-              Navigator.pop(ctx);
-              _disputeContract(reason: reasonController.text.trim());
-            },
-            child: Text(
-              TranslationHandler.get('dispute'),
-              style: const TextStyle(color: Colors.white),
+          FilledButton(
+            style: FilledButton.styleFrom(
+              backgroundColor: Theme.of(context).colorScheme.error,
+              foregroundColor: Theme.of(context).colorScheme.onError,
             ),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: Text(TranslationHandler.get('dispute')),
           ),
         ],
       ),
     );
-  }
-
-  Widget _buildActionButton(
-    String text,
-    IconData icon,
-    Color textColor,
-    Color bgColor,
-    VoidCallback? onPressed,
-  ) {
-    return Material(
-      color: bgColor,
-      borderRadius: BorderRadius.circular(AppTheme.radiusMd),
-      elevation: 2,
-      child: InkWell(
-        onTap: onPressed,
-        borderRadius: BorderRadius.circular(AppTheme.radiusMd),
-        child: Container(
-          height: 50,
-          padding: const EdgeInsets.symmetric(horizontal: 16),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(icon, color: textColor, size: 20),
-              const SizedBox(width: 8),
-              Text(
-                text,
-                style: TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w700,
-                  color: textColor,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
+    final reason = reasonController.text.trim();
+    reasonController.dispose();
+    if (confirmed == true && mounted) {
+      await _disputeContract(reason: reason.isEmpty ? null : reason);
+    }
   }
 
   /// Refresh all data from backend
   Future<void> _onRefresh() async {
-    await Future.wait([
-      _syncContract(),
-      _syncMessages(),
-      _syncMedia(),
-    ]);
+    await Future.wait([_syncContract(), _syncMessages(), _syncMedia()]);
   }
 
   /// Build messages list from Isar with real-time updates
@@ -734,16 +767,43 @@ class _ContractAgreementState extends State<ContractAgreement> {
                 onRefresh: _onRefresh,
                 child: ListView(
                   physics: const AlwaysScrollableScrollPhysics(),
+                  padding: const EdgeInsets.symmetric(horizontal: 24),
                   children: [
                     SizedBox(
                       height: MediaQuery.of(context).size.height * 0.5,
-                      child: Center(
-                        child: Text(
-                          TranslationHandler.get('no_messages_yet'),
-                          style: TextStyle(
-                            color: Theme.of(context).colorScheme.onSurface.withOpacity(0.5),
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(
+                            _privateKeyBytes == null
+                                ? Icons.lock_outline
+                                : Icons.forum_outlined,
+                            size: 36,
+                            color: Theme.of(context).colorScheme.primary,
                           ),
-                        ),
+                          const SizedBox(height: 14),
+                          Text(
+                            _privateKeyBytes == null
+                                ? TranslationHandler.get(
+                                    'agreement_locked_title',
+                                  )
+                                : TranslationHandler.get('no_messages_yet'),
+                            textAlign: TextAlign.center,
+                            style: Theme.of(context).textTheme.titleMedium,
+                          ),
+                          const SizedBox(height: 6),
+                          Text(
+                            _privateKeyBytes == null
+                                ? TranslationHandler.get(
+                                    'agreement_locked_desc',
+                                  )
+                                : TranslationHandler.get(
+                                    'no_activity_yet_desc',
+                                  ),
+                            textAlign: TextAlign.center,
+                            style: Theme.of(context).textTheme.bodyMedium,
+                          ),
+                        ],
                       ),
                     ),
                   ],
@@ -754,8 +814,12 @@ class _ContractAgreementState extends State<ContractAgreement> {
             // Combine messages and media into a single sorted list
             final List<dynamic> allItems = [...messages, ...mediaFiles];
             allItems.sort((a, b) {
-              final aTime = a is Message ? a.createdAt : (a as MediaFile).createdAt;
-              final bTime = b is Message ? b.createdAt : (b as MediaFile).createdAt;
+              final aTime = a is Message
+                  ? a.createdAt
+                  : (a as MediaFile).createdAt;
+              final bTime = b is Message
+                  ? b.createdAt
+                  : (b as MediaFile).createdAt;
               return aTime.compareTo(bTime);
             });
 
@@ -764,15 +828,20 @@ class _ContractAgreementState extends State<ContractAgreement> {
               child: ListView.builder(
                 controller: _scrollController,
                 physics: const AlwaysScrollableScrollPhysics(),
-                padding: const EdgeInsets.only(bottom: 8),
+                padding: const EdgeInsets.fromLTRB(4, 12, 4, 12),
                 itemCount: allItems.length,
                 itemBuilder: (context, index) {
-                  print('[ContractAgreement] Building item at index $_currentUserId');
                   final item = allItems[index];
                   if (item is Message) {
-                    return _buildMessageBubble(item, item.senderId == _currentUserId);
+                    return _buildMessageBubble(
+                      item,
+                      item.senderId == _currentUserId,
+                    );
                   } else if (item is MediaFile) {
-                    return _buildMediaBubble(item, item.senderId == _currentUserId);
+                    return _buildMediaBubble(
+                      item,
+                      item.senderId == _currentUserId,
+                    );
                   }
                   return const SizedBox.shrink();
                 },
@@ -789,9 +858,11 @@ class _ContractAgreementState extends State<ContractAgreement> {
     final senderName = _getSenderName(message);
 
     return Container(
-      margin: const EdgeInsets.symmetric(vertical: 4, horizontal: 16),
+      margin: const EdgeInsets.symmetric(vertical: 4, horizontal: 12),
       child: Row(
-        mainAxisAlignment: isMe ? MainAxisAlignment.end : MainAxisAlignment.start,
+        mainAxisAlignment: isMe
+            ? MainAxisAlignment.end
+            : MainAxisAlignment.start,
         crossAxisAlignment: CrossAxisAlignment.end,
         children: [
           if (!isMe) ...[
@@ -807,37 +878,38 @@ class _ContractAgreementState extends State<ContractAgreement> {
           ],
           Flexible(
             child: Container(
+              constraints: const BoxConstraints(maxWidth: 540),
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.only(
-                  topLeft: const Radius.circular(16),
-                  topRight: const Radius.circular(16),
-                  bottomLeft: isMe ? const Radius.circular(16) : const Radius.circular(4),
-                  bottomRight: isMe ? const Radius.circular(4) : const Radius.circular(16),
+                  topLeft: const Radius.circular(AppTheme.radiusMd),
+                  topRight: const Radius.circular(AppTheme.radiusMd),
+                  bottomLeft: isMe
+                      ? const Radius.circular(AppTheme.radiusMd)
+                      : const Radius.circular(AppTheme.radiusSm),
+                  bottomRight: isMe
+                      ? const Radius.circular(AppTheme.radiusSm)
+                      : const Radius.circular(AppTheme.radiusMd),
                 ),
                 color: isMe ? colors.primary : colors.surface,
-                boxShadow: const [
-                  BoxShadow(color: Colors.black12, blurRadius: 2, offset: Offset(0, 1)),
-                ],
+                border: isMe ? null : Border.all(color: colors.outlineVariant),
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
+                  SelectableText(
                     message.content,
-                    style: TextStyle(
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                       color: isMe ? colors.onPrimary : colors.onSurface,
-                      fontSize: 14,
                     ),
                   ),
-                  const SizedBox(height: 4),
+                  const SizedBox(height: 5),
                   Text(
                     _formatTime(message.createdAt),
-                    style: TextStyle(
+                    style: Theme.of(context).textTheme.labelSmall?.copyWith(
                       color: isMe
-                          ? colors.onPrimary.withOpacity(0.7)
-                          : colors.onSurface.withOpacity(0.5),
-                      fontSize: 10,
+                          ? colors.onPrimary.withValues(alpha: .72)
+                          : colors.onSurfaceVariant,
                     ),
                   ),
                 ],
@@ -850,9 +922,9 @@ class _ContractAgreementState extends State<ContractAgreement> {
               radius: 14,
               backgroundColor: colors.primary,
               child: Text(
-                'Me',
+                TranslationHandler.get('you'),
                 style: TextStyle(
-                  fontSize: 10,
+                  fontSize: 11,
                   color: colors.onPrimary,
                   fontWeight: FontWeight.bold,
                 ),
@@ -867,15 +939,18 @@ class _ContractAgreementState extends State<ContractAgreement> {
   Widget _buildMediaBubble(MediaFile media, bool isMe) {
     final colors = Theme.of(context).colorScheme;
     final isUrl = media.url.startsWith('http');
-    final isImage = media.mimeType?.startsWith('image') == true ||
+    final isImage =
+        media.mimeType?.startsWith('image') == true ||
         media.originalFilename.toLowerCase().endsWith('.png') ||
         media.originalFilename.toLowerCase().endsWith('.jpg') ||
         media.originalFilename.toLowerCase().endsWith('.jpeg');
 
     return Container(
-      margin: const EdgeInsets.symmetric(vertical: 4, horizontal: 16),
+      margin: const EdgeInsets.symmetric(vertical: 4, horizontal: 12),
       child: Row(
-        mainAxisAlignment: isMe ? MainAxisAlignment.end : MainAxisAlignment.start,
+        mainAxisAlignment: isMe
+            ? MainAxisAlignment.end
+            : MainAxisAlignment.start,
         crossAxisAlignment: CrossAxisAlignment.end,
         children: [
           if (!isMe) ...[
@@ -893,16 +968,14 @@ class _ContractAgreementState extends State<ContractAgreement> {
           ],
           Flexible(
             child: Container(
-              constraints: const BoxConstraints(maxWidth: 200),
+              constraints: const BoxConstraints(maxWidth: 300),
               decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: BorderRadius.circular(AppTheme.radiusMd),
                 color: isMe ? colors.primary : colors.surface,
-                boxShadow: const [
-                  BoxShadow(color: Colors.black12, blurRadius: 2, offset: Offset(0, 1)),
-                ],
+                border: isMe ? null : Border.all(color: colors.outlineVariant),
               ),
               child: ClipRRect(
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: BorderRadius.circular(AppTheme.radiusMd),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -911,27 +984,29 @@ class _ContractAgreementState extends State<ContractAgreement> {
                           ? Image.network(
                               media.url,
                               fit: BoxFit.cover,
-                              width: 200,
-                              height: 150,
+                              width: 300,
+                              height: 180,
                               loadingBuilder: (_, child, progress) =>
                                   progress == null
-                                      ? child
-                                      : Container(
-                                          width: 200,
-                                          height: 150,
-                                          color: colors.surfaceContainerHighest,
-                                          child: const Center(
-                                            child: CircularProgressIndicator(),
-                                          ),
-                                        ),
-                              errorBuilder: (_, __, ___) => _buildBrokenImagePlaceholder(colors),
+                                  ? child
+                                  : Container(
+                                      width: 300,
+                                      height: 180,
+                                      color: colors.surfaceContainerHighest,
+                                      child: const Center(
+                                        child: CircularProgressIndicator(),
+                                      ),
+                                    ),
+                              errorBuilder: (_, __, ___) =>
+                                  _buildBrokenImagePlaceholder(colors),
                             )
                           : Image.file(
                               File(media.content),
                               fit: BoxFit.cover,
-                              width: 200,
-                              height: 150,
-                              errorBuilder: (_, __, ___) => _buildBrokenImagePlaceholder(colors),
+                              width: 300,
+                              height: 180,
+                              errorBuilder: (_, __, ___) =>
+                                  _buildBrokenImagePlaceholder(colors),
                             )
                     else
                       _buildFilePlaceholder(colors, media.originalFilename),
@@ -942,22 +1017,24 @@ class _ContractAgreementState extends State<ContractAgreement> {
                         children: [
                           Text(
                             media.originalFilename,
-                            style: TextStyle(
-                              color: isMe ? colors.onPrimary : colors.onSurface,
-                              fontSize: 12,
-                              fontWeight: FontWeight.w500,
-                            ),
+                            style: Theme.of(context).textTheme.labelMedium
+                                ?.copyWith(
+                                  color: isMe
+                                      ? colors.onPrimary
+                                      : colors.onSurface,
+                                  fontWeight: FontWeight.w500,
+                                ),
                             overflow: TextOverflow.ellipsis,
                           ),
                           const SizedBox(height: 2),
                           Text(
                             _formatTime(media.createdAt),
-                            style: TextStyle(
-                              color: isMe
-                                  ? colors.onPrimary.withOpacity(0.7)
-                                  : colors.onSurface.withOpacity(0.5),
-                              fontSize: 10,
-                            ),
+                            style: Theme.of(context).textTheme.labelSmall
+                                ?.copyWith(
+                                  color: isMe
+                                      ? colors.onPrimary.withValues(alpha: .72)
+                                      : colors.onSurfaceVariant,
+                                ),
                           ),
                         ],
                       ),
@@ -973,9 +1050,9 @@ class _ContractAgreementState extends State<ContractAgreement> {
               radius: 14,
               backgroundColor: colors.primary,
               child: Text(
-                'Me',
+                TranslationHandler.get('you'),
                 style: TextStyle(
-                  fontSize: 10,
+                  fontSize: 11,
                   color: colors.onPrimary,
                   fontWeight: FontWeight.bold,
                 ),
@@ -989,12 +1066,12 @@ class _ContractAgreementState extends State<ContractAgreement> {
 
   Widget _buildBrokenImagePlaceholder(ColorScheme colors) {
     return Container(
-      width: 200,
-      height: 150,
+      width: 300,
+      height: 180,
       color: colors.surfaceContainerHighest,
       child: Icon(
         Icons.broken_image,
-        color: colors.onSurface.withOpacity(0.5),
+        color: colors.onSurface.withValues(alpha: .5),
       ),
     );
   }
@@ -1021,8 +1098,8 @@ class _ContractAgreementState extends State<ContractAgreement> {
     }
 
     return Container(
-      width: 200,
-      height: 100,
+      width: 300,
+      height: 112,
       color: colors.surfaceContainerHighest,
       child: Icon(icon, size: 40, color: colors.primary),
     );
@@ -1032,52 +1109,61 @@ class _ContractAgreementState extends State<ContractAgreement> {
     return Container(
       decoration: BoxDecoration(
         color: colors.surface,
-        boxShadow: const [
-          BoxShadow(color: Colors.black12, blurRadius: 8, offset: Offset(0, -2)),
-        ],
+        border: Border(top: BorderSide(color: colors.outlineVariant)),
       ),
-      padding: const EdgeInsets.only(left: 16, right: 16, bottom: 12, top: 12),
-      child: Row(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
         children: [
-          IconButton(
-            onPressed: _showAttachmentOptions,
-            icon: Icon(Icons.attach_file, color: colors.onSurface, size: 22),
-          ),
-          const SizedBox(width: 8),
-          Expanded(
-            child: TextField(
-              controller: _messageController,
-              decoration: InputDecoration(
-                hintText: TranslationHandler.get('type_your_message'),
-                border: InputBorder.none,
-                contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                hintStyle: TextStyle(color: colors.onSurface.withOpacity(0.5)),
-              ),
-              maxLines: null,
-              textInputAction: TextInputAction.send,
-              onSubmitted: (_) => _sendMessage(),
-              style: TextStyle(color: colors.onSurface),
-            ),
-          ),
-          const SizedBox(width: 8),
-          Material(
-            color: _isSendingMessage
-                ? colors.surfaceContainerHighest
-                : colors.primary,
-            shape: const CircleBorder(),
-            elevation: 0,
-            child: IconButton(
-              onPressed: _isSendingMessage ? null : _sendMessage,
-              icon: _isSendingMessage
-                  ? SizedBox(
-                      width: 20,
-                      height: 20,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2,
-                        color: colors.primary,
+          if (_isUploadingMedia) const LinearProgressIndicator(minHeight: 2),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(10, 10, 10, 12),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                IconButton(
+                  tooltip: TranslationHandler.get('add_attachment'),
+                  onPressed: _isUploadingMedia ? null : _showAttachmentOptions,
+                  icon: const Icon(Icons.attach_file),
+                ),
+                const SizedBox(width: 6),
+                Expanded(
+                  child: TextField(
+                    controller: _messageController,
+                    enabled: _privateKeyBytes != null,
+                    decoration: InputDecoration(
+                      hintText: _privateKeyBytes == null
+                          ? TranslationHandler.get('agreement_locked_title')
+                          : TranslationHandler.get('type_your_message'),
+                      isDense: true,
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 14,
+                        vertical: 12,
                       ),
-                    )
-                  : Icon(Icons.send_rounded, color: colors.onPrimary, size: 20),
+                    ),
+                    minLines: 1,
+                    maxLines: 4,
+                    textInputAction: TextInputAction.newline,
+                    onSubmitted: (_) => _sendMessage(),
+                    style: TextStyle(color: colors.onSurface),
+                  ),
+                ),
+                const SizedBox(width: 6),
+                IconButton.filled(
+                  tooltip: TranslationHandler.get('send_message'),
+                  onPressed: _isSendingMessage || _privateKeyBytes == null
+                      ? null
+                      : _sendMessage,
+                  icon: _isSendingMessage
+                      ? SizedBox.square(
+                          dimension: 19,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: colors.onPrimary,
+                          ),
+                        )
+                      : const Icon(Icons.send_rounded, size: 20),
+                ),
+              ],
             ),
           ),
         ],
@@ -1088,203 +1174,200 @@ class _ContractAgreementState extends State<ContractAgreement> {
   void _showAttachmentOptions() {
     final colors = Theme.of(context).colorScheme;
 
-    showModalBottomSheet(
+    showModalBottomSheet<void>(
       context: context,
-      backgroundColor: Colors.transparent,
-      builder: (context) {
-        return Container(
-          decoration: BoxDecoration(
-            color: colors.surface,
-            borderRadius: const BorderRadius.only(
-              topLeft: Radius.circular(20),
-              topRight: Radius.circular(20),
-            ),
-          ),
-          padding: const EdgeInsets.all(20),
+      useSafeArea: true,
+      builder: (_) => SafeArea(
+        top: false,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(20, 10, 20, 20),
           child: Column(
             mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Text(
-                TranslationHandler.get('choose_file_type'),
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                  color: colors.onSurface,
+              Center(
+                child: Container(
+                  width: 42,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: colors.outlineVariant,
+                    borderRadius: BorderRadius.circular(2),
+                  ),
                 ),
               ),
               const SizedBox(height: 20),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                children: [
-                  _buildAttachmentOption(
-                    Icons.photo_camera,
-                    TranslationHandler.get('camera'),
-                    _pickImageFromCamera,
-                  ),
-                  _buildAttachmentOption(
-                    Icons.photo,
-                    TranslationHandler.get('gallery'),
-                    _pickImageFromGallery,
-                  ),
-                  _buildAttachmentOption(
-                    Icons.videocam,
-                    TranslationHandler.get('video'),
-                    _pickVideo,
-                  ),
-                ],
+              Text(
+                TranslationHandler.get('choose_file_type'),
+                style: Theme.of(context).textTheme.titleLarge,
               ),
-              const SizedBox(height: 20),
+              const SizedBox(height: 8),
+              Text(
+                TranslationHandler.get('attachment_privacy_note'),
+                style: Theme.of(context).textTheme.bodySmall,
+              ),
+              const SizedBox(height: 12),
+              ListTile(
+                leading: const Icon(Icons.photo_camera_outlined),
+                title: Text(TranslationHandler.get('camera')),
+                onTap: _pickImageFromCamera,
+              ),
+              ListTile(
+                leading: const Icon(Icons.photo_outlined),
+                title: Text(TranslationHandler.get('gallery')),
+                onTap: _pickImageFromGallery,
+              ),
+              ListTile(
+                leading: const Icon(Icons.videocam_outlined),
+                title: Text(TranslationHandler.get('video')),
+                onTap: _pickVideo,
+              ),
             ],
           ),
-        );
-      },
-    );
-  }
-
-  Widget _buildAttachmentOption(IconData icon, String label, Function() onTap) {
-    final colors = Theme.of(context).colorScheme;
-    return Column(
-      children: [
-        Container(
-          decoration: BoxDecoration(
-            color: colors.primaryContainer,
-            shape: BoxShape.circle,
-          ),
-          child: IconButton(
-            onPressed: onTap,
-            icon: Icon(icon, color: colors.onPrimaryContainer, size: 24),
-            padding: const EdgeInsets.all(12),
-          ),
         ),
-        const SizedBox(height: 4),
-        Text(label, style: TextStyle(fontSize: 12, color: colors.onSurface)),
-      ],
+      ),
     );
   }
 
   Future<void> _pickImageFromCamera() async {
     Navigator.pop(context);
-    final XFile? image = await _picker.pickImage(source: ImageSource.camera);
-    if (image != null) await _sendMedia(image.path);
+    try {
+      final image = await _picker.pickImage(source: ImageSource.camera);
+      if (image != null && mounted) await _sendMedia(image.path);
+    } catch (_) {
+      if (mounted) {
+        SnackBarHandler.showError(
+          context,
+          TranslationHandler.get('attachment_picker_failed'),
+        );
+      }
+    }
   }
 
   Future<void> _pickImageFromGallery() async {
     Navigator.pop(context);
-    final XFile? image = await _picker.pickImage(source: ImageSource.gallery);
-    if (image != null) await _sendMedia(image.path);
+    try {
+      final image = await _picker.pickImage(source: ImageSource.gallery);
+      if (image != null && mounted) await _sendMedia(image.path);
+    } catch (_) {
+      if (mounted) {
+        SnackBarHandler.showError(
+          context,
+          TranslationHandler.get('attachment_picker_failed'),
+        );
+      }
+    }
   }
 
   Future<void> _pickVideo() async {
     Navigator.pop(context);
-    final XFile? video = await _picker.pickVideo(source: ImageSource.gallery);
-    if (video != null) await _sendMedia(video.path);
+    try {
+      final video = await _picker.pickVideo(source: ImageSource.gallery);
+      if (video != null && mounted) await _sendMedia(video.path);
+    } catch (_) {
+      if (mounted) {
+        SnackBarHandler.showError(
+          context,
+          TranslationHandler.get('attachment_picker_failed'),
+        );
+      }
+    }
   }
 
   void _showContractDetails(Contract contract) {
-    final theme = Theme.of(context);
-    final colors = theme.colorScheme;
-
     final isUserA = contract.userAId == _currentUserId;
     final otherName = isUserA ? contract.userBName : contract.userAName;
 
-    showDialog(
+    showModalBottomSheet<void>(
       context: context,
-      builder: (context) {
-        return Dialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-          backgroundColor: colors.surface,
-          child: Container(
-            padding: const EdgeInsets.all(24),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.all(10),
+      isScrollControlled: true,
+      useSafeArea: true,
+      builder: (sheetContext) {
+        final theme = Theme.of(sheetContext);
+        final colors = theme.colorScheme;
+        final createdDate = MaterialLocalizations.of(
+          sheetContext,
+        ).formatMediumDate(contract.createdAt.toLocal());
+        return FractionallySizedBox(
+          heightFactor: .88,
+          child: SafeArea(
+            top: false,
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(20, 10, 20, 20),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Center(
+                    child: Container(
+                      width: 42,
+                      height: 4,
                       decoration: BoxDecoration(
-                        color: colors.primaryContainer,
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: Icon(
-                        Icons.assignment,
-                        color: colors.onPrimaryContainer,
-                        size: 20,
+                        color: colors.outlineVariant,
+                        borderRadius: BorderRadius.circular(2),
                       ),
                     ),
-                    const SizedBox(width: 16),
-                    Expanded(
+                  ),
+                  const SizedBox(height: 20),
+                  Text(
+                    TranslationHandler.get('contract_details'),
+                    style: theme.textTheme.titleLarge,
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    '${_getStatusText(contract.status)} · $createdDate',
+                    style: theme.textTheme.bodyMedium,
+                  ),
+                  const SizedBox(height: 18),
+                  Expanded(
+                    child: SingleChildScrollView(
                       child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
-                          Text(
-                            TranslationHandler.get('contract_details'),
-                            style: theme.textTheme.titleMedium,
+                          _buildDetailRow(
+                            TranslationHandler.get('contract_title'),
+                            contract.title,
+                            Icons.title,
                           ),
-                          const SizedBox(height: 4),
+                          _buildDetailRow(
+                            TranslationHandler.get('other_party'),
+                            otherName ?? TranslationHandler.get('unknown'),
+                            Icons.person_outline,
+                          ),
+                          _buildDetailRow(
+                            TranslationHandler.get('price'),
+                            '${contract.price} ${TranslationHandler.get('currency')}',
+                            Icons.payments_outlined,
+                          ),
+                          const SizedBox(height: 14),
                           Text(
-                            '${_getStatusText(contract.status)} • ${contract.createdAt.toString().split(' ')[0]}',
-                            style: theme.textTheme.bodyMedium,
+                            TranslationHandler.get('description'),
+                            style: theme.textTheme.titleSmall,
+                          ),
+                          const SizedBox(height: 8),
+                          Container(
+                            padding: const EdgeInsets.all(16),
+                            decoration: BoxDecoration(
+                              color: colors.surfaceContainerLow,
+                              borderRadius: BorderRadius.circular(
+                                AppTheme.radiusSm,
+                              ),
+                              border: Border.all(color: colors.outlineVariant),
+                            ),
+                            child: SelectableText(
+                              contract.description,
+                              style: theme.textTheme.bodyLarge,
+                            ),
                           ),
                         ],
                       ),
                     ),
-                  ],
-                ),
-                const SizedBox(height: 16),
-                _buildDetailRow(
-                  TranslationHandler.get('contract_title'),
-                  contract.title,
-                  Icons.title,
-                ),
-                _buildDetailRow(
-                  TranslationHandler.get('other_party'),
-                  otherName ?? TranslationHandler.get('unknown'),
-                  Icons.person,
-                ),
-                _buildDetailRow(
-                  TranslationHandler.get('price'),
-                  '${contract.price} ${TranslationHandler.get('currency')}',
-                  Icons.attach_money,
-                ),
-                const SizedBox(height: 10),
-                Text(
-                  TranslationHandler.get('description'),
-                  style: theme.textTheme.titleSmall,
-                ),
-                const SizedBox(height: 8),
-                Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: colors.surfaceContainerHighest,
-                    borderRadius: BorderRadius.circular(8),
                   ),
-                  child: Text(
-                    contract.description,
-                    style: TextStyle(
-                      color: colors.onSurface.withOpacity(0.8),
-                      fontSize: 14,
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 24),
-                SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton(
-                    onPressed: () => Navigator.pop(context),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: colors.primary,
-                      foregroundColor: colors.onPrimary,
-                      padding: const EdgeInsets.symmetric(vertical: 12),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                    ),
+                  const SizedBox(height: 16),
+                  FilledButton(
+                    onPressed: () => Navigator.pop(sheetContext),
                     child: Text(TranslationHandler.get('close')),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
         );
@@ -1309,6 +1392,28 @@ class _ContractAgreementState extends State<ContractAgreement> {
     }
   }
 
+  Color _statusColor(ContractStatus status, ColorScheme colors) {
+    return switch (status) {
+      ContractStatus.active => colors.primary,
+      ContractStatus.pending => AppTheme.statusOrange,
+      ContractStatus.accepted ||
+      ContractStatus.completed => AppTheme.statusGreen,
+      ContractStatus.disputed => colors.error,
+      ContractStatus.rejected => AppTheme.statusGray,
+    };
+  }
+
+  IconData _statusIcon(ContractStatus status) {
+    return switch (status) {
+      ContractStatus.active => Icons.play_circle_outline,
+      ContractStatus.pending => Icons.schedule_outlined,
+      ContractStatus.accepted => Icons.handshake_outlined,
+      ContractStatus.completed => Icons.task_alt_outlined,
+      ContractStatus.disputed => Icons.report_problem_outlined,
+      ContractStatus.rejected => Icons.cancel_outlined,
+    };
+  }
+
   Widget _buildDetailRow(String title, String value, IconData icon) {
     final colors = Theme.of(context).colorScheme;
     return Container(
@@ -1328,16 +1433,14 @@ class _ContractAgreementState extends State<ContractAgreement> {
               children: [
                 Text(
                   title,
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: colors.onSurface.withOpacity(0.6),
+                  style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                    color: colors.onSurfaceVariant,
                   ),
                 ),
                 const SizedBox(height: 2),
                 Text(
                   value,
-                  style: TextStyle(
-                    fontSize: 14,
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                     fontWeight: FontWeight.w600,
                     color: colors.onSurface,
                   ),
@@ -1352,15 +1455,18 @@ class _ContractAgreementState extends State<ContractAgreement> {
 
   String _getSenderName(Message message) {
     if (message.senderId == _currentUserId) {
-      return 'Me';
+      return TranslationHandler.get('you');
     }
     final first = message.senderFirstName ?? '';
     final last = message.senderLastName ?? '';
-    return '$first $last'.trim().isNotEmpty ? '$first $last'.trim() : 'User';
+    return '$first $last'.trim().isNotEmpty
+        ? '$first $last'.trim()
+        : TranslationHandler.get('other_party');
   }
 
   String _formatTime(DateTime dateTime) {
-    return '${dateTime.hour.toString().padLeft(2, '0')}:${dateTime.minute.toString().padLeft(2, '0')}';
+    return MaterialLocalizations.of(
+      context,
+    ).formatTimeOfDay(TimeOfDay.fromDateTime(dateTime.toLocal()));
   }
 }
-

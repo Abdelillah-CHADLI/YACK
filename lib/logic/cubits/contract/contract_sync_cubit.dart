@@ -43,21 +43,18 @@ class ContractSyncError extends ContractSyncState {
 // Cubit
 class ContractSyncCubit extends Cubit<ContractSyncState> {
   ContractSyncCubit({ContractSyncService? service})
-      : _service = service ?? ContractSyncService(),
-        super(const ContractSyncInitial());
+    : _service = service ?? ContractSyncService(),
+      super(const ContractSyncInitial());
 
   final ContractSyncService _service;
 
-  /// Sync contracts using the already-decrypted private key from Hive
+  /// Sync contracts using the process-memory private key
   /// (set during account unlock)
   Future<void> sync() async {
     emit(const ContractSyncLoading());
     try {
       final count = await _service.syncContracts();
-      emit(ContractSyncSuccess(
-        syncedCount: count,
-        syncTime: DateTime.now(),
-      ));
+      emit(ContractSyncSuccess(syncedCount: count, syncTime: DateTime.now()));
     } catch (e) {
       emit(ContractSyncError(e.toString()));
     }
@@ -69,4 +66,3 @@ class ContractSyncCubit extends Cubit<ContractSyncState> {
   /// Get last sync time
   DateTime? get lastSyncTime => _service.lastSyncTime;
 }
-

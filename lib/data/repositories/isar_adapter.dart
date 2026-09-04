@@ -32,8 +32,13 @@ Future<Contract> saveContractToIsar({
   bool userBSigned = false,
   String? disputeReason,
   String? disputedBy,
+  DateTime? createdAt,
+  DateTime? updatedAt,
 }) async {
-  final existing = await isar.contracts.filter().externalIdEqualTo(externalId).findFirst();
+  final existing = await isar.contracts
+      .filter()
+      .externalIdEqualTo(externalId)
+      .findFirst();
 
   if (existing != null) {
     await isar.writeTxn(() async {
@@ -54,7 +59,8 @@ Future<Contract> saveContractToIsar({
       existing.userBSigned = userBSigned;
       existing.disputeReason = disputeReason;
       existing.disputedBy = disputedBy;
-      existing.updatedAt = DateTime.now();
+      if (createdAt != null) existing.createdAt = createdAt;
+      existing.updatedAt = updatedAt ?? DateTime.now();
       await isar.contracts.put(existing);
     });
     return existing;
@@ -78,7 +84,8 @@ Future<Contract> saveContractToIsar({
       ..userBSigned = userBSigned
       ..disputeReason = disputeReason
       ..disputedBy = disputedBy
-      ..createdAt = DateTime.now();
+      ..createdAt = createdAt ?? DateTime.now()
+      ..updatedAt = updatedAt;
 
     await isar.writeTxn(() async {
       await isar.contracts.put(contract);
@@ -88,7 +95,10 @@ Future<Contract> saveContractToIsar({
 }
 
 /// Save contract from ContractListItem API response
-Future<Contract> saveContractFromListItem(ContractListItem item, {String? currentUserId}) async {
+Future<Contract> saveContractFromListItem(
+  ContractListItem item, {
+  String? currentUserId,
+}) async {
   // Determine userA and userB based on isUserA flag
   String userAId;
   String? userAName;
@@ -131,12 +141,19 @@ Future<Contract> saveContractFromListItem(ContractListItem item, {String? curren
     userASigned: item.userASigned,
     userBSigned: item.userBSigned,
     disputeReason: item.disputedUserA || item.disputedUserB ? 'Disputed' : null,
-    disputedBy: item.disputedUserA ? userAId : (item.disputedUserB ? userBId : null),
+    disputedBy: item.disputedUserA
+        ? userAId
+        : (item.disputedUserB ? userBId : null),
+    createdAt: item.createdAt,
+    updatedAt: item.updatedAt,
   );
 }
 
 /// Sync all contracts from API to Isar
-Future<void> syncContractsFromApi(List<ContractListItem> contracts, {String? currentUserId}) async {
+Future<void> syncContractsFromApi(
+  List<ContractListItem> contracts, {
+  String? currentUserId,
+}) async {
   for (final item in contracts) {
     await saveContractFromListItem(item, currentUserId: currentUserId);
   }
@@ -149,7 +166,10 @@ Future<List<Contract>> getAllContractsFromIsar() async {
 
 /// Get a contract by external ID
 Future<Contract?> getContractByExternalId(String externalId) async {
-  return await isar.contracts.filter().externalIdEqualTo(externalId).findFirst();
+  return await isar.contracts
+      .filter()
+      .externalIdEqualTo(externalId)
+      .findFirst();
 }
 
 // Helper function to map string status to ContractStatus enum
@@ -177,8 +197,14 @@ ContractStatus _mapStringToStatus(String status) {
 }
 
 /// Update contract status in Isar
-Future<void> updateContractStatusInIsar(String externalId, String status) async {
-  final contract = await isar.contracts.filter().externalIdEqualTo(externalId).findFirst();
+Future<void> updateContractStatusInIsar(
+  String externalId,
+  String status,
+) async {
+  final contract = await isar.contracts
+      .filter()
+      .externalIdEqualTo(externalId)
+      .findFirst();
 
   if (contract != null) {
     await isar.writeTxn(() async {
@@ -195,7 +221,10 @@ Future<void> updateContractAcceptance({
   bool? userAAccepted,
   bool? userBAccepted,
 }) async {
-  final contract = await isar.contracts.filter().externalIdEqualTo(externalId).findFirst();
+  final contract = await isar.contracts
+      .filter()
+      .externalIdEqualTo(externalId)
+      .findFirst();
 
   if (contract != null) {
     await isar.writeTxn(() async {
@@ -213,7 +242,10 @@ Future<void> updateContractDispute({
   required String disputedBy,
   String? reason,
 }) async {
-  final contract = await isar.contracts.filter().externalIdEqualTo(externalId).findFirst();
+  final contract = await isar.contracts
+      .filter()
+      .externalIdEqualTo(externalId)
+      .findFirst();
 
   if (contract != null) {
     await isar.writeTxn(() async {
@@ -228,7 +260,10 @@ Future<void> updateContractDispute({
 
 /// Delete a contract from Isar
 Future<void> deleteContractFromIsar(String externalId) async {
-  final contract = await isar.contracts.filter().externalIdEqualTo(externalId).findFirst();
+  final contract = await isar.contracts
+      .filter()
+      .externalIdEqualTo(externalId)
+      .findFirst();
 
   if (contract != null) {
     await isar.writeTxn(() async {
@@ -265,7 +300,9 @@ Future<Message> saveMessageToIsar({
   // Only check for local duplicates when receiving a server message
   // This handles the case where we save locally first, then sync from server
   // We match by: same contract, same sender, same contentHash, and is a local message
-  if (!externalId.startsWith('local_') && contentHash != null && contentHash.isNotEmpty) {
+  if (!externalId.startsWith('local_') &&
+      contentHash != null &&
+      contentHash.isNotEmpty) {
     final localMessages = await isar.messages
         .filter()
         .contractIdEqualTo(contractId)
@@ -274,7 +311,9 @@ Future<Message> saveMessageToIsar({
         .findAll();
 
     // Find a local message to update (one with local_ prefix)
-    final localMessage = localMessages.where((m) => m.externalId?.startsWith('local_') == true).firstOrNull;
+    final localMessage = localMessages
+        .where((m) => m.externalId?.startsWith('local_') == true)
+        .firstOrNull;
 
     if (localMessage != null) {
       // Update the local message with the real server ID
@@ -304,7 +343,10 @@ Future<Message> saveMessageToIsar({
 }
 
 /// Save messages from API response
-Future<void> saveMessagesFromApi(int contractId, List<ContractMessage> messages) async {
+Future<void> saveMessagesFromApi(
+  int contractId,
+  List<ContractMessage> messages,
+) async {
   for (final msg in messages) {
     await saveMessageToIsar(
       contractId: contractId,
@@ -346,7 +388,9 @@ Future<MediaFile> saveMediaToIsar({
 }) async {
   // Check if media already exists by external ID
   final allMedia = await isar.mediaFiles.where().findAll();
-  final existing = allMedia.where((m) => m.externalId == externalId).firstOrNull;
+  final existing = allMedia
+      .where((m) => m.externalId == externalId)
+      .firstOrNull;
 
   if (existing != null) {
     return existing;
@@ -371,7 +415,10 @@ Future<MediaFile> saveMediaToIsar({
 }
 
 /// Save media files from API response
-Future<void> saveMediaFromApi(int contractId, List<ContractMedia> mediaList) async {
+Future<void> saveMediaFromApi(
+  int contractId,
+  List<ContractMedia> mediaList,
+) async {
   for (final m in mediaList) {
     await saveMediaToIsar(
       contractId: contractId,
@@ -401,7 +448,9 @@ Future<List<MediaFile>> getMediaForContract(int contractId) async {
 // ============================================================================
 
 /// Save a notification to Isar
-Future<AppNotification> saveNotificationToIsar(AppNotification notification) async {
+Future<AppNotification> saveNotificationToIsar(
+  AppNotification notification,
+) async {
   await isar.writeTxn(() async {
     await isar.appNotifications.put(notification);
   });
@@ -431,7 +480,10 @@ Future<void> markNotificationAsRead(int id) async {
 
 /// Mark all notifications as read
 Future<void> markAllNotificationsAsRead() async {
-  final notifications = await isar.appNotifications.filter().isReadEqualTo(false).findAll();
+  final notifications = await isar.appNotifications
+      .filter()
+      .isReadEqualTo(false)
+      .findAll();
   await isar.writeTxn(() async {
     for (final notification in notifications) {
       notification.isRead = true;
@@ -463,4 +515,3 @@ Future<void> clearAllIsarData() async {
     await isar.appNotifications.clear();
   });
 }
-

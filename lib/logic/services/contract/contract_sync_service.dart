@@ -1,64 +1,74 @@
-import 'dart:typed_data';
 import 'package:hive/hive.dart';
 import 'package:yack/data/repositories/isar_adapter.dart';
 import 'package:yack/logic/services/contract/contract_list_service.dart';
 import 'package:yack/logic/services/auth/cryptoService.dart';
+import 'package:yack/logic/services/auth/decrypted_key_cache.dart';
 
 /// Service to sync contracts from backend to local Isar database.
 /// Should be called after user authentication/login and after user has unlocked their account.
 /// Contracts are stored DECRYPTED in Isar for easy display.
 class ContractSyncService {
-  ContractSyncService({
-    ContractListService? listService,
-  }) : _listService = listService ?? ContractListService();
+  ContractSyncService({ContractListService? listService})
+    : _listService = listService ?? ContractListService();
 
   final ContractListService _listService;
 
-  bool _isSyncing = false;
-  DateTime? _lastSyncTime;
+  static Future<int>? _activeSync;
+  static DateTime? _lastSyncTime;
 
   /// Whether a sync is currently in progress
-  bool get isSyncing => _isSyncing;
+  bool get isSyncing => _activeSync != null;
 
   /// Last successful sync time
   DateTime? get lastSyncTime => _lastSyncTime;
 
   /// Sync all contracts from backend to Isar.
-  /// Uses the already-decrypted private key from Hive (set during account unlock).
+  /// Uses the process-memory private key set during account unlock.
   /// All contracts are stored DECRYPTED in Isar.
   ///
   /// Returns the number of contracts synced.
-  Future<int> syncContracts() async {
-    if (_isSyncing) {
-      print('[ContractSyncService] Sync already in progress, skipping...');
-      return 0;
+  Future<int> syncContracts() {
+    final activeSync = _activeSync;
+    if (activeSync != null) {
+      print('[ContractSyncService] Sync already in progress, awaiting it...');
+      return activeSync;
     }
 
-    _isSyncing = true;
+    late final Future<int> operation;
+    operation = _performSync().whenComplete(() {
+      if (identical(_activeSync, operation)) {
+        _activeSync = null;
+      }
+    });
+    _activeSync = operation;
+    return operation;
+  }
 
+  Future<int> _performSync() async {
     try {
       print('[ContractSyncService] Starting contract sync...');
 
-      // Get current user ID and decrypted private key from Hive
+      // Get current user ID and the process-memory private key.
       final userBox = await Hive.openBox('user');
       final currentUserId = userBox.get('userId')?.toString();
 
-      // Get the already-decrypted private key (set during account unlock)
-      final privateKeyBytes = _getDecryptedPrivateKeyFromCache(userBox);
+      final privateKeyBytes = DecryptedKeyCache.value;
 
       if (privateKeyBytes == null) {
-        print('[ContractSyncService] No decrypted private key found. User must unlock account first.');
-        _isSyncing = false;
+        print(
+          '[ContractSyncService] No decrypted private key found. User must unlock account first.',
+        );
         return 0;
       }
 
       // Fetch contracts from backend
       final contracts = await _listService.list();
-      print('[ContractSyncService] Fetched ${contracts.length} contracts from backend');
+      print(
+        '[ContractSyncService] Fetched ${contracts.length} contracts from backend',
+      );
 
       if (contracts.isEmpty) {
         _lastSyncTime = DateTime.now();
-        _isSyncing = false;
         return 0;
       }
 
@@ -78,7 +88,9 @@ class ContractSyncService {
             );
           } catch (e) {
             title = 'ERROR';
-            print('[ContractSyncService] Failed to decrypt title for ${contract.id}: $e');
+            print(
+              '[ContractSyncService] Failed to decrypt title for ${contract.id}: $e',
+            );
             // Keep original value (may be encrypted or empty)
           }
 
@@ -89,7 +101,9 @@ class ContractSyncService {
             );
           } catch (e) {
             description = 'ERROR';
-            print('[ContractSyncService] Failed to decrypt description for ${contract.id}: $e');
+            print(
+              '[ContractSyncService] Failed to decrypt description for ${contract.id}: $e',
+            );
           }
 
           try {
@@ -99,7 +113,9 @@ class ContractSyncService {
             );
           } catch (e) {
             price = 'ERROR';
-            print('[ContractSyncService] Failed to decrypt price for ${contract.id}: $e');
+            print(
+              '[ContractSyncService] Failed to decrypt price for ${contract.id}: $e',
+            );
           }
 
           // Create item with DECRYPTED values for storage
@@ -125,43 +141,27 @@ class ContractSyncService {
             updatedAt: contract.updatedAt,
           );
 
-          await saveContractFromListItem(decryptedItem, currentUserId: currentUserId);
+          await saveContractFromListItem(
+            decryptedItem,
+            currentUserId: currentUserId,
+          );
           syncedCount++;
-
         } catch (e) {
-          print('[ContractSyncService] Failed to sync contract ${contract.id}: $e');
+          print(
+            '[ContractSyncService] Failed to sync contract ${contract.id}: $e',
+          );
         }
       }
 
       _lastSyncTime = DateTime.now();
-      print('[ContractSyncService] Sync complete. Synced $syncedCount contracts.');
+      print(
+        '[ContractSyncService] Sync complete. Synced $syncedCount contracts.',
+      );
 
       return syncedCount;
-
     } catch (e) {
       print('[ContractSyncService] Sync failed: $e');
       rethrow;
-    } finally {
-      _isSyncing = false;
-    }
-  }
-
-  /// Get the already-decrypted private key from Hive cache
-  /// This is set during account unlock in UserCubit.decryptAndLoad()
-  Uint8List? _getDecryptedPrivateKeyFromCache(Box userBox) {
-    try {
-      final cachedKey = userBox.get('decryptedPrivateKey');
-      if (cachedKey == null) return null;
-
-      if (cachedKey is Uint8List) {
-        return cachedKey;
-      } else if (cachedKey is List) {
-        return Uint8List.fromList(cachedKey.cast<int>());
-      }
-      return null;
-    } catch (e) {
-      print('[ContractSyncService] Failed to get cached private key: $e');
-      return null;
     }
   }
 
@@ -173,9 +173,10 @@ class ContractSyncService {
       await syncContracts();
       return true;
     } catch (e) {
-      print('[ContractSyncService] Failed to sync single contract $contractId: $e');
+      print(
+        '[ContractSyncService] Failed to sync single contract $contractId: $e',
+      );
       return false;
     }
   }
 }
-
