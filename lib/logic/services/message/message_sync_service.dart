@@ -1,29 +1,27 @@
-import 'dart:typed_data';
-import 'package:hive/hive.dart';
 import 'package:yack/data/repositories/isar_adapter.dart';
 import 'package:yack/logic/services/auth/cryptoService.dart';
+import 'package:yack/logic/services/auth/decrypted_key_cache.dart';
 import 'package:yack/logic/services/message/message_service.dart';
 
 /// Service to sync messages from backend to local Isar database.
 /// Messages are stored DECRYPTED in Isar for easy display.
 class MessageSyncService {
-  MessageSyncService({
-    MessageService? messageService,
-  }) : _messageService = messageService ?? MessageService();
+  MessageSyncService({MessageService? messageService})
+    : _messageService = messageService ?? MessageService();
 
   final MessageService _messageService;
 
-  bool _isSyncing = false;
-  DateTime? _lastSyncTime;
+  static final Map<String, Future<int>> _activeSyncs = {};
+  static DateTime? _lastSyncTime;
 
   /// Whether a sync is currently in progress
-  bool get isSyncing => _isSyncing;
+  bool get isSyncing => _activeSyncs.isNotEmpty;
 
   /// Last successful sync time
   DateTime? get lastSyncTime => _lastSyncTime;
 
   /// Sync all messages for a specific contract from backend to Isar.
-  /// Uses the already-decrypted private key from Hive.
+  /// Uses the process-memory private key set during account unlock.
   /// All messages are stored DECRYPTED in Isar.
   ///
   /// Returns the number of messages synced.
@@ -31,24 +29,47 @@ class MessageSyncService {
     required String externalContractId,
     required int localContractId,
     int? limit,
-  }) async {
-    if (_isSyncing) {
-      print('[MessageSyncService] Sync already in progress, skipping...');
-      return 0;
+  }) {
+    final syncKey = '$externalContractId:$localContractId:${limit ?? 'all'}';
+    final activeSync = _activeSyncs[syncKey];
+    if (activeSync != null) {
+      print(
+        '[MessageSyncService] Matching sync already in progress, awaiting it...',
+      );
+      return activeSync;
     }
 
-    _isSyncing = true;
+    late final Future<int> operation;
+    operation =
+        _performSync(
+          externalContractId: externalContractId,
+          localContractId: localContractId,
+          limit: limit,
+        ).whenComplete(() {
+          if (identical(_activeSyncs[syncKey], operation)) {
+            _activeSyncs.remove(syncKey);
+          }
+        });
+    _activeSyncs[syncKey] = operation;
+    return operation;
+  }
 
+  Future<int> _performSync({
+    required String externalContractId,
+    required int localContractId,
+    int? limit,
+  }) async {
     try {
-      print('[MessageSyncService] Starting message sync for contract $externalContractId...');
+      print(
+        '[MessageSyncService] Starting message sync for contract $externalContractId...',
+      );
 
-      // Get decrypted private key from Hive
-      final userBox = await Hive.openBox('user');
-      final privateKeyBytes = _getDecryptedPrivateKeyFromCache(userBox);
+      final privateKeyBytes = DecryptedKeyCache.value;
 
       if (privateKeyBytes == null) {
-        print('[MessageSyncService] No decrypted private key found. User must unlock account first.');
-        _isSyncing = false;
+        print(
+          '[MessageSyncService] No decrypted private key found. User must unlock account first.',
+        );
         return 0;
       }
 
@@ -57,11 +78,12 @@ class MessageSyncService {
         contractId: externalContractId,
         limit: limit,
       );
-      print('[MessageSyncService] Fetched ${messages.length} messages from backend');
+      print(
+        '[MessageSyncService] Fetched ${messages.length} messages from backend',
+      );
 
       if (messages.isEmpty) {
         _lastSyncTime = DateTime.now();
-        _isSyncing = false;
         return 0;
       }
 
@@ -78,7 +100,9 @@ class MessageSyncService {
             );
           } catch (e) {
             decryptedContent = '[Unable to decrypt message]';
-            print('[MessageSyncService] Failed to decrypt message ${msg.id}: $e');
+            print(
+              '[MessageSyncService] Failed to decrypt message ${msg.id}: $e',
+            );
           }
 
           // Save decrypted message to Isar
@@ -93,22 +117,20 @@ class MessageSyncService {
             createdAt: msg.createdAt,
           );
           syncedCount++;
-
         } catch (e) {
           print('[MessageSyncService] Failed to sync message ${msg.id}: $e');
         }
       }
 
       _lastSyncTime = DateTime.now();
-      print('[MessageSyncService] Sync complete. Synced $syncedCount messages.');
+      print(
+        '[MessageSyncService] Sync complete. Synced $syncedCount messages.',
+      );
 
       return syncedCount;
-
     } catch (e) {
       print('[MessageSyncService] Sync failed: $e');
       rethrow;
-    } finally {
-      _isSyncing = false;
     }
   }
 
@@ -134,23 +156,4 @@ class MessageSyncService {
       rethrow;
     }
   }
-
-  /// Get the already-decrypted private key from Hive cache
-  Uint8List? _getDecryptedPrivateKeyFromCache(Box userBox) {
-    try {
-      final cachedKey = userBox.get('decryptedPrivateKey');
-      if (cachedKey == null) return null;
-
-      if (cachedKey is Uint8List) {
-        return cachedKey;
-      } else if (cachedKey is List) {
-        return Uint8List.fromList(cachedKey.cast<int>());
-      }
-      return null;
-    } catch (e) {
-      print('[MessageSyncService] Failed to get cached private key: $e');
-      return null;
-    }
-  }
 }
-

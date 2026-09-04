@@ -6,8 +6,8 @@ import 'media_state.dart';
 
 class MediaCubit extends Cubit<MediaState> {
   MediaCubit({MediaService? service})
-      : _service = service ?? MediaService(),
-        super(const MediaInitial());
+    : _service = service ?? MediaService(),
+      super(const MediaInitial());
 
   final MediaService _service;
   String? _currentContractId;
@@ -42,7 +42,7 @@ class MediaCubit extends Cubit<MediaState> {
   }
 
   /// Upload a media file to a contract
-  Future<void> uploadMedia({
+  Future<bool> uploadMedia({
     required String contractId,
     required File file,
     String? filename,
@@ -60,8 +60,10 @@ class MediaCubit extends Cubit<MediaState> {
       if (_currentContractId == contractId) {
         await loadMedia(contractId: contractId);
       }
+      return true;
     } catch (e) {
       emit(MediaError(e.toString()));
+      return false;
     }
   }
 

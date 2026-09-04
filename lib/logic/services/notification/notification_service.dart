@@ -1,7 +1,15 @@
+import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:isar/isar.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:yack/data/db/models/contract.dart';
+import 'package:yack/data/db/models/mediaFile.dart';
+import 'package:yack/data/db/models/message.dart';
 import 'package:yack/data/repositories/isar_adapter.dart';
 import 'package:yack/data/db/models/notification.dart';
+import 'package:yack/firebase_options.dart';
 import 'package:yack/logic/services/notification/contract_notification_handler.dart';
+import 'package:yack/logic/services/notification/notification_router_service.dart';
 
 /// Service for handling push notifications from Firebase Cloud Messaging.
 /// Parses notification data and saves to local Isar database.
@@ -11,17 +19,14 @@ class NotificationService {
   NotificationService._internal();
 
   /// Contract notification handler for real-time contract events
-  final ContractNotificationHandler contractHandler = ContractNotificationHandler();
+  final ContractNotificationHandler contractHandler =
+      ContractNotificationHandler();
 
   /// Initialize FCM and set up handlers
   Future<void> initialize() async {
     // Request notification permissions
     final messaging = FirebaseMessaging.instance;
-    await messaging.requestPermission(
-      alert: true,
-      badge: true,
-      sound: true,
-    );
+    await messaging.requestPermission(alert: true, badge: true, sound: true);
 
     // Initialize contract notification handler
     contractHandler.initialize();
@@ -47,9 +52,7 @@ class NotificationService {
 
   /// Handle when user taps on a notification
   Future<void> _handleMessageOpenedApp(RemoteMessage message) async {
-    await _saveNotificationToIsar(message);
-    // TODO: Navigate to relevant screen based on notification type
-    _handleNotificationNavigation(message.data);
+    await NotificationRouterService.handleNotificationTap(message.data);
   }
 
   /// Parse and save notification to Isar database
@@ -60,42 +63,6 @@ class NotificationService {
       body: message.notification?.body,
     );
     return await saveNotificationToIsar(notification);
-  }
-
-  /// Handle navigation based on notification type
-  void _handleNotificationNavigation(Map<String, dynamic> data) {
-    final type = data['type']?.toString() ?? '';
-    final contractId = data['contractId']?.toString();
-    final tempId = data['tempId']?.toString();
-
-    switch (type) {
-      case 'contractJoin':
-        // Navigate to temp contract / sign screen
-        if (tempId != null) {
-          // TODO: NavigationService.navigateToTempContract(tempId);
-        }
-        break;
-      case 'contractSign':
-        // Navigate to contract signing screen
-        if (tempId != null) {
-          // TODO: NavigationService.navigateToSignContract(tempId);
-        }
-        break;
-      case 'contractAccept':
-      case 'contractDispute':
-        // Navigate to contract details
-        if (contractId != null) {
-          // TODO: NavigationService.navigateToContract(contractId);
-        }
-        break;
-      case 'contractMessage':
-      case 'contractMedia':
-        // Navigate to contract chat/media screen
-        if (contractId != null) {
-          // TODO: NavigationService.navigateToContractChat(contractId);
-        }
-        break;
-    }
   }
 
   /// Get FCM token for registration with backend
@@ -117,12 +84,24 @@ class NotificationService {
 /// Background message handler - must be top-level function
 @pragma('vm:entry-point')
 Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
-  // Save notification to Isar when app is in background
+  if (Firebase.apps.isEmpty) {
+    await Firebase.initializeApp(
+      options: DefaultFirebaseOptions.currentPlatform,
+    );
+  }
+  final directory = await getApplicationDocumentsDirectory();
+  final backgroundDatabase = await Isar.open([
+    ContractSchema,
+    MessageSchema,
+    MediaFileSchema,
+    AppNotificationSchema,
+  ], directory: directory.path);
   final notification = AppNotification.fromFcmData(
     message.data,
     title: message.notification?.title,
     body: message.notification?.body,
   );
-  await saveNotificationToIsar(notification);
+  await backgroundDatabase.writeTxn(() async {
+    await backgroundDatabase.appNotifications.put(notification);
+  });
 }
-

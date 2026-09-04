@@ -1,62 +1,80 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
+import 'package:yack/data/repositories/isar_adapter.dart';
+import 'package:yack/logic/services/contract/contract_sync_service.dart';
 import 'package:yack/logic/services/notification/contract_notification_handler.dart';
 
 class NotificationRouterService {
-  static final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
+  static final GlobalKey<NavigatorState> navigatorKey =
+      GlobalKey<NavigatorState>();
+  static final ContractSyncService _contractSyncService = ContractSyncService();
+  static ContractNotificationEvent? _pendingTap;
 
-  static void initialize() {
-    ContractNotificationHandler().events.listen(_handleNotificationNavigation);
-  }
-
-  static void _handleNotificationNavigation(ContractNotificationEvent event) {
-    final context = navigatorKey.currentContext;
-    if (context == null) {
-      print('[NotificationRouter] No context available for navigation');
-      return;
-    }
-
-    print('[NotificationRouter] Routing notification: ${event.type}');
-
+  static Future<void> _handleNotificationNavigation(
+    ContractNotificationEvent event,
+  ) async {
     switch (event.type) {
       case ContractNotificationType.contractJoin:
       case ContractNotificationType.contractSign:
-        if (event.tempId != null) {
-          _navigateToRoute(context, '/contract_review', arguments: {'tempId': event.tempId});
+        // A temporary invitation cannot be reconstructed safely from an ID
+        // alone. Once the backend supplies the final contract ID, use the same
+        // local-resolution path as every other contract notification.
+        if (event.contractId != null) {
+          await navigateToContract(event.contractId!);
         }
       case ContractNotificationType.contractAccept:
       case ContractNotificationType.contractDispute:
       case ContractNotificationType.contractMessage:
       case ContractNotificationType.contractMedia:
         if (event.contractId != null) {
-          _navigateToContractAgreement(context, event.contractId!);
+          await navigateToContract(event.contractId!);
         }
     }
   }
 
-  static void _navigateToRoute(BuildContext context, String routeName, {Map<String, dynamic>? arguments}) {
-    try {
-      Navigator.of(context).pushNamed(routeName, arguments: arguments);
-    } catch (_) {}
+  static Future<void> _navigateToRoute(
+    String routeName, {
+    Map<String, dynamic>? arguments,
+  }) async {
+    final navigator = navigatorKey.currentState;
+    if (navigator == null) return;
+    await navigator.pushNamed(routeName, arguments: arguments);
   }
 
-  static void _navigateToContractAgreement(BuildContext context, String externalContractId) {
-    try {
-      Navigator.of(context).pushNamed('/contract_agreement', arguments: {'externalContractId': externalContractId});
-    } catch (_) {}
+  /// Resolves the backend Mongo ID to the local Isar ID expected by the
+  /// agreement screen. A one-shot sync covers notifications that arrive before
+  /// the local contract list has caught up.
+  static Future<bool> navigateToContract(String externalContractId) async {
+    var contract = await getContractByExternalId(externalContractId);
+    if (contract == null) {
+      await _contractSyncService.syncSingleContract(externalContractId);
+      contract = await getContractByExternalId(externalContractId);
+    }
+    final navigator = navigatorKey.currentState;
+    if (navigator == null || contract == null) return false;
+    await navigator.pushNamed('/contract/view', arguments: contract.id);
+    return true;
   }
 
   static Future<void> handleNotificationTap(Map<String, dynamic> data) async {
     if (data.isEmpty) return;
-    _handleNotificationNavigation(ContractNotificationEvent.fromFcmData(data));
+    final event = ContractNotificationEvent.fromFcmData(data);
+    if (navigatorKey.currentState == null) {
+      _pendingTap = event;
+      return;
+    }
+    await _handleNotificationNavigation(event);
+  }
+
+  static Future<void> flushPendingNavigation() async {
+    final event = _pendingTap;
+    if (event == null || navigatorKey.currentState == null) return;
+    _pendingTap = null;
+    await _handleNotificationNavigation(event);
   }
 
   static void navigateTo(String routeName, {Map<String, dynamic>? arguments}) {
-    final context = navigatorKey.currentContext;
-    if (context != null) _navigateToRoute(context, routeName, arguments: arguments);
-  }
-
-  static void navigateToContract(String externalContractId) {
-    final context = navigatorKey.currentContext;
-    if (context != null) _navigateToContractAgreement(context, externalContractId);
+    unawaited(_navigateToRoute(routeName, arguments: arguments));
   }
 }

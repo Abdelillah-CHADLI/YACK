@@ -5,12 +5,10 @@ import 'package:yack/logic/services/message/message_sync_service.dart';
 import 'message_state.dart';
 
 class MessageCubit extends Cubit<MessageState> {
-  MessageCubit({
-    MessageService? service,
-    MessageSyncService? syncService,
-  })  : _service = service ?? MessageService(),
-        _syncService = syncService ?? MessageSyncService(),
-        super(const MessageInitial());
+  MessageCubit({MessageService? service, MessageSyncService? syncService})
+    : _service = service ?? MessageService(),
+      _syncService = syncService ?? MessageSyncService(),
+      super(const MessageInitial());
 
   final MessageService _service;
   final MessageSyncService _syncService;
@@ -18,10 +16,7 @@ class MessageCubit extends Cubit<MessageState> {
   int? _currentLocalContractId;
 
   /// Load messages for a contract from API (encrypted)
-  Future<void> loadMessages({
-    required String contractId,
-    int? limit,
-  }) async {
+  Future<void> loadMessages({required String contractId, int? limit}) async {
     _currentContractId = contractId;
     emit(const MessageLoading());
     try {
@@ -68,7 +63,7 @@ class MessageCubit extends Cubit<MessageState> {
   }
 
   /// Send an encrypted message to a contract
-  Future<void> sendMessage({
+  Future<bool> sendMessage({
     required String contractId,
     required String contentForSender,
     required String contentForRecipient,
@@ -91,8 +86,10 @@ class MessageCubit extends Cubit<MessageState> {
           localContractId: _currentLocalContractId!,
         );
       }
+      return true;
     } catch (e) {
       emit(MessageError(e.toString()));
+      return false;
     }
   }
 
@@ -108,4 +105,3 @@ class MessageCubit extends Cubit<MessageState> {
     }
   }
 }
-
