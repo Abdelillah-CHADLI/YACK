@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:hive/hive.dart';
 import 'package:yack/logic/services/translation_handler.dart';
 import 'package:yack/logic/services/snackBarHandler.dart';
+import 'package:yack/logic/services/user/user_service.dart';
 import 'settingsSheet.dart';
 
 class LanguageSettingsSheet extends StatefulWidget {
@@ -46,15 +47,27 @@ class _LanguageSettingsSheetState extends State<LanguageSettingsSheet> {
       applyLabel: TranslationHandler.get('apply'),
       onApply: () async {
         final box = Hive.box('user');
+        var serverUpdated = true;
+        try {
+          await UserService().updateProfile(language: _selectedLanguage);
+        } catch (_) {
+          serverUpdated = false;
+        }
         await TranslationHandler.changeLanguage(_selectedLanguage);
         await box.put('language', _selectedLanguage);
-        if (mounted) {
+        if (!context.mounted) return;
+        if (serverUpdated) {
           SnackBarHandler.showSuccess(
             context,
             TranslationHandler.get('language_updated'),
           );
-          Navigator.pop(context);
+        } else {
+          SnackBarHandler.showWarning(
+            context,
+            TranslationHandler.get('language_updated_device_only'),
+          );
         }
+        Navigator.pop(context);
       },
     );
   }

@@ -1,56 +1,56 @@
-import 'package:yack/presentation/widgets/settingWidgets/settingsSheet.dart';
 import 'package:flutter/material.dart';
 import 'package:yack/logic/services/translation_handler.dart';
+import 'package:yack/presentation/theme/theme.dart';
+import 'package:yack/presentation/widgets/yack_ui.dart';
 
-class NotificationSettingsSheet extends StatefulWidget {
+class NotificationSettingsSheet extends StatelessWidget {
   const NotificationSettingsSheet({super.key});
 
   @override
-  State<NotificationSettingsSheet> createState() =>
-      _NotificationSettingsSheetState();
-}
-
-class _NotificationSettingsSheetState extends State<NotificationSettingsSheet> {
-  bool pushNotifications = true;
-  bool emailNotifications = false;
-  bool contractUpdates = true;
-  bool paymentReminders = true;
-
-  @override
   Widget build(BuildContext context) {
-    return SettingsSheet<bool>(
-      title: TranslationHandler.get('notification_settings'),
-      options: [
-        SettingOption(
-          title: TranslationHandler.get('push_notifications'),
-          subtitle: TranslationHandler.get('push_notifications_desc'),
-          type: SettingType.switchTile,
-          value: pushNotifications,
-          onChanged: (v) => setState(() => pushNotifications = v),
+    final theme = Theme.of(context);
+    return SafeArea(
+      top: false,
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(20, 10, 20, 20),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Center(
+              child: Container(
+                width: 42,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: theme.colorScheme.outlineVariant,
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+            ),
+            const SizedBox(height: 20),
+            Text(
+              TranslationHandler.get('notification_settings'),
+              style: theme.textTheme.titleLarge,
+            ),
+            const SizedBox(height: 16),
+            YackNotice(
+              message: TranslationHandler.get('notification_controls_detail'),
+              tone: YackNoticeTone.warning,
+              icon: Icons.notifications_none_outlined,
+            ),
+            const SizedBox(height: AppTheme.spaceLg),
+            Text(
+              TranslationHandler.get('notification_controls_explanation'),
+              style: theme.textTheme.bodyMedium,
+            ),
+            const SizedBox(height: AppTheme.spaceXl),
+            FilledButton(
+              onPressed: () => Navigator.pop(context),
+              child: Text(TranslationHandler.get('done')),
+            ),
+          ],
         ),
-        SettingOption(
-          title: TranslationHandler.get('email_notifications'),
-          subtitle: TranslationHandler.get('email_notifications_desc'),
-          type: SettingType.switchTile,
-          value: emailNotifications,
-          onChanged: (v) => setState(() => emailNotifications = v),
-        ),
-        SettingOption(
-          title: TranslationHandler.get('contract_updates'),
-          subtitle: TranslationHandler.get('contract_updates_desc'),
-          type: SettingType.switchTile,
-          value: contractUpdates,
-          onChanged: (v) => setState(() => contractUpdates = v),
-        ),
-        SettingOption(
-          title: TranslationHandler.get('payment_reminders'),
-          subtitle: TranslationHandler.get('payment_reminders_desc'),
-          type: SettingType.switchTile,
-          value: paymentReminders,
-          onChanged: (v) => setState(() => paymentReminders = v),
-        ),
-      ],
-      onApply: () => Navigator.pop(context),
+      ),
     );
   }
 }

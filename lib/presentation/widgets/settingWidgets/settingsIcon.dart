@@ -14,13 +14,13 @@ class SettingsIcon extends StatelessWidget {
     final resolvedColor = color ?? theme.colorScheme.primary;
 
     return Container(
-      width: 44,
-      height: 44,
+      width: 40,
+      height: 40,
       decoration: BoxDecoration(
         color: resolvedColor.withValues(alpha: 0.12),
-        borderRadius: BorderRadius.circular(AppTheme.radiusMd),
+        borderRadius: BorderRadius.circular(AppTheme.radiusSm),
       ),
-      child: Icon(icon, size: 22, color: resolvedColor),
+      child: Icon(icon, size: 20, color: resolvedColor),
     );
   }
 }

@@ -23,15 +23,13 @@ class _AppearanceSettingsSheetState extends State<AppearanceSettingsSheet> {
     final box = Hive.box('user');
     final themeValue = box.get('theme'); // 1=Light, 2=Dark, 3 or null=System
 
-    setState(() {
-      if (themeValue == 1) {
-        selectedTheme = 'Light';
-      } else if (themeValue == 2) {
-        selectedTheme = 'Dark';
-      } else {
-        selectedTheme = 'System';
-      }
-    });
+    if (themeValue == 1) {
+      selectedTheme = 'Light';
+    } else if (themeValue == 2) {
+      selectedTheme = 'Dark';
+    } else {
+      selectedTheme = 'System';
+    }
   }
 
   @override
