@@ -24,23 +24,6 @@ class MediaCubit extends Cubit<MediaState> {
     }
   }
 
-  /// Get a specific media by ID
-  Future<void> getMedia({
-    required String contractId,
-    required String mediaId,
-  }) async {
-    emit(const MediaLoading());
-    try {
-      final media = await _service.get(
-        contractId: contractId,
-        mediaId: mediaId,
-      );
-      emit(MediaLoaded(media));
-    } catch (e) {
-      emit(MediaError(e.toString()));
-    }
-  }
-
   /// Upload a media file to a contract
   Future<bool> uploadMedia({
     required String contractId,

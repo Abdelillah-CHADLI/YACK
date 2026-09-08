@@ -68,6 +68,7 @@ class _DisputeDialogState extends State<_DisputeDialog> {
               labelText: TranslationHandler.get('dispute_reason_optional'),
             ),
             maxLines: 3,
+            maxLength: 190,
           ),
         ],
       ),

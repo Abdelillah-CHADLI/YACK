@@ -24,14 +24,6 @@ class MediaListLoaded extends MediaState {
   List<Object?> get props => [mediaList];
 }
 
-class MediaLoaded extends MediaState {
-  const MediaLoaded(this.media);
-  final ContractMedia media;
-
-  @override
-  List<Object?> get props => [media];
-}
-
 class MediaUploaded extends MediaState {
   const MediaUploaded(this.media);
   final ContractMedia media;

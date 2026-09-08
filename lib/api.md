@@ -26,7 +26,7 @@ All endpoints are served from the Express app in `src/index.js`. Unless stated o
 | `POST` | `/join` | Join a temp contract as user B. | `tempID` (required), `hash` (if temp has hash), `titleUserB`, `descriptionUserB`, `priceUserB` (all required) | Returns userA info including `publicKey`. |
 | `POST` | `/sign` | Sign a temp contract. | `tempID` (string, required) | When both users sign, a `Contract` record is created with all encrypted fields. |
 | `POST` | `/accept` | Mark a contract as accepted by the caller. | `contractId` (string, required) | Requires membership; completes contract when both accept. |
-| `POST` | `/dispute` | Flag a contract as disputed. | `contractId` (string, required), `reason` (string, optional) | Fails if contract already completed or disputed by caller. |
+| `POST` | `/dispute` | Flag a contract as disputed. | `contractId` (string, required); `encryptedReason` (string, optional, RSA-OAEP envelope for the shared admin review key) | Fails if contract already completed or disputed by caller. The reason is only readable by admins with the review key; it is never returned to the counterparty via `/list`. |
 | `GET` | `/verify` | Compare stored contract hash with a provided hash. | Query/body `contractId`, `hash` (string, required) | Response indicates `matches`. |
 | `GET` | `/list` | Fetch all contracts involving the caller. | None | Returns caller's encrypted fields with `otherUser` info and `isUserA` flag. |
 

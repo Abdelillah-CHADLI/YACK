@@ -176,19 +176,6 @@ class MediaService {
     return false;
   }
 
-  /// Get a specific media by ID.
-  /// GET /media/get?contractId=...&mediaId=...
-  /// Returns media details with fresh URL from Cloudinary
-  Future<ContractMedia> get({
-    required String contractId,
-    required String mediaId,
-  }) async {
-    final response = await _http.get(
-      '/media/get?contractId=$contractId&mediaId=$mediaId',
-    );
-    return _parseMediaResponse(response);
-  }
-
   ContractMedia _parseMediaResponse(dynamic response) {
     if (response is Map<String, dynamic>) {
       final media = response['media'] ?? response['data'] ?? response;
