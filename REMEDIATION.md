@@ -15,9 +15,10 @@ F-48, F-49, F-50, F-62; then admin batch F-22, F-23, F-25, F-26, F-52,
 F-53, F-55, F-56, F-57, F-58, F-63, F-64, F-65, F-66; then F-11, F-12,
 F-16, F-19, F-20, F-24, F-38, F-59, F-61 from the subsequent batches;
 then F-15, F-40, F-41, F-44, F-45, F-46 from the backend index/ops batch;
-then F-13, F-34, F-39 from the temp-contract semantics batch —
-58 complete in total). F-05 is fully implemented across all three
-repositories (envelope validation, client-side hybrid encryption, admin
+then F-13, F-34, F-39 from the temp-contract semantics batch;
+then F-14, F-36, F-42, F-47, F-72 from the pagination/quota/media/audit/
+identity closes — 63 complete in total). F-05 is fully implemented across all
+three repositories (envelope validation, client-side hybrid encryption, admin
 in-browser decrypt) with cross-repo unit tests green; only the live
 end-to-end smoke remains blocked on a configured Cloudinary. Four findings
 are deferred with documented decisions (F-04 data-at-rest envelope, F-32
@@ -106,7 +107,7 @@ before it can move to `Complete`.
 | F-11 | Medium | Dispute concurrency | Backend,Admin | F-16 | DSP | Preserve append-only resolution history or reject redispute after resolution atomically | B-DATA resolve-vs-redispute race tests | Complete |
 | F-12 | Medium | Dispute confidentiality | All | F-03,F-05,F-21 | DSP,NTF | Remove plaintext reason from push/storage or add compatible encrypted envelopes | Cross-client crypto/API tests; inspect FCM payload | Complete |
 | F-13 | Medium | HTTP/state semantics | Backend,Mobile | F-34 | CTR,DSP | Enforce expiry during finalization and remove create-on-GET side effects | B-DATA expired/finalized/read-idempotence tests | Complete |
-| F-14 | Medium | Pagination | All | F-01,F-23,F-51 | CTR,MED,ADM | Cursor pagination, projections and validated bounds across all consumers | B-DATA + M-API + A-UX paging tests | Pending |
+| F-14 | Medium | Pagination | All | F-01,F-23,F-51 | CTR,MED,ADM | Cursor pagination, projections and validated bounds across all consumers | B-DATA + M-API + A-UX paging tests | Complete |
 | F-15 | Medium | Backend reliability | Backend | F-69 | OPS | Await DB before listen; real health/readiness, timeouts and graceful shutdown | OPS startup/outage/SIGTERM/in-flight tests | Complete |
 | F-16 | Medium | Test coverage | All | all confirmed findings | all | Add route, client, crypto and concurrency regressions with real pre-fix failure value | Broad suites and coverage inventory | Complete |
 | F-17 | Medium | Locked-state exposure | Mobile | F-04 | INIT,CTR,MSG | Gate plaintext UI and cache access on current unlock state | M-SEC restart/lock widget tests | Complete |
@@ -128,18 +129,18 @@ before it can move to `Complete`.
 | F-33 | Medium | Language sync mismatch | Mobile,Backend | none | AUTH | Parse/cache backend language and reconcile startup preference | M-API profile/restart tests | Complete |
 | F-34 | Medium | Temp status authorization | Backend,Mobile | F-13,F-43 | AUTH,CTR | Permit safe cold-join status metadata without broadening protected data | B-SEC account-state/participant tests + M-API | Complete |
 | F-35 | Medium | Account creation abuse | Backend | F-02,F-43 | AUTH | Throttle first-touch upserts and require verified email for writes | B-SEC burst/unverified tests | Complete |
-| F-36 | Medium | Resource quotas | Backend | F-01,F-02 | CTR,MSG,MED,NTF | Per-user/per-contract count and byte quotas with atomic enforcement | B-DATA boundary/concurrent quota tests | Pending |
+| F-36 | Medium | Resource quotas | Backend | F-01,F-02 | CTR,MSG,MED,NTF | Per-user/per-contract count and byte quotas with atomic enforcement | B-DATA boundary/concurrent quota tests | Complete |
 | F-37 | Medium | Production debug output | Mobile | F-47 | all mobile | Replace unconditional prints with debug-gated/redacted logging | CLEAN search + release analyze/test | Complete |
 | F-38 | Medium | Mobile dependencies/storage | Mobile | F-04 | INIT,OPS | Commit lockfile, move test deps, prune confirmed unused packages; defer storage consolidation safely | CLEAN dependency build and migration review | Complete |
 | F-39 | Low | Temp metadata disclosure | Backend,Mobile | F-13,F-34 | CTR | Minimize pre-join response; disclose participant/hash metadata only after authorization | B-SEC guessed-ID/pre/post-join tests | Complete |
 | F-40 | Low | Hash verification | Backend,Mobile | F-18 | CTR | Bound/normalize and timing-safe compare hashes | B-SEC malformed/case/timing-safe path tests | Complete |
 | F-41 | Low | Ciphertext validation | Backend,All clients | F-18,F-21 | CTR,DSP | Central canonical ciphertext/hash validators shared by write paths | B-SEC malformed/noncanonical/oversized tests | Complete |
-| F-42 | Low | MIME spoofing | Backend,Mobile | F-05 | MED | Magic-byte sniff allowlist with documented format policy | B-SEC extension/content mismatch tests | Pending |
+| F-42 | Low | MIME spoofing | Backend,Mobile | F-05 | MED | Magic-byte sniff allowlist with documented format policy | B-SEC extension/content mismatch tests | Complete |
 | F-43 | Low | User-route authorization | Backend | F-02,F-35,F-70 | AUTH | Verified-email/state gates appropriate to each `/user` mutation | B-SEC unverified/incomplete route matrix | Complete |
 | F-44 | Low | Attachment cap race | Backend | F-01,F-36 | DSP,MED | Conditional atomic attachment append and orphan cleanup | B-DATA simultaneous 25th/26th upload test | Complete |
 | F-45 | Low | Support upsert race | Backend | F-01 | DSP | Retry/refetch on duplicate-key concurrent creation | B-DATA parallel ensure test | Complete |
 | F-46 | Low | Missing indexes | Backend | F-14,F-36 | OPS,ADM,NTF | Add indexes only for verified query shapes with migration notes | B-DATA schema/index inspection and query plans where possible | Complete |
-| F-47 | Low | Logging/audit trail | Backend | F-07,F-15 | OPS,ADM,DSP | Structured redacted request logs and append-only admin action audit | B-SEC log masking + B-DATA audit write tests | Pending |
+| F-47 | Low | Logging/audit trail | Backend | F-07,F-15 | OPS,ADM,DSP | Structured redacted request logs and append-only admin action audit | B-SEC log masking + B-DATA audit write tests | Complete |
 | F-48 | Low | Push listener lifecycle | Mobile | F-30 | NTF | Retain/cancel subscriptions and keep singleton restart-safe | M-API repeated-init/dispose tests | Complete |
 | F-49 | Low | Structured client errors | Mobile,Backend | F-25,F-34 | all mobile | Typed API exception preserving status/code and localized mappings | M-API representative error tests | Complete |
 | F-50 | Low | Corrupt error copy | Mobile | F-49 | CTR | Replace broken message with typed descriptive error | M-API regression assertion | Complete |
@@ -163,7 +164,7 @@ before it can move to `Complete`.
 | F-69 | Medium | Startup configuration | Backend | F-08,F-15,F-28 | OPS | Production fail-fast for DB/Firebase/Cloudinary; safe local development policy | OPS missing/valid env startup tests | Complete |
 | F-70 | Medium | Token revocation/account block | Backend | F-03,F-43 | AUTH,ADM | Revocation-aware verification and consistent disabled/blocked account enforcement | B-SEC revoked/disabled/blocked tests | Complete |
 | F-71 | Low | Review private-key placement | Admin,Backend | F-08,F-53 | DSP,OPS | Move key material outside repo tree and verify public/private match without logging it | OPS secret scan + A-SEC fingerprint test | Complete |
-| F-72 | Low | Mobile platform identity | Mobile | F-64 | AUTH,NTF,OPS | Verify intended Android application ID; leave unshipped platforms documented | M-API Android Firebase/build validation | Pending |
+| F-72 | Low | Mobile platform identity | Mobile | F-64 | AUTH,NTF,OPS | Verify intended Android application ID; leave unshipped platforms documented | M-API Android Firebase/build validation | Complete |
 | F-73 | Low | Feature completeness | Mobile | none | subscription | Verify as intentional UI-only feature; mark out-of-scope unless required for correctness | Documentation/source review | Deferred - Documented |
 
 ## Active Lifecycle Records
@@ -573,6 +574,24 @@ Decisions:
   (`tempStatusPayload`) drops participant PII unless the caller is a party and
   keeps `detailsHash` for the QR cross-check (documented against the mobile
   scan flow).
+- Pagination/quota/media/audit/identity closes (F-14, F-36, F-42, F-47, F-72
+  verified as already implemented): every list endpoint bounds
+  `parseLimit`/`parseOffset` and applies projections
+  (`contractController.js`, `adminController.js`, `mediaController.js`), with
+  the clamp behavior pinned by tests (`parseLimit`/`parseOffset` clamp page
+  bounds). Quotas are enforced with atomic caps — count caps via `arrayBelowCap`
+  inside the same append update (attachments, messages) and byte caps via
+  `MAX_MEDIA_BYTES` in `mediaHandler.js` (support attachments reuse
+  `MediaHandler.send`, documented as the same limits as `/media/send`). MIME
+  policy: legacy (v0) uploads are magic-byte sniffed against the extension
+  allowlist (`verifyMagicBytes`), while encrypted (v1) uploads skip sniffing by
+  design (ciphertext) but keep the MIME allowlist and size cap. Logging/audit:
+  `logger.js` redacts secret fields (exported `redact`) and every admin action
+  writes an append-only `AdminAuditLog` row (view/dispute/support), fire-and-
+  forget so it never fails the action. Android identity verified as
+  `com.example.yack` (`namespace`/`applicationId`), matching the registered
+  Firebase app; recorded that the ID must be finalized to the production value
+  before any store release.
 - Index/ops batch (F-46 confirmed complete; F-15/F-40/F-41/F-44/F-45 verified
   as already implemented): `src/models/Contract.js` adds the
   `{ status: 1, disputeState: 1 }` compound index serving the admin
@@ -700,6 +719,9 @@ Decisions:
   passed. F-34/F-39/F-13 live-gated assertions already exist in
   `test/liveApi.integration.test.js` (pre-join `waiting_for_join` +
   `detailsHash` disclosure, sign-then-poll recovery).
+- Backend final batch: `test/logger.test.js` added (F-47 log masking, request
+  context, JSON emission); `npm test` 77 tests, 76 passed, 1 skipped (live
+  integration).
 - Admin responsiveness batch: `npm run lint` 0 warnings/errors; `npm run build`
   succeeds; `npm test` 12 passed.
 
