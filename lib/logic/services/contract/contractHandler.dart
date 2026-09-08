@@ -161,16 +161,19 @@ class ContractHandler {
   // Media Operations
   // ============================================================================
 
-  /// Upload media to a contract
+  /// Upload media to a contract (F-05: encrypted client-side for the other
+  /// contract party before upload).
   Future<ContractMedia> uploadMedia({
     required String contractId,
     required File file,
     String? filename,
+    required String otherPartyPublicKey,
   }) async {
     return await _mediaService.send(
       contractId: contractId,
       file: file,
       filename: filename,
+      otherPartyPublicKey: otherPartyPublicKey,
     );
   }
 

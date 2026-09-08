@@ -1,7 +1,9 @@
 import 'dart:async';
 import 'dart:io';
+import 'dart:typed_data';
 
 import 'package:file_picker/file_picker.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:isar/isar.dart';
@@ -158,7 +160,8 @@ class _SupportChatScreenState extends State<SupportChatScreen> {
 
   Future<void> _sendAttachment(File file, {String? filename}) async {
     final contractId = _contract?.externalId;
-    if (_uploading || contractId == null) return;
+    final contract = _contract;
+    if (_uploading || contractId == null || contract == null) return;
 
     if (await file.length() > _maxAttachmentBytes) {
       if (mounted) {
@@ -170,12 +173,24 @@ class _SupportChatScreenState extends State<SupportChatScreen> {
       return;
     }
 
+    final otherPartyPublicKey = _otherPartyPublicKey(contract);
+    if (otherPartyPublicKey == null || otherPartyPublicKey.isEmpty) {
+      if (mounted) {
+        SnackBarHandler.showError(
+          context,
+          TranslationHandler.get('error_encryption_keys_missing'),
+        );
+      }
+      return;
+    }
+
     setState(() => _uploading = true);
     try {
       await _service.uploadAttachment(
         contractId: contractId,
         file: file,
         filename: filename,
+        otherPartyPublicKey: otherPartyPublicKey,
       );
       await _load(silent: true);
       if (mounted) {
@@ -194,6 +209,16 @@ class _SupportChatScreenState extends State<SupportChatScreen> {
     } finally {
       if (mounted) setState(() => _uploading = false);
     }
+  }
+
+  /// The other contract participant's public key, so attachments encrypt for
+  /// both parties plus the platform (F-05).
+  String? _otherPartyPublicKey(Contract contract) {
+    final me = FirebaseAuth.instance.currentUser?.uid;
+    if (me == null) return null;
+    return me == contract.userAId
+        ? contract.userBPublicKey
+        : contract.userAPublicKey;
   }
 
   Future<void> _deleteAttachment(SupportAttachment attachment) async {
@@ -334,6 +359,8 @@ class _SupportChatScreenState extends State<SupportChatScreen> {
   }
 
   void _previewAttachment(SupportAttachment attachment) {
+    // F-05: encrypted attachments are fetched and decrypted inside the dialog
+    // (loading indicator while the ciphertext blob is decrypted in memory).
     showDialog<void>(
       context: context,
       builder: (context) => Dialog(
@@ -342,7 +369,30 @@ class _SupportChatScreenState extends State<SupportChatScreen> {
           children: [
             Flexible(
               child: InteractiveViewer(
-                child: Image.network(attachment.url),
+                child: FutureBuilder<Uint8List?>(
+                  future: attachment.isEncrypted
+                      ? attachment.downloadDecryptedBytes()
+                      : Future.value(null),
+                  builder: (context, snapshot) {
+                    if (snapshot.connectionState != ConnectionState.done) {
+                      return const Padding(
+                        padding: EdgeInsets.all(48),
+                        child: CircularProgressIndicator(),
+                      );
+                    }
+                    if (attachment.isEncrypted) {
+                      final bytes = snapshot.data;
+                      if (bytes == null) {
+                        return const Padding(
+                          padding: EdgeInsets.all(48),
+                          child: Icon(Icons.lock_outline, size: 48),
+                        );
+                      }
+                      return Image.memory(bytes);
+                    }
+                    return Image.network(attachment.url);
+                  },
+                ),
               ),
             ),
             Padding(
@@ -383,7 +433,7 @@ class _SupportChatScreenState extends State<SupportChatScreen> {
                       onTap: attachment.isImage
                           ? () => _previewAttachment(attachment)
                           : null,
-                      child: attachment.isImage
+                      child: attachment.isImage && !attachment.isEncrypted
                           ? ClipRRect(
                               borderRadius: BorderRadius.circular(8),
                               child: Image.network(

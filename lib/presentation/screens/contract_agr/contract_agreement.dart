@@ -23,6 +23,7 @@ import 'package:yack/logic/services/auth/decrypted_key_cache.dart';
 import 'package:yack/logic/services/contract/contract_sync_service.dart';
 import 'package:yack/logic/services/notification/contract_notification_handler.dart';
 import 'package:yack/logic/services/notification/notification_service.dart';
+import 'package:yack/logic/services/media/media_service.dart';
 import 'package:yack/logic/services/snackBarHandler.dart';
 import 'package:yack/logic/services/translation_handler.dart';
 import 'package:yack/main.dart';
@@ -103,6 +104,10 @@ class _ContractAgreementState extends State<ContractAgreement> {
   String? _externalContractId;
   Uint8List? _privateKeyBytes;
   String? _otherUserPublicKey;
+
+  /// F-05: server media list keyed by media id, used to render encrypted
+  /// blobs (the envelope lives server-side; Isar stores only the public URL).
+  final Map<String, ContractMedia> _serverMediaById = {};
 
   StreamSubscription<ContractNotificationEvent>? _notificationSubscription;
   bool _isLoading = true;
@@ -266,7 +271,9 @@ class _ContractAgreementState extends State<ContractAgreement> {
 
       final state = mediaCubit.state;
       if (state is MediaListLoaded) {
+        _serverMediaById.clear();
         for (final media in state.mediaList) {
+          _serverMediaById[media.id] = media;
           await saveMediaToIsar(
             contractId: widget.contractId,
             externalId: media.id,
@@ -382,6 +389,17 @@ class _ContractAgreementState extends State<ContractAgreement> {
   /// Send media file to backend
   Future<void> _sendMedia(String filePath) async {
     if (_externalContractId == null) return;
+    if (_privateKeyBytes == null ||
+        _otherUserPublicKey == null ||
+        _otherUserPublicKey!.trim().isEmpty) {
+      if (mounted) {
+        SnackBarHandler.showError(
+          context,
+          TranslationHandler.get('error_encryption_keys_missing'),
+        );
+      }
+      return;
+    }
 
     setState(() => _isUploadingMedia = true);
     final mediaCubit = context.read<MediaCubit>();
@@ -398,11 +416,12 @@ class _ContractAgreementState extends State<ContractAgreement> {
         return;
       }
 
-      // Upload to backend
+      // Upload to backend (client-side encrypted, F-05)
       final uploaded = await mediaCubit.uploadMedia(
         contractId: _externalContractId!,
         file: file,
         filename: filename,
+        otherPartyPublicKey: _otherUserPublicKey!,
       );
       if (!uploaded) {
         if (mounted) {
@@ -1031,6 +1050,10 @@ class _ContractAgreementState extends State<ContractAgreement> {
         media.originalFilename.toLowerCase().endsWith('.png') ||
         media.originalFilename.toLowerCase().endsWith('.jpg') ||
         media.originalFilename.toLowerCase().endsWith('.jpeg');
+    final envelope = media.externalId == null
+        ? null
+        : _serverMediaById[media.externalId];
+    final isEncrypted = envelope?.isEncrypted == true;
 
     return Container(
       margin: const EdgeInsets.symmetric(vertical: 4, horizontal: 12),
@@ -1067,7 +1090,7 @@ class _ContractAgreementState extends State<ContractAgreement> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     if (isImage)
-                      isUrl
+                      isUrl && !isEncrypted
                           ? Image.network(
                               media.url,
                               fit: BoxFit.cover,
@@ -1087,7 +1110,14 @@ class _ContractAgreementState extends State<ContractAgreement> {
                               errorBuilder: (_, __, ___) =>
                                   _buildBrokenImagePlaceholder(colors),
                             )
-                          : Image.file(
+                          : isUrl && isEncrypted
+                            ? _EncryptedMediaImage(
+                                fileName: media.originalFilename,
+                                url: media.url,
+                                media: envelope!,
+                                privateKeyBytes: _privateKeyBytes,
+                              )
+                            : Image.file(
                               File(media.content),
                               fit: BoxFit.cover,
                               width: 300,
@@ -1600,5 +1630,115 @@ class _ContractAgreementState extends State<ContractAgreement> {
     return MaterialLocalizations.of(
       context,
     ).formatTimeOfDay(TimeOfDay.fromDateTime(dateTime.toLocal()));
+  }
+}
+
+/// F-05: session-level cache of decrypted media bytes, keyed by media id so
+/// scrolling the chat decrypts each blob once per app run.
+final Map<String, Uint8List> _encryptedMediaCache = <String, Uint8List>{};
+
+/// Renders an AES-256-GCM encrypted image: fetches the ciphertext blob from
+/// its public URL, decrypts it for this device, verifies the SHA-256, and
+/// shows the plaintext as in-memory bytes (never persisted to disk).
+class _EncryptedMediaImage extends StatefulWidget {
+  const _EncryptedMediaImage({
+    required this.fileName,
+    required this.url,
+    required this.media,
+    required this.privateKeyBytes,
+  });
+
+  final String fileName;
+  final String url;
+  final ContractMedia media;
+  final Uint8List? privateKeyBytes;
+
+  @override
+  State<_EncryptedMediaImage> createState() => _EncryptedMediaImageState();
+}
+
+class _EncryptedMediaImageState extends State<_EncryptedMediaImage> {
+  Uint8List? _bytes;
+  bool _failed = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _decrypt();
+  }
+
+  @override
+  void didUpdateWidget(covariant _EncryptedMediaImage oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.url != widget.url ||
+        oldWidget.privateKeyBytes != widget.privateKeyBytes) {
+      _bytes = null;
+      _failed = false;
+      _decrypt();
+    }
+  }
+
+  Future<void> _decrypt() async {
+    final key = widget.privateKeyBytes;
+    if (key == null) {
+      setState(() => _failed = true);
+      return;
+    }
+    final cached = _encryptedMediaCache[widget.media.id];
+    if (cached != null) {
+      setState(() => _bytes = cached);
+      return;
+    }
+    try {
+      final plaintext = await MediaService().fetchAndDecrypt(
+        media: widget.media,
+        privateKeyBytes: key,
+      );
+      if (plaintext == null) {
+        // The decrypted bytes failed their SHA-256 verification.
+        setState(() => _failed = true);
+        return;
+      }
+      _encryptedMediaCache[widget.media.id] = plaintext;
+      if (mounted) setState(() => _bytes = plaintext);
+    } catch (_) {
+      if (mounted) setState(() => _failed = true);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+    final bytes = _bytes;
+    if (bytes != null) {
+      return Image.memory(
+        bytes,
+        fit: BoxFit.cover,
+        width: 300,
+        height: 180,
+        errorBuilder: (_, __, ___) => Container(
+          width: 300,
+          height: 180,
+          color: colors.surfaceContainerHighest,
+          child: Icon(
+            Icons.broken_image,
+            color: colors.onSurface.withValues(alpha: .5),
+          ),
+        ),
+      );
+    }
+    return Container(
+      width: 300,
+      height: 180,
+      color: colors.surfaceContainerHighest,
+      child: Center(
+        child: _failed
+            ? Icon(
+                Icons.lock_outline,
+                color: colors.onSurface.withValues(alpha: .5),
+              )
+            : const CircularProgressIndicator(),
+      ),
+    );
   }
 }

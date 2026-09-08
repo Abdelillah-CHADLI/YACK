@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:async';
+import 'dart:typed_data';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
@@ -102,6 +103,20 @@ class HttpHandler {
       url,
     );
     return _handleResponse(response);
+  }
+
+  /// F-05: download a media blob (Cloudinary ciphertext) as raw bytes.
+  /// Sent without auth headers: the blob lives on the public Cloudinary URL,
+  /// and we must not forward the user's bearer token to a third-party CDN.
+  Future<Uint8List> fetchBytes(String url) async {
+    final uri = Uri.parse(url);
+    final response = await _performRequest(() async => http.get(uri), uri);
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      throw Exception(
+        'Failed to download media (HTTP ${response.statusCode})',
+      );
+    }
+    return response.bodyBytes;
   }
 
   Future<dynamic> put(String endpoint, {Map<String, dynamic>? body}) async {

@@ -1,7 +1,16 @@
 import 'dart:convert';
+import 'dart:typed_data';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:yack/logic/services/auth/cryptoService.dart';
+import 'package:yack/logic/services/media/media_crypto.dart';
 
+class _Identity {
+  _Identity(this.publicKey, this.privateKey);
+
+  final String publicKey;
+  final Uint8List privateKey;
+}
 void main() {
   group('CryptoService', () {
     group('generateAndEncryptKeys', () {
@@ -389,6 +398,112 @@ void main() {
         );
 
         expect(plaintexts, equals([null, null]));
+      });
+    });
+
+    group('media hybrid encryption (F-05)', () {
+      Future<_Identity> identityFor(String password) async {
+        final bundle = await CryptoService.generateAndEncryptKeysAsync(password);
+        final private = await CryptoService.decryptPrivateKeyAsync(
+          ciphertextBase64: bundle['encryptedPrivateKey']!,
+          password: password,
+          saltBase64: bundle['salt']!,
+          ivBase64: bundle['iv']!,
+        );
+        return _Identity(bundle['publicKey']!, private);
+      }
+
+      final plaintext = Uint8List.fromList(
+        List<int>.generate(1024, (i) => i % 251),
+      );
+
+      test('owner, participant, and admin can all open the same blob', () async {
+        final owner = await identityFor('owner-password');
+        final participant = await identityFor('participant-password');
+        final admin = await identityFor('admin-password');
+
+        final envelope = await MediaCrypto.buildMediaEnvelope(
+          plaintext: plaintext,
+          ownerPublicKey: owner.publicKey,
+          participantPublicKey: participant.publicKey,
+          adminPublicKey: admin.publicKey,
+        );
+
+        final viaOwner = await MediaCrypto.decryptMedia(
+          ciphertextBase64: envelope['ciphertextBase64']!,
+          ivBase64: envelope['ivBase64']!,
+          contentHash: envelope['contentHash']!,
+          keyOwner: envelope['keyOwner']!,
+          keyParticipant: envelope['keyParticipant']!,
+          privateKeyBytes: owner.privateKey,
+        );
+        expect(viaOwner, isNotNull);
+        expect(viaOwner, equals(plaintext));
+
+        // The admin wrap is opened with the admin private key directly, since
+        // admin decrypts happen in the browser, never on this device.
+        final adminAesKey = CryptoService.decryptBytesWithPrivateKey(
+          ciphertextBase64: envelope['keyAdmin']!,
+          privateKeyBytes: admin.privateKey,
+        );
+        final viaAdmin = MediaCrypto.decryptBytes(
+          ciphertext: base64Decode(envelope['ciphertextBase64']!),
+          key: adminAesKey,
+          iv: base64Decode(envelope['ivBase64']!),
+        );
+        expect(viaAdmin, equals(plaintext));
+      });
+
+      test('a non-participant cannot unwrap either key envelope', () async {
+        final owner = await identityFor('owner-password');
+        final participant = await identityFor('participant-password');
+        final admin = await identityFor('admin-password');
+        final stranger = await identityFor('stranger-password');
+
+        final envelope = await MediaCrypto.buildMediaEnvelope(
+          plaintext: plaintext,
+          ownerPublicKey: owner.publicKey,
+          participantPublicKey: participant.publicKey,
+          adminPublicKey: admin.publicKey,
+        );
+
+        await expectLater(
+          MediaCrypto.decryptMedia(
+            ciphertextBase64: envelope['ciphertextBase64']!,
+            ivBase64: envelope['ivBase64']!,
+            contentHash: envelope['contentHash']!,
+            keyOwner: envelope['keyOwner']!,
+            keyParticipant: envelope['keyParticipant']!,
+            privateKeyBytes: stranger.privateKey,
+          ),
+          throwsStateError,
+        );
+      });
+
+      test('a tampered content hash fails the integrity check', () async {
+        final owner = await identityFor('owner-password');
+        final participant = await identityFor('participant-password');
+        final admin = await identityFor('admin-password');
+
+        final envelope = await MediaCrypto.buildMediaEnvelope(
+          plaintext: plaintext,
+          ownerPublicKey: owner.publicKey,
+          participantPublicKey: participant.publicKey,
+          adminPublicKey: admin.publicKey,
+        );
+
+        final hash = envelope['contentHash']!;
+        final flipped = hash.codeUnitAt(5) == 0x31 ? '2' : '1';
+        final tamperedHash = hash.replaceRange(5, 6, flipped);
+        final result = await MediaCrypto.decryptMedia(
+          ciphertextBase64: envelope['ciphertextBase64']!,
+          ivBase64: envelope['ivBase64']!,
+          contentHash: tamperedHash,
+          keyOwner: envelope['keyOwner']!,
+          keyParticipant: envelope['keyParticipant']!,
+          privateKeyBytes: owner.privateKey,
+        );
+        expect(result, isNull);
       });
     });
   });

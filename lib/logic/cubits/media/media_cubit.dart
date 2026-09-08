@@ -25,10 +25,13 @@ class MediaCubit extends Cubit<MediaState> {
   }
 
   /// Upload a media file to a contract
+  /// F-05: the payload is encrypted client-side for the uploader, the other
+  /// contract party, and the admin review key before it is sent.
   Future<bool> uploadMedia({
     required String contractId,
     required File file,
     String? filename,
+    required String otherPartyPublicKey,
   }) async {
     emit(const MediaLoading());
     try {
@@ -36,6 +39,7 @@ class MediaCubit extends Cubit<MediaState> {
         contractId: contractId,
         file: file,
         filename: filename,
+        otherPartyPublicKey: otherPartyPublicKey,
       );
       emit(MediaUploaded(media));
 

@@ -261,6 +261,37 @@ class CryptoService {
     return utf8.decode(decrypted);
   }
 
+  // F-05: raw-byte RSA-OAEP-SHA256 primitives used to wrap/unwrap the
+  // per-media AES-256 key. Messages keep their string round-trip above.
+  static String encryptBytesWithPublicKey({
+    required Uint8List plaintext,
+    required String publicKeyBase64,
+  }) {
+    if (plaintext.length > maxRsaPlaintextBytes) {
+      throw ArgumentError.value(
+        plaintext.length,
+        'plaintext',
+        'payload exceeds $maxRsaPlaintextBytes bytes',
+      );
+    }
+    final publicKey = _decodeRSAPublicKey(publicKeyBase64);
+    final encryptor = OAEPEncoding.withSHA256(RSAEngine())
+      ..init(true, PublicKeyParameter<RSAPublicKey>(publicKey));
+
+    return base64Encode(encryptor.process(plaintext));
+  }
+
+  static Uint8List decryptBytesWithPrivateKey({
+    required String ciphertextBase64,
+    required Uint8List privateKeyBytes,
+  }) {
+    final privateKey = _decodeRSAPrivateKey(privateKeyBytes);
+    final decryptor = OAEPEncoding.withSHA256(RSAEngine())
+      ..init(false, PrivateKeyParameter<RSAPrivateKey>(privateKey));
+
+    return decryptor.process(base64Decode(ciphertextBase64));
+  }
+
   /// F-20: batch per-message RSA decryption on a background isolate. Each
   /// entry maps to its plaintext, or `null` when that ciphertext failed to
   /// decrypt so one corrupt message never blocks the rest of the page.

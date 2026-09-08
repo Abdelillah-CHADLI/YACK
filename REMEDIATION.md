@@ -12,11 +12,17 @@ Initial count: 72 findings (`F-01`–`F-66`, excluding unused `F-67`, plus
 F-28, F-29, F-54, F-68, F-69, F-70, F-71, F-02, F-03, F-35 from the first
 pass; then mobile batch F-17, F-18, F-21, F-30, F-31, F-33, F-37, F-43,
 F-48, F-49, F-50, F-62; then admin batch F-22, F-23, F-25, F-26, F-52,
-F-53, F-55, F-56, F-57, F-58, F-63, F-64, F-65, F-66). Four findings are
-deferred with documented decisions (F-04 data-at-rest envelope, F-32
+F-53, F-55, F-56, F-57, F-58, F-63, F-64, F-65, F-66; then F-11, F-12,
+F-16, F-19, F-20, F-24, F-38, F-59, F-61 from the subsequent batches —
+49 complete in total). F-05 is fully implemented across all three
+repositories (envelope validation, client-side hybrid encryption, admin
+in-browser decrypt) with cross-repo unit tests green; only the live
+end-to-end smoke remains blocked on a configured Cloudinary. Four findings
+are deferred with documented decisions (F-04 data-at-rest envelope, F-32
 dispute local model, F-51 query/sync efficiency, F-60 contract hash
-persistence). The remaining audit claims have been triaged into confirmed
-pending, external-action, and not-reproducible work.
+persistence) plus F-73 (UI-only subscription feature, out of scope). The remaining audit
+claims have been triaged into confirmed pending, external-action, and
+not-reproducible work.
 
 ## Baseline
 
@@ -89,26 +95,26 @@ before it can move to `Complete`.
 | F-02 | High | Abuse | Backend | F-35,F-36,F-43 | AUTH,CTR,MSG,MED,DSP,ADM | Layered IP/user/operation rate limits, proxy-safe keys and 429 responses | B-SEC limit, bypass and reset tests | Complete |
 | F-03 | High | FCM security/concurrency | Backend,Mobile | F-02,F-36 | AUTH,NTF | Remove implicit token mutation; explicit bounded atomic registration with defensible ownership semantics | B-SEC + M-API stolen/replay/concurrent token tests | Complete |
 | F-04 | High | Mobile data at rest | Mobile | F-17,F-19,F-20 | INIT,CTR,MSG | Persist ciphertext or locally encrypted data with backward-compatible migration | M-SEC restart/locked/migration tests | Deferred - Documented (lock-gate mitigation) |
-| F-05 | High | Media confidentiality | All | F-21,F-55 | MED,DSP | Client-side hybrid encryption or private signed delivery; migrate legacy records safely | B-SEC + M-SEC + A-SEC media round trip/access tests | Pending |
+| F-05 | High | Media confidentiality | All | F-21,F-55 | MED,DSP | Client-side hybrid encryption or private signed delivery; migrate legacy records safely | B-SEC + M-SEC + A-SEC media round trip/access tests | Implemented - Live e2e pending |
 | F-06 | High | Admin session security | Admin | F-53,F-54,F-57 | AUTH,ADM,DSP | Clear key, plaintext, case and drafts on sign-out/account switch | A-SEC two-operator session regression test | Complete |
 | F-07 | High | Sensitive logging | Backend | F-47 | AUTH,ADM | Remove allowlist/PII debug output; retain only redacted diagnostics | B-SEC deny/allow tests with captured logs | Complete |
 | F-08 | High | Admin configuration | Backend,Admin | F-29,F-69,F-71 | ADM,OPS | Validate required production config; fail closed with documented external setup | OPS startup matrix + `/admin/me`/review-key tests | Complete |
 | F-09 | High* | Secret history | Backend | F-10,F-28 | OPS | Verify reachable history; if exposure cannot be disproved, document provider-side rotation | OPS history scan; external rotation verification | Not reproducible |
 | F-10 | High | Local secret hygiene | Backend | F-09,F-28 | OPS | Keep credentials untracked, reduce copies and document mandatory provider rotation | OPS tracked-file/history scan; external action evidence | Blocked - External Action Required |
-| F-11 | Medium | Dispute concurrency | Backend,Admin | F-16 | DSP | Preserve append-only resolution history or reject redispute after resolution atomically | B-DATA resolve-vs-redispute race tests | Pending |
-| F-12 | Medium | Dispute confidentiality | All | F-03,F-05,F-21 | DSP,NTF | Remove plaintext reason from push/storage or add compatible encrypted envelopes | Cross-client crypto/API tests; inspect FCM payload | Pending |
+| F-11 | Medium | Dispute concurrency | Backend,Admin | F-16 | DSP | Preserve append-only resolution history or reject redispute after resolution atomically | B-DATA resolve-vs-redispute race tests | Complete |
+| F-12 | Medium | Dispute confidentiality | All | F-03,F-05,F-21 | DSP,NTF | Remove plaintext reason from push/storage or add compatible encrypted envelopes | Cross-client crypto/API tests; inspect FCM payload | Complete |
 | F-13 | Medium | HTTP/state semantics | Backend,Mobile | F-34 | CTR,DSP | Enforce expiry during finalization and remove create-on-GET side effects | B-DATA expired/finalized/read-idempotence tests | Pending |
 | F-14 | Medium | Pagination | All | F-01,F-23,F-51 | CTR,MED,ADM | Cursor pagination, projections and validated bounds across all consumers | B-DATA + M-API + A-UX paging tests | Pending |
 | F-15 | Medium | Backend reliability | Backend | F-69 | OPS | Await DB before listen; real health/readiness, timeouts and graceful shutdown | OPS startup/outage/SIGTERM/in-flight tests | Pending |
-| F-16 | Medium | Test coverage | All | all confirmed findings | all | Add route, client, crypto and concurrency regressions with real pre-fix failure value | Broad suites and coverage inventory | Pending |
+| F-16 | Medium | Test coverage | All | all confirmed findings | all | Add route, client, crypto and concurrency regressions with real pre-fix failure value | Broad suites and coverage inventory | Complete |
 | F-17 | Medium | Locked-state exposure | Mobile | F-04 | INIT,CTR,MSG | Gate plaintext UI and cache access on current unlock state | M-SEC restart/lock widget tests | Complete |
 | F-18 | Medium | Integrity verification | Mobile,Admin | F-21 | MSG,DSP | Verify message hashes and case details after decrypt; isolate failures | M-SEC + A-SEC tamper tests | Complete |
-| F-19 | Medium | UI-isolate crypto | Mobile | F-04,F-20 | INIT | Move KDF/key generation off UI isolate without changing crypto format | M-SEC round trip + responsiveness test | Pending |
-| F-20 | Medium | Repeated RSA work | Mobile | F-14,F-19,F-51 | MSG | Skip known ciphertext, background decrypt and remove redundant reloads | M-SEC call-count/performance regression | Pending |
+| F-19 | Medium | UI-isolate crypto | Mobile | F-04,F-20 | INIT | Move KDF/key generation off UI isolate without changing crypto format | M-SEC round trip + responsiveness test | Complete |
+| F-20 | Medium | Repeated RSA work | Mobile | F-14,F-19,F-51 | MSG | Skip known ciphertext, background decrypt and remove redundant reloads | M-SEC call-count/performance regression | Complete |
 | F-21 | Medium | Crypto compatibility | All | F-05,F-18,F-53 | INIT,MSG,DSP | Version OAEP/key parameters and provide backward-compatible migration before SHA change | Cross-language known-vector/legacy round trips | Complete |
 | F-22 | Medium | Admin failure state | Admin | F-23,F-25 | ADM,DSP | Handle open failure without rejection/empty sheet; offer visible retry | A-UX rejected-request test | Complete |
 | F-23 | Medium | Admin request races | Admin | F-14,F-25 | ADM | Abort or generation-guard stale dashboard/case requests | A-UX out-of-order response tests | Complete |
-| F-24 | Medium | Admin support UX | Admin,Backend | F-14,F-56 | ADM,DSP | Real support-thread view/data source or remove misleading tab | A-UX data/badge/navigation tests | Pending |
+| F-24 | Medium | Admin support UX | Admin,Backend | F-14,F-56 | ADM,DSP | Real support-thread view/data source or remove misleading tab | A-UX data/badge/navigation tests | Complete |
 | F-25 | Medium | Admin HTTP resilience | Admin | F-08,F-21,F-23 | ADM | Typed text/JSON errors, timeout/abort and per-session review-key caching | A-UX proxy/empty/timeout tests | Complete |
 | F-26 | Medium | Admin resolution feedback | Admin | F-11,F-23 | DSP,ADM | Modal-local resolve errors and 409 refresh behavior | A-UX 409/500 tests | Complete |
 | F-27 | Medium* | Model tool exposure | Admin | F-06 | ADM | Verify bridge semantics; remove or require explicit scoped operator opt-in | A-SEC absence/consent/scope test | Complete |
@@ -122,7 +128,7 @@ before it can move to `Complete`.
 | F-35 | Medium | Account creation abuse | Backend | F-02,F-43 | AUTH | Throttle first-touch upserts and require verified email for writes | B-SEC burst/unverified tests | Complete |
 | F-36 | Medium | Resource quotas | Backend | F-01,F-02 | CTR,MSG,MED,NTF | Per-user/per-contract count and byte quotas with atomic enforcement | B-DATA boundary/concurrent quota tests | Pending |
 | F-37 | Medium | Production debug output | Mobile | F-47 | all mobile | Replace unconditional prints with debug-gated/redacted logging | CLEAN search + release analyze/test | Complete |
-| F-38 | Medium | Mobile dependencies/storage | Mobile | F-04 | INIT,OPS | Commit lockfile, move test deps, prune confirmed unused packages; defer storage consolidation safely | CLEAN dependency build and migration review | Pending |
+| F-38 | Medium | Mobile dependencies/storage | Mobile | F-04 | INIT,OPS | Commit lockfile, move test deps, prune confirmed unused packages; defer storage consolidation safely | CLEAN dependency build and migration review | Complete |
 | F-39 | Low | Temp metadata disclosure | Backend,Mobile | F-13,F-34 | CTR | Minimize pre-join response; disclose participant/hash metadata only after authorization | B-SEC guessed-ID/pre/post-join tests | Pending |
 | F-40 | Low | Hash verification | Backend,Mobile | F-18 | CTR | Bound/normalize and timing-safe compare hashes | B-SEC malformed/case/timing-safe path tests | Pending |
 | F-41 | Low | Ciphertext validation | Backend,All clients | F-18,F-21 | CTR,DSP | Central canonical ciphertext/hash validators shared by write paths | B-SEC malformed/noncanonical/oversized tests | Pending |
@@ -143,9 +149,9 @@ before it can move to `Complete`.
 | F-56 | Low | Unused analytics payload | Backend,Admin | F-24,F-58 | ADM | Render useful trend or remove payload/dependency after product intent check | A-UX analytics test + CLEAN dependency search | Complete |
 | F-57 | Low | Destructive/draft UX | Admin | F-06,F-26,F-53 | ADM,DSP | Confirm sign-out/key swap/resolve and guard unsaved support drafts | A-UX interaction tests | Complete |
 | F-58 | Low | Admin dependency/tests | Admin | F-16,F-56 | OPS,ADM | Prune confirmed unused UI/deps; pin scripts and add focused tests | CLEAN install/lint/test/build | Complete |
-| F-59 | Low | Unused media endpoint | Mobile,Backend | F-05,F-51 | MED | Verify dynamic use; wire refresh semantics or remove endpoint/service together | CLEAN cross-repo reference + media tests | Pending |
+| F-59 | Low | Unused media endpoint | Mobile,Backend | F-05,F-51 | MED | Verify dynamic use; wire refresh semantics or remove endpoint/service together | CLEAN cross-repo reference + media tests | Complete |
 | F-60 | Low | Contract hash persistence | Mobile,Backend | F-32 | CTR | Persist/map hash only if an active workflow consumes it | M-API model migration and verify flow | Deferred - Documented (schema/build_runner) |
-| F-61 | Low | Development port drift | Backend,Mobile | F-64,F-69 | OPS | Align documented local defaults without changing production host behavior | OPS local startup + M-API base URL check | Pending |
+| F-61 | Low | Development port drift | Backend,Mobile | F-64,F-69 | OPS | Align documented local defaults without changing production host behavior | OPS local startup + M-API base URL check | Complete |
 | F-62 | Low | Temp status enum drift | Mobile,Backend | F-13 | CTR | Remove unreachable alias or document/emit a canonical value | M-API status matrix | Complete |
 | F-63 | Low | Admin type narrowing | Admin,Backend | F-14 | ADM,DSP | Verify server normalization invariant; document or widen type | A-UX type/build + response tests | Complete |
 | F-64 | Low | Deployment/documentation drift | All | F-08,F-29,F-61,F-65 | OPS | Align explicit local/production config docs; deploy manifests only if actually used | OPS clean-env local/build validation | Complete |
@@ -156,7 +162,7 @@ before it can move to `Complete`.
 | F-70 | Medium | Token revocation/account block | Backend | F-03,F-43 | AUTH,ADM | Revocation-aware verification and consistent disabled/blocked account enforcement | B-SEC revoked/disabled/blocked tests | Complete |
 | F-71 | Low | Review private-key placement | Admin,Backend | F-08,F-53 | DSP,OPS | Move key material outside repo tree and verify public/private match without logging it | OPS secret scan + A-SEC fingerprint test | Complete |
 | F-72 | Low | Mobile platform identity | Mobile | F-64 | AUTH,NTF,OPS | Verify intended Android application ID; leave unshipped platforms documented | M-API Android Firebase/build validation | Pending |
-| F-73 | Low | Feature completeness | Mobile | none | subscription | Verify as intentional UI-only feature; mark out-of-scope unless required for correctness | Documentation/source review | Pending |
+| F-73 | Low | Feature completeness | Mobile | none | subscription | Verify as intentional UI-only feature; mark out-of-scope unless required for correctness | Documentation/source review | Deferred - Documented |
 
 ## Active Lifecycle Records
 
@@ -459,7 +465,53 @@ vulnerabilities after vendoring `react@19.2.8`,
 `react-server-dom-webpack@19.2.8`, `vite@8.2.2`, `@vitejs/plugin-rsc@0.5.34`
 and `vinext@1.0.0-beta.9`.
 
-### Deferred decisions — F-04, F-32, F-51, F-60
+### F-05 / F-11 / F-16 — Client-side media encryption and terminal dispute resolution
+
+Status: F-11, F-16 Complete; F-05 `Implemented - Live e2e pending`.
+
+Root fixes:
+
+- **F-05 (media confidentiality, all three repos):** Contract media and support
+  attachments now use a flat client-side hybrid envelope. Uploaders generate a
+  random AES-256-GCM key, encrypt the file bytes in an `Isolate.run`, and store
+  `encryptionVersion: 1`, `iv` (12-byte nonce), `contentHash` (SHA-256 of the
+  plaintext), and the AES key RSA-OAEP-SHA256 wrapped per reader
+  (`keyOwner`, `keyParticipant`, `keyAdmin`). The server validates the envelope
+  (canonical base64, 96-bit IV, SHA-256 hex, 128–512 B wraps, MIME allowlist,
+  6 MB cap) and stores the opaque ciphertext on Cloudinary with
+  `resource_type: "raw"` so it is never re-parsed as an image. Legacy records
+  remain `encryptionVersion: 0` plaintext URLs and render exactly as before.
+  Mobile decrypts via owner-then-participant wrap with an in-memory session
+  cache (`_EncryptedMediaImage`); admin unwraps `keyAdmin` in the browser with
+  `crypto.subtle.unwrapKey` (RSA-OAEP-SHA256) and AES-GCM decrypts to an
+  object URL, verifying the stored hash before display.
+- **F-11 / F-16 (dispute resolution terminality):** `resolveDispute` resolves
+  through an atomic `findOneAndUpdate` filtered on
+  `{ status: "disputed", disputeState: { $ne: "resolved" } }`, so a concurrent
+  second resolution returns `409`; the F-11 terminality guard already rejects
+  any party redispute of a resolved case. A regression scenario was added to
+  the gated live integration test (resolve once → state `resolved`/status
+  `pending`, second resolve → 409, reopen attempt → 409).
+
+Tests:
+
+- Backend: `npm test` 68 tests, 67 passed, 1 skipped (live integration);
+  encrypted-payload validation/round-trip cases new in
+  `test/mediaHandler.test.js`; `node --check` on all touched files passed.
+- Mobile: 3 new hybrid-encryption round-trip tests (owner/participant/open,
+  wrong-recipient rejects, tampered hash → null) in
+  `test/services/crypto_service_test.dart`; full `flutter test` 126/126;
+  `flutter analyze` 0 errors (96 pre-existing issues, none new).
+- Admin: `npm run lint` 0 errors; `npm run build` succeeds with the new
+  `decryptMediaToBlob`/`DocumentLink`/`AttachmentThumb` paths (legacy URLs pass
+  through untouched; encrypted records decrypt once per session via
+  `mediaBlobCache`).
+
+Re-audit: no plaintext media bytes are ever stored or transmitted by the backend
+for envelope uploads; support attachment keys are wrapped for the review key so
+admins can decrypt without ever handling user private keys.
+
+### Deferred decisions — F-04, F-32, F-51, F-60, F-73
 
 Status: Deferred - Documented
 
@@ -481,6 +533,15 @@ Decisions:
 
 ### Mobile
 
+- F-05 batch: new `lib/logic/services/media/media_crypto.dart` (AES-256-GCM +
+  RSA-OAEP-SHA256 hybrid envelope via `Isolate.run`), `media_service.dart`
+  (`ContractMedia` envelope fields, client-side `send(with otherPartyPublicKey)`,
+  `fetchAndDecrypt`), `support_service.dart` (`downloadDecryptedBytes`,
+  encrypted `uploadAttachment`), `contract_agreement.dart`
+  (`_EncryptedMediaImage`, `_serverMediaById`), `support_chat.dart`
+  (encrypted previews/thumbnails, `_otherPartyPublicKey`),
+  `cryptoService.dart` byte-level RSA helpers, `http_handler.dart`
+  `fetchBytes`; tests in `test/services/crypto_service_test.dart`.
 - `lib/logic/services/network/http_handler.dart`: removed the implicit `fcmToken`
   body injection from `post`/`put`/`patch`, the `_getFcmToken()` helper and the
   `firebase_messaging` import. Token registration remains explicit via
@@ -498,6 +559,18 @@ Decisions:
 
 ### Backend
 
+- F-05 batch: `src/models/Contract.js` (media envelope schema + `size`),
+  `src/models/SupportThread.js` (attachment envelope schema),
+  `src/utils/mediaHandler.js` (`validateEncryptedMediaPayload`,
+  `mediaEnvelopeOf`, encrypted `raw` Cloudinary path), `src/controllers/mediaController.js`
+  (envelope-aware `sendMedia`/`getAllMedia`), `src/controllers/supportController.js`
+  (`uploadSupportAttachment` encrypted path, `keyParticipant` optional),
+  `src/controllers/adminController.js` (dispute media/attachments carry the
+  envelope for in-browser admin decrypt); deleted dead
+  `src/utils/cryptoHandler.js` + `test/cryptoHandler.test.js`; docs in
+  `src/api.md` describe the encryptionVersion 0/1 modes.
+- F-11/F-16: `test/liveApi.integration.test.js` gains the resolve-once →
+  second-resolve-409 → reopen-409 scenario (admin created via custom claim).
 - `src/controllers/adminController.js`: `getAnalytics` no longer computes
   `contractTrend` (F-56); dispute summary normalization verified as
   open|resolved (F-63).
@@ -527,6 +600,11 @@ Decisions:
 
 ### Admin
 
+- F-05 batch: `lib/api.ts` (envelope fields on dispute `media` + `SupportAttachment`),
+  `lib/crypto.ts` (`decryptMediaToBlob`: fetch → `unwrapKey` RSA-OAEP-SHA256 →
+  AES-GCM decrypt → SHA-256 verify → object URL; legacy passthrough),
+  `app/page.tsx` (`useResolvedMedia` + `DocumentLink`/`AttachmentThumb`,
+  per-record `mediaBlobCache`).
 - Removed hardcoded live Firebase/backend defaults and added startup validation.
 - Added browser-session auth persistence and UID-keyed dashboard isolation.
 - Removed the ambient model-tool registration.
@@ -571,6 +649,11 @@ Decisions:
 - Mobile final batch: `flutter analyze` 0 errors; `flutter test` 119 passed.
 - Backend after F-56: `node --check src/controllers/adminController.js` passed;
   `npm test` 64 tests, 63 passed, 1 skipped.
+- Backend F-05/F-16 batch: `npm test` 68 tests, 67 passed, 1 skipped (live
+  integration; resolve scenario included); `node --check` on touched files.
+- Mobile F-05 batch: `flutter test` 126/126 passed (3 new hybrid-envelope tests);
+  `flutter analyze` 0 errors (96 pre-existing issues, none new).
+- Admin F-05 batch: `npm run lint` 0 errors; `npm run build` succeeds.
 - Admin final batch: `npm run lint` 0 warnings/errors; `npm test` 12 passed
   (security-boundaries + crypto-interop + config); `npm run build` succeeds
   (rsc/client/ssr environments); `npm audit` 0 vulnerabilities.
@@ -583,7 +666,9 @@ environment changes and redeployment. The production host must also set
 `ADMIN_EMAILS`, `ADMIN_REVIEW_PUBLIC_KEY` and `CORS_ORIGINS`
 (F-08/F-68 — without `CORS_ORIGINS` the deployed admin dashboard is
 CORS-blocked), and the host's Mongo credentials currently fail Atlas auth
-locally (stale original-author credentials).
+locally (stale original-author credentials). F-05's live end-to-end smoke (upload an
+encrypted attachment on-device and decrypt it in the admin dashboard) is blocked
+on a configured, reachable Cloudinary environment.
 
 ## Final Re-Audit Results
 
