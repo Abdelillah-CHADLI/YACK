@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:io';
+import 'package:mime/mime.dart';
 import 'package:yack/logic/services/network/http_handler.dart';
 
 /// Represents a media entry from the API
@@ -50,14 +51,14 @@ class ContractMedia {
     }
 
     // Map backend fields: originalFilename, content, url
-    final originalFilename = json['originalFilename']?.toString() ??
+    final originalFilename =
+        json['originalFilename']?.toString() ??
         json['filename']?.toString() ??
         json['name']?.toString() ??
         '';
 
-    final content = json['content']?.toString() ??
-        json['path']?.toString() ??
-        '';
+    final content =
+        json['content']?.toString() ?? json['path']?.toString() ?? '';
 
     final url = json['url']?.toString() ?? content;
 
@@ -97,14 +98,13 @@ class ContractMedia {
   }
 
   /// Helper to get display filename
-  String get displayFilename => originalFilename.isNotEmpty
-      ? originalFilename
-      : content.split('/').last;
+  String get displayFilename =>
+      originalFilename.isNotEmpty ? originalFilename : content.split('/').last;
 }
 
 class MediaService {
   MediaService({HttpHandler? httpHandler})
-      : _http = httpHandler ?? HttpHandler();
+    : _http = httpHandler ?? HttpHandler();
 
   final HttpHandler _http;
 
@@ -121,15 +121,21 @@ class MediaService {
     final bytes = await file.readAsBytes();
     final base64Buffer = base64Encode(bytes);
 
-    final actualFilename = filename ?? file.path.split(Platform.pathSeparator).last;
+    final actualFilename =
+        filename ?? file.path.split(Platform.pathSeparator).last;
+    final mimeType = lookupMimeType(actualFilename, headerBytes: bytes);
 
-    final response = await _http.post('/media/send', body: {
-      'contractId': contractId,
-      'file': {
-        'filename': actualFilename,
-        'buffer': base64Buffer,
+    final response = await _http.post(
+      '/media/send',
+      body: {
+        'contractId': contractId,
+        'file': {
+          'filename': actualFilename,
+          'buffer': base64Buffer,
+          if (mimeType != null) 'mimeType': mimeType,
+        },
       },
-    });
+    );
 
     return _parseMediaResponse(response);
   }
@@ -148,7 +154,9 @@ class MediaService {
     required String contractId,
     required String mediaId,
   }) async {
-    final response = await _http.get('/media/get?contractId=$contractId&mediaId=$mediaId');
+    final response = await _http.get(
+      '/media/get?contractId=$contractId&mediaId=$mediaId',
+    );
     return _parseMediaResponse(response);
   }
 
