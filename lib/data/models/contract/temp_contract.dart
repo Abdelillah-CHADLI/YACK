@@ -54,7 +54,8 @@ class TempContract {
   // Creates a ContractPreview from a decoded JSON map.
   factory TempContract.fromJson(Map<String, dynamic> json) {
     final parsed = _sanitize(json);
-    final tempId = parsed['tempID'] ?? parsed['tempId'] ?? parsed['_id'] ?? parsed['id'];
+    final tempId =
+        parsed['tempID'] ?? parsed['tempId'] ?? parsed['_id'] ?? parsed['id'];
     if (tempId == null || tempId.toString().isEmpty) {
       throw ArgumentError('tempId is required to build TempContract');
     }
@@ -64,14 +65,24 @@ class TempContract {
 
     return TempContract(
       tempId: tempId.toString(),
-      contractId: parsed['contractId']?.toString(),
+      contractId: (parsed['contractID'] ?? parsed['contractId'])?.toString(),
       hash: parsed['hash']?.toString(),
       userAId: _readUserId(userAData) ?? parsed['userAId']?.toString(),
-      userAName: _readUserName(userAData, fallback: parsed['userAName']?.toString()),
+      userAName: _readUserName(
+        userAData,
+        fallback: parsed['userAName']?.toString(),
+      ),
       userBId: _readUserId(userBData) ?? parsed['userBId']?.toString(),
-      userBName: _readUserName(userBData, fallback: parsed['userBName']?.toString()),
-      userASigned: _asBool(parsed['userASigned'] ?? parsed['userA_signed']),
-      userBSigned: _asBool(parsed['userBSigned'] ?? parsed['userB_signed']),
+      userBName: _readUserName(
+        userBData,
+        fallback: parsed['userBName']?.toString(),
+      ),
+      userASigned: _asBool(
+        parsed['userASign'] ?? parsed['userASigned'] ?? parsed['userA_signed'],
+      ),
+      userBSigned: _asBool(
+        parsed['userBSign'] ?? parsed['userBSigned'] ?? parsed['userB_signed'],
+      ),
       updatedAt: _parseDate(parsed['updatedAt'] ?? parsed['updated_at']),
     );
   }

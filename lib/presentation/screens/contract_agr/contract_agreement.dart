@@ -36,6 +36,60 @@ class ContractAgreement extends StatefulWidget {
   State<ContractAgreement> createState() => _ContractAgreementState();
 }
 
+class _DisputeDialog extends StatefulWidget {
+  const _DisputeDialog();
+
+  @override
+  State<_DisputeDialog> createState() => _DisputeDialogState();
+}
+
+class _DisputeDialogState extends State<_DisputeDialog> {
+  final TextEditingController _reasonController = TextEditingController();
+
+  @override
+  void dispose() {
+    _reasonController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: Text(TranslationHandler.get('dispute_contract')),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(TranslationHandler.get('dispute_contract_warning')),
+          const SizedBox(height: 16),
+          TextField(
+            controller: _reasonController,
+            decoration: InputDecoration(
+              labelText: TranslationHandler.get('dispute_reason_optional'),
+            ),
+            maxLines: 3,
+          ),
+        ],
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: Text(TranslationHandler.get('cancel')),
+        ),
+        FilledButton(
+          style: FilledButton.styleFrom(
+            backgroundColor: Theme.of(context).colorScheme.error,
+            foregroundColor: Theme.of(context).colorScheme.onError,
+          ),
+          onPressed: () =>
+              Navigator.pop(context, _reasonController.text.trim()),
+          child: Text(TranslationHandler.get('dispute')),
+        ),
+      ],
+    );
+  }
+}
+
 class _ContractAgreementState extends State<ContractAgreement> {
   static const int _maxAttachmentBytes = 6 * 1024 * 1024;
 
@@ -630,6 +684,18 @@ class _ContractAgreementState extends State<ContractAgreement> {
               ),
             ],
           ),
+          if (contract.status == ContractStatus.disputed) ...[
+            const SizedBox(height: 14),
+            FilledButton.tonalIcon(
+              onPressed: () => Navigator.pushNamed(
+                context,
+                '/support-chat',
+                arguments: widget.contractId,
+              ),
+              icon: const Icon(Icons.support_agent_outlined),
+              label: Text(TranslationHandler.get('contact_support')),
+            ),
+          ],
           if (isActionable && !waiting) ...[
             const SizedBox(height: 14),
             Row(
@@ -695,45 +761,11 @@ class _ContractAgreementState extends State<ContractAgreement> {
   }
 
   Future<void> _showDisputeConfirmation(BuildContext context) async {
-    final reasonController = TextEditingController();
-    final confirmed = await showDialog<bool>(
+    final reason = await showDialog<String>(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: Text(TranslationHandler.get('dispute_contract')),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(TranslationHandler.get('dispute_contract_warning')),
-            const SizedBox(height: 16),
-            TextField(
-              controller: reasonController,
-              decoration: InputDecoration(
-                labelText: TranslationHandler.get('dispute_reason_optional'),
-              ),
-              maxLines: 3,
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: Text(TranslationHandler.get('cancel')),
-          ),
-          FilledButton(
-            style: FilledButton.styleFrom(
-              backgroundColor: Theme.of(context).colorScheme.error,
-              foregroundColor: Theme.of(context).colorScheme.onError,
-            ),
-            onPressed: () => Navigator.pop(ctx, true),
-            child: Text(TranslationHandler.get('dispute')),
-          ),
-        ],
-      ),
+      builder: (_) => const _DisputeDialog(),
     );
-    final reason = reasonController.text.trim();
-    reasonController.dispose();
-    if (confirmed == true && mounted) {
+    if (reason != null && mounted) {
       await _disputeContract(reason: reason.isEmpty ? null : reason);
     }
   }

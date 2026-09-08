@@ -1,5 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:yack/data/models/contract/temp_contract.dart';
+import 'package:yack/logic/services/contract/temp_contract_service.dart';
 
 void main() {
   group('TempContract', () {
@@ -9,11 +10,7 @@ void main() {
           'tempID': 'temp123',
           'contractId': 'contract456',
           'hash': 'hash789',
-          'userA': {
-            '_id': 'userA_id',
-            'firstName': 'John',
-            'lastName': 'Doe',
-          },
+          'userA': {'_id': 'userA_id', 'firstName': 'John', 'lastName': 'Doe'},
           'userB': {
             '_id': 'userB_id',
             'firstName': 'Jane',
@@ -154,11 +151,15 @@ void main() {
       });
 
       test('parses updatedAt from milliseconds timestamp', () {
-        final timestamp = DateTime(2025, 1, 10, 12, 0, 0).millisecondsSinceEpoch;
-        final json = {
-          'tempID': 'temp123',
-          'updatedAt': timestamp,
-        };
+        final timestamp = DateTime(
+          2025,
+          1,
+          10,
+          12,
+          0,
+          0,
+        ).millisecondsSinceEpoch;
+        final json = {'tempID': 'temp123', 'updatedAt': timestamp};
 
         final contract = TempContract.fromJson(json);
 
@@ -180,10 +181,7 @@ void main() {
       });
 
       test('throws ArgumentError when tempId is empty', () {
-        final json = {
-          'tempID': '',
-          'contractId': 'contract456',
-        };
+        final json = {'tempID': '', 'contractId': 'contract456'};
 
         expect(
           () => TempContract.fromJson(json),
@@ -192,9 +190,7 @@ void main() {
       });
 
       test('handles missing optional fields', () {
-        final json = {
-          'tempID': 'temp123',
-        };
+        final json = {'tempID': 'temp123'};
 
         final contract = TempContract.fromJson(json);
 
@@ -213,10 +209,7 @@ void main() {
       test('parses userA object with only first name', () {
         final json = {
           'tempID': 'temp123',
-          'userA': {
-            '_id': 'userA_id',
-            'firstName': 'John',
-          },
+          'userA': {'_id': 'userA_id', 'firstName': 'John'},
         };
 
         final contract = TempContract.fromJson(json);
@@ -227,10 +220,7 @@ void main() {
       test('parses userA object with only last name', () {
         final json = {
           'tempID': 'temp123',
-          'userA': {
-            '_id': 'userA_id',
-            'lastName': 'Doe',
-          },
+          'userA': {'_id': 'userA_id', 'lastName': 'Doe'},
         };
 
         final contract = TempContract.fromJson(json);
@@ -241,10 +231,7 @@ void main() {
       test('parses userA object with name field as fallback', () {
         final json = {
           'tempID': 'temp123',
-          'userA': {
-            '_id': 'userA_id',
-            'name': 'John Doe',
-          },
+          'userA': {'_id': 'userA_id', 'name': 'John Doe'},
         };
 
         final contract = TempContract.fromJson(json);
@@ -255,10 +242,7 @@ void main() {
       test('uses id field in userA object', () {
         final json = {
           'tempID': 'temp123',
-          'userA': {
-            'id': 'userA_id_from_id_field',
-            'firstName': 'John',
-          },
+          'userA': {'id': 'userA_id_from_id_field', 'firstName': 'John'},
         };
 
         final contract = TempContract.fromJson(json);
@@ -298,9 +282,7 @@ void main() {
       });
 
       test('handles null optional fields', () {
-        final contract = TempContract(
-          tempId: 'temp123',
-        );
+        final contract = TempContract(tempId: 'temp123');
 
         final json = contract.toJson();
 
@@ -378,5 +360,35 @@ void main() {
       });
     });
   });
-}
 
+  group('TempContractStatus', () {
+    test('recognizes the backend completed state as finalized', () {
+      final status = TempContractStatus.fromResponse({
+        'tempID': 'temp123',
+        'contractID': 'contract456',
+        'status': 'completed',
+        'userASign': true,
+        'userBSign': true,
+      }, fallbackTempId: 'fallback');
+
+      expect(status.isFinalized, true);
+      expect(status.contractId, 'contract456');
+      expect(status.userASigned, true);
+      expect(status.userBSigned, true);
+    });
+
+    test('recognizes cancelled and expired invitations as unavailable', () {
+      final cancelled = TempContractStatus.fromResponse({
+        'tempID': 'temp123',
+        'status': 'cancelled',
+      }, fallbackTempId: 'fallback');
+      final expired = TempContractStatus.fromResponse({
+        'tempID': 'temp456',
+        'status': 'expired',
+      }, fallbackTempId: 'fallback');
+
+      expect(cancelled.isUnavailable, true);
+      expect(expired.isUnavailable, true);
+    });
+  });
+}

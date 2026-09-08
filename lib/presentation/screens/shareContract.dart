@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 
+import 'package:crypto/crypto.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
@@ -8,9 +9,11 @@ import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import 'package:yack/data/models/contract/temp_contract.dart';
-import 'package:yack/logic/cubits/contract/contract_sync_cubit.dart';
+import 'package:yack/data/repositories/isar_adapter.dart';
 import 'package:yack/logic/cubits/contract/temp_contract_cubit.dart';
 import 'package:yack/logic/cubits/contract/temp_contract_state.dart';
+import 'package:yack/logic/services/contract/contract_sync_service.dart';
+import 'package:yack/logic/services/contract/temp_contract_service.dart';
 import 'package:yack/logic/services/notification/contract_notification_handler.dart';
 import 'package:yack/logic/services/notification/notification_service.dart';
 import 'package:yack/logic/services/snackBarHandler.dart';
@@ -47,22 +50,30 @@ class _ShareContractScreenState extends State<ShareContractScreen> {
   bool _userASigned = false;
   bool _userBSigned = false;
   bool _isSigning = false;
+  bool _isPolling = false;
+  bool _isCompleting = false;
+  bool _isCancelling = false;
   bool _allowPop = false;
   String? _userBName;
   StreamSubscription<ContractNotificationEvent>? _notificationSubscription;
   StreamSubscription<RemoteMessage>? _firebaseSubscription;
+  Timer? _statusPollTimer;
+  final TempContractService _tempContractService = TempContractService();
+  final ContractSyncService _contractSyncService = ContractSyncService();
 
   @override
   void initState() {
     super.initState();
     _generateShareData();
     _setupNotificationListener();
+    _startStatusPolling();
   }
 
   @override
   void dispose() {
     _notificationSubscription?.cancel();
     _firebaseSubscription?.cancel();
+    _statusPollTimer?.cancel();
     super.dispose();
   }
 
@@ -117,19 +128,83 @@ class _ShareContractScreenState extends State<ShareContractScreen> {
       context,
       '${_userBName ?? ''} ${TranslationHandler.get('has_signed_contract')}',
     );
-    if (_userASigned) _completeContract();
+    if (_userASigned) unawaited(_completeContract(contractId));
   }
 
-  void _completeContract() {
-    context.read<ContractSyncCubit>().sync();
-    SnackBarHandler.showSuccess(
-      context,
-      TranslationHandler.get('contract_saved_successfully'),
+  void _startStatusPolling() {
+    _statusPollTimer?.cancel();
+    unawaited(_pollStatus());
+    _statusPollTimer = Timer.periodic(
+      const Duration(seconds: 3),
+      (_) => unawaited(_pollStatus()),
     );
-    Navigator.of(
-      context,
-      rootNavigator: true,
-    ).pushNamedAndRemoveUntil('/home', (_) => false);
+  }
+
+  Future<void> _pollStatus() async {
+    if (_isPolling || _isCompleting || !mounted) return;
+    _isPolling = true;
+    try {
+      final status = await _tempContractService.getStatus(
+        widget.tempContract.tempId,
+      );
+      if (!mounted) return;
+      if (status.isUnavailable) {
+        _statusPollTimer?.cancel();
+        SnackBarHandler.showError(
+          context,
+          TranslationHandler.get('invitation_no_longer_available'),
+        );
+        setState(() => _allowPop = true);
+        Navigator.of(context).pop();
+        return;
+      }
+      if (status.isFinalized) {
+        await _completeContract(status.contractId);
+        return;
+      }
+      setState(() {
+        _userBJoined = status.userBId != null;
+        _userASigned = status.userASigned;
+        _userBSigned = status.userBSigned;
+        if (status.userBName?.isNotEmpty ?? false) {
+          _userBName = status.userBName;
+        }
+      });
+    } catch (_) {
+      // Keep the invitation usable; a later poll or FCM event can recover.
+    } finally {
+      _isPolling = false;
+    }
+  }
+
+  Future<void> _completeContract(String? contractId) async {
+    if (_isCompleting || !mounted) return;
+    _isCompleting = true;
+    _statusPollTimer?.cancel();
+    try {
+      await _contractSyncService.syncContracts();
+      if (contractId != null &&
+          await getContractByExternalId(contractId) == null) {
+        throw StateError('Finalized agreement was not returned by the server');
+      }
+      if (!mounted) return;
+      SnackBarHandler.showSuccess(
+        context,
+        TranslationHandler.get('contract_saved_successfully'),
+      );
+      Navigator.of(
+        context,
+        rootNavigator: true,
+      ).pushNamedAndRemoveUntil('/home', (_) => false);
+    } catch (_) {
+      if (!mounted) return;
+      _isCompleting = false;
+      SnackBarHandler.showError(
+        context,
+        TranslationHandler.get('contract_unavailable'),
+      );
+      _startStatusPolling();
+    }
   }
 
   Future<void> _reviewAndSign() async {
@@ -168,11 +243,18 @@ class _ShareContractScreenState extends State<ShareContractScreen> {
   }
 
   void _generateShareData() {
+    final normalizedPrice = widget.price.toStringAsFixed(2);
+    final detailsHash = sha256
+        .convert(
+          utf8.encode('${widget.title}|${widget.description}|$normalizedPrice'),
+        )
+        .toString();
     final shareData = {
       'tempId': widget.tempContract.tempId,
       'title': widget.title,
       'description': widget.description,
       'price': widget.price,
+      'detailsHash': detailsHash,
       'userAName': widget.tempContract.userAName ?? '',
       'creatorId': FirebaseAuth.instance.currentUser?.uid ?? '',
     };
@@ -192,6 +274,7 @@ class _ShareContractScreenState extends State<ShareContractScreen> {
   }
 
   Future<void> _leave({bool force = false}) async {
+    if (_isCancelling || _isCompleting) return;
     var confirmed = force;
     if (!force) {
       confirmed =
@@ -216,8 +299,21 @@ class _ShareContractScreenState extends State<ShareContractScreen> {
           false;
     }
     if (!mounted || !confirmed) return;
-    setState(() => _allowPop = true);
-    Navigator.of(context).pop();
+    setState(() => _isCancelling = true);
+    try {
+      await _tempContractService.cancel(widget.tempContract.tempId);
+      if (!mounted) return;
+      _statusPollTimer?.cancel();
+      setState(() => _allowPop = true);
+      Navigator.of(context).pop();
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => _isCancelling = false);
+      SnackBarHandler.showError(
+        context,
+        TranslationHandler.get('invitation_cancel_failed'),
+      );
+    }
   }
 
   @override
@@ -226,7 +322,7 @@ class _ShareContractScreenState extends State<ShareContractScreen> {
     final colors = theme.colorScheme;
 
     return BlocListener<TempContractCubit, TempContractState>(
-      listener: (context, state) {
+      listener: (context, state) async {
         if (state is TempContractSignSuccess) {
           if (state.contract.tempId != widget.tempContract.tempId) return;
           setState(() {
@@ -234,10 +330,13 @@ class _ShareContractScreenState extends State<ShareContractScreen> {
             _isSigning = false;
           });
           if ((state.contractId?.isNotEmpty ?? false) || _userBSigned) {
-            _completeContract();
+            await _completeContract(state.contractId);
           }
         } else if (state is TempContractError && _isSigning) {
-          setState(() => _isSigning = false);
+          setState(() {
+            _isSigning = false;
+            _userASigned = false;
+          });
           SnackBarHandler.showError(context, state.message);
         }
       },
@@ -357,7 +456,7 @@ class _ShareContractScreenState extends State<ShareContractScreen> {
                   SecondaryActionButton(
                     action: TranslationHandler.get('leave'),
                     icon: Icons.arrow_back,
-                    onClick: _leave,
+                    onClick: _isCancelling ? null : _leave,
                   ),
                 ],
               ),

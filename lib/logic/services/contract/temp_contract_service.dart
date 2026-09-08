@@ -3,7 +3,7 @@ import 'package:yack/logic/services/network/http_handler.dart';
 
 class TempContractService {
   TempContractService({HttpHandler? httpHandler})
-      : _http = httpHandler ?? HttpHandler();
+    : _http = httpHandler ?? HttpHandler();
 
   final HttpHandler _http;
 
@@ -26,7 +26,10 @@ class TempContractService {
     if (hash != null && hash.isNotEmpty) body['hash'] = hash;
 
     final response = await _http.post('/contracts/create', body: body);
-    return _materializeContract(response, fallbackTempId: body['tempID']?.toString());
+    return _materializeContract(
+      response,
+      fallbackTempId: body['tempID']?.toString(),
+    );
   }
 
   /// Join a temp contract as user B.
@@ -35,6 +38,7 @@ class TempContractService {
   /// Returns userA info including publicKey for encryption.
   Future<TempContractJoinResult> join({
     required String tempId,
+    required String detailsHash,
     String? hash,
     required String titleUserB,
     required String descriptionUserB,
@@ -42,6 +46,7 @@ class TempContractService {
   }) async {
     final body = <String, dynamic>{
       'tempID': tempId,
+      'detailsHash': detailsHash,
       'titleUserB': titleUserB,
       'descriptionUserB': descriptionUserB,
       'priceUserB': priceUserB,
@@ -52,7 +57,9 @@ class TempContractService {
     print('[DEBUG TempContractService] Join response: $response');
 
     final contract = _materializeContract(response, fallbackTempId: tempId);
-    print('[DEBUG TempContractService] Materialized contract - userAName: ${contract.userAName}, userAId: ${contract.userAId}');
+    print(
+      '[DEBUG TempContractService] Materialized contract - userAName: ${contract.userAName}, userAId: ${contract.userAId}',
+    );
 
     final userAPublicKey = _extractUserAPublicKey(response);
     print('[DEBUG TempContractService] userAPublicKey: $userAPublicKey');
@@ -68,28 +75,42 @@ class TempContractService {
     );
   }
 
+  /// Reads the authoritative temporary-agreement state. This allows the UI to
+  /// recover when push notifications are delayed or disabled.
+  Future<TempContractStatus> getStatus(String tempId) async {
+    final encodedId = Uri.encodeQueryComponent(tempId);
+    final response = await _http.get(
+      '/contracts/temp/status?tempID=$encodedId',
+    );
+    return TempContractStatus.fromResponse(response, fallbackTempId: tempId);
+  }
+
+  /// Cancels a temporary invitation created by the current user.
+  Future<void> cancel(String tempId) async {
+    final encodedId = Uri.encodeComponent(tempId);
+    await _http.delete('/contracts/temp/$encodedId');
+  }
+
   /// Sign a temp contract.
   /// When both users sign, a Contract record is created with all encrypted fields.
   Future<TempContractSignResult> sign(String tempId) async {
-    final response = await _http.post('/contracts/sign', body: {
-      'tempID': tempId,
-    });
+    final response = await _http.post(
+      '/contracts/sign',
+      body: {'tempID': tempId},
+    );
     print('[DEBUG TempContractService] Sign response: $response');
 
     final contract = _materializeContract(response, fallbackTempId: tempId);
     final contractId = _extractContractId(response);
     print('[DEBUG TempContractService] Sign result - contractId: $contractId');
 
-    return TempContractSignResult(
-      contract: contract,
-      contractId: contractId,
-    );
+    return TempContractSignResult(contract: contract, contractId: contractId);
   }
 
   String? _extractUserAPublicKey(dynamic response) {
     if (response is Map) {
       return response['userAPublicKey']?.toString() ??
-             response['userA']?['publicKey']?.toString();
+          response['userA']?['publicKey']?.toString();
     }
     return null;
   }
@@ -123,9 +144,10 @@ class TempContractService {
   String? _extractContractId(dynamic response) {
     if (response is Map) {
       // Try direct fields first
-      var contractId = response['contractID']?.toString() ??
-             response['contractId']?.toString() ??
-             response['contract_id']?.toString();
+      var contractId =
+          response['contractID']?.toString() ??
+          response['contractId']?.toString() ??
+          response['contract_id']?.toString();
 
       if (contractId != null && contractId.isNotEmpty) {
         return contractId;
@@ -134,9 +156,10 @@ class TempContractService {
       // Try nested in 'contract' object
       final contract = response['contract'];
       if (contract is Map) {
-        contractId = contract['_id']?.toString() ??
-                     contract['id']?.toString() ??
-                     contract['contractId']?.toString();
+        contractId =
+            contract['_id']?.toString() ??
+            contract['id']?.toString() ??
+            contract['contractId']?.toString();
         if (contractId != null && contractId.isNotEmpty) {
           return contractId;
         }
@@ -145,9 +168,10 @@ class TempContractService {
       // Try nested in 'data' object
       final data = response['data'];
       if (data is Map) {
-        contractId = data['contractID']?.toString() ??
-                     data['contractId']?.toString() ??
-                     data['_id']?.toString();
+        contractId =
+            data['contractID']?.toString() ??
+            data['contractId']?.toString() ??
+            data['_id']?.toString();
         if (contractId != null && contractId.isNotEmpty) {
           return contractId;
         }
@@ -156,7 +180,10 @@ class TempContractService {
     return null;
   }
 
-  TempContract _materializeContract(dynamic response, {String? fallbackTempId}) {
+  TempContract _materializeContract(
+    dynamic response, {
+    String? fallbackTempId,
+  }) {
     final payload = _extractPayload(response);
 
     if (!payload.containsKey('tempID') && fallbackTempId != null) {
@@ -209,8 +236,81 @@ class TempContractSignResult {
   final TempContract contract;
   final String? contractId; // Final contract ID when both users have signed
 
-  const TempContractSignResult({
-    required this.contract,
+  const TempContractSignResult({required this.contract, this.contractId});
+}
+
+class TempContractStatus {
+  const TempContractStatus({
+    required this.tempId,
+    required this.status,
+    required this.userASigned,
+    required this.userBSigned,
     this.contractId,
+    this.userAId,
+    this.userAName,
+    this.userBId,
+    this.userBName,
+    this.detailsHash,
+    this.expiresAt,
   });
+
+  final String tempId;
+  final String status;
+  final String? contractId;
+  final bool userASigned;
+  final bool userBSigned;
+  final String? userAId;
+  final String? userAName;
+  final String? userBId;
+  final String? userBName;
+  final String? detailsHash;
+  final DateTime? expiresAt;
+
+  bool get isFinalized =>
+      status == 'completed' ||
+      status == 'finalized' ||
+      (contractId?.isNotEmpty ?? false);
+  bool get isUnavailable => status == 'cancelled' || status == 'expired';
+
+  factory TempContractStatus.fromResponse(
+    dynamic response, {
+    required String fallbackTempId,
+  }) {
+    final payload = response is Map
+        ? response.map((key, value) => MapEntry(key.toString(), value))
+        : <String, dynamic>{};
+
+    String? readId(dynamic value) {
+      if (value is Map) return (value['_id'] ?? value['id'])?.toString();
+      return value?.toString();
+    }
+
+    String? readName(dynamic value) {
+      if (value is! Map) return null;
+      final first = value['firstName']?.toString().trim() ?? '';
+      final last = value['lastName']?.toString().trim() ?? '';
+      final name = '$first $last'.trim();
+      return name.isEmpty ? null : name;
+    }
+
+    bool readBool(dynamic value) =>
+        value == true || value == 1 || value?.toString() == 'true';
+
+    return TempContractStatus(
+      tempId: (payload['tempID'] ?? payload['tempId'] ?? fallbackTempId)
+          .toString(),
+      status: payload['status']?.toString() ?? 'pending',
+      contractId: (payload['contractID'] ?? payload['contractId'])?.toString(),
+      userASigned: readBool(payload['userASign'] ?? payload['userASigned']),
+      userBSigned: readBool(payload['userBSign'] ?? payload['userBSigned']),
+      userAId: readId(payload['userA']),
+      userAName: readName(payload['userA']),
+      userBId: readId(payload['userB']),
+      userBName: readName(payload['userB']),
+      detailsHash: payload['detailsHash']?.toString(),
+      expiresAt: DateTime.tryParse(
+        payload['expiresAt']?.toString() ?? '',
+      )?.toLocal(),
+    );
+  }
 }

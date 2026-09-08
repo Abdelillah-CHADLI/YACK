@@ -5,8 +5,8 @@ import 'temp_contract_state.dart';
 
 class TempContractCubit extends Cubit<TempContractState> {
   TempContractCubit({TempContractService? service})
-      : _service = service ?? TempContractService(),
-        super(const TempContractInitial());
+    : _service = service ?? TempContractService(),
+      super(const TempContractInitial());
 
   final TempContractService _service;
 
@@ -36,6 +36,7 @@ class TempContractCubit extends Cubit<TempContractState> {
   /// Join a temp contract as user B with encrypted fields.
   Future<void> join({
     required String tempId,
+    required String detailsHash,
     String? hash,
     required String titleUserB,
     required String descriptionUserB,
@@ -45,17 +46,20 @@ class TempContractCubit extends Cubit<TempContractState> {
     try {
       final result = await _service.join(
         tempId: tempId,
+        detailsHash: detailsHash,
         hash: hash,
         titleUserB: titleUserB,
         descriptionUserB: descriptionUserB,
         priceUserB: priceUserB,
       );
 
-      emit(TempContractJoinSuccess(
-        contract: result.contract,
-        userAPublicKey: result.userAPublicKey,
-        userAName: result.userAFullName,
-      ));
+      emit(
+        TempContractJoinSuccess(
+          contract: result.contract,
+          userAPublicKey: result.userAPublicKey,
+          userAName: result.userAFullName,
+        ),
+      );
     } catch (e) {
       emit(TempContractError(e.toString()));
     }
@@ -66,13 +70,14 @@ class TempContractCubit extends Cubit<TempContractState> {
     emit(const TempContractLoading());
     try {
       final result = await _service.sign(tempId);
-      emit(TempContractSignSuccess(
-        contract: result.contract,
-        contractId: result.contractId,
-      ));
+      emit(
+        TempContractSignSuccess(
+          contract: result.contract,
+          contractId: result.contractId,
+        ),
+      );
     } catch (e) {
       emit(TempContractError(e.toString()));
     }
   }
 }
-

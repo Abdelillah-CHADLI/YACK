@@ -2,14 +2,17 @@ import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
 import 'dart:async';
 import 'dart:convert';
+import 'package:crypto/crypto.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:hive/hive.dart';
+import 'package:yack/data/repositories/isar_adapter.dart';
 import 'package:yack/logic/cubits/contract/temp_contract_cubit.dart';
 import 'package:yack/logic/cubits/contract/temp_contract_state.dart';
-import 'package:yack/logic/cubits/contract/contract_sync_cubit.dart';
 import 'package:yack/logic/services/auth/cryptoService.dart';
+import 'package:yack/logic/services/contract/contract_sync_service.dart';
+import 'package:yack/logic/services/contract/temp_contract_service.dart';
 import 'package:yack/logic/services/notification/contract_notification_handler.dart';
 import 'package:yack/logic/services/notification/notification_service.dart';
 import 'package:yack/logic/services/snackBarHandler.dart';
@@ -37,9 +40,14 @@ class _ScanContractScreenState extends State<ScanContractScreen>
   bool _userBSigned = false; // Track if User B has signed
   bool _reviewApproved = false;
   bool _showManualInput = false;
+  bool _isPolling = false;
+  bool _isCompleting = false;
   MobileScannerController? scannerController;
   StreamSubscription<ContractNotificationEvent>? _notificationSubscription;
   StreamSubscription<RemoteMessage>? _firebaseSubscription;
+  Timer? _statusPollTimer;
+  final TempContractService _tempContractService = TempContractService();
+  final ContractSyncService _contractSyncService = ContractSyncService();
   final TextEditingController _linkController = TextEditingController();
 
   // Scanned contract data
@@ -49,6 +57,7 @@ class _ScanContractScreenState extends State<ScanContractScreen>
   double? _scannedPrice;
   String? _scannedUserAName;
   String? _scannedCreatorId;
+  String? _scannedDetailsHash;
 
   @override
   void initState() {
@@ -72,6 +81,7 @@ class _ScanContractScreenState extends State<ScanContractScreen>
     WidgetsBinding.instance.removeObserver(this);
     _notificationSubscription?.cancel();
     _firebaseSubscription?.cancel();
+    _statusPollTimer?.cancel();
     _linkController.dispose();
     scannerController?.dispose();
     super.dispose();
@@ -107,7 +117,7 @@ class _ScanContractScreenState extends State<ScanContractScreen>
           // User A signed the contract
           if (_isWaitingForUserASign && _userBSigned) {
             // Both users have signed - sync and complete
-            await _syncAndNavigateHome();
+            await _syncAndNavigateHome(contractId: event.contractId);
           }
           break;
         default:
@@ -130,23 +140,72 @@ class _ScanContractScreenState extends State<ScanContractScreen>
 
       if (type == 'contractSign' && _isWaitingForUserASign && _userBSigned) {
         // Both users have signed - sync and complete
-        await _syncAndNavigateHome();
+        await _syncAndNavigateHome(contractId: data['contractId']?.toString());
       }
     });
   }
 
-  /// Sync contracts and navigate home
-  Future<void> _syncAndNavigateHome() async {
-    // Sync contracts from backend to get the finalized contract with decrypted data
-    context.read<ContractSyncCubit>().sync();
+  void _startStatusPolling(String tempId) {
+    _statusPollTimer?.cancel();
+    unawaited(_pollStatus(tempId));
+    _statusPollTimer = Timer.periodic(
+      const Duration(seconds: 3),
+      (_) => unawaited(_pollStatus(tempId)),
+    );
+  }
 
-    if (mounted) {
+  Future<void> _pollStatus(String tempId) async {
+    if (_isPolling || _isCompleting || !mounted) return;
+    _isPolling = true;
+    try {
+      final status = await _tempContractService.getStatus(tempId);
+      if (!mounted) return;
+      if (status.isUnavailable) {
+        _statusPollTimer?.cancel();
+        SnackBarHandler.showError(
+          context,
+          TranslationHandler.get('invitation_no_longer_available'),
+        );
+        _navigateToHome();
+        return;
+      }
+      if (status.isFinalized) {
+        await _syncAndNavigateHome(contractId: status.contractId);
+      } else if (status.userASigned && _userBSigned) {
+        setState(() => _isWaitingForUserASign = true);
+      }
+    } catch (_) {
+      // A later poll or notification can recover from a temporary outage.
+    } finally {
+      _isPolling = false;
+    }
+  }
+
+  /// Sync the finalized agreement before claiming success or leaving the flow.
+  Future<void> _syncAndNavigateHome({String? contractId}) async {
+    if (_isCompleting || !mounted) return;
+    _isCompleting = true;
+    try {
+      await _contractSyncService.syncContracts();
+      if (contractId != null &&
+          await getContractByExternalId(contractId) == null) {
+        throw StateError('Finalized agreement was not returned by the server');
+      }
+      if (!mounted) return;
+      _statusPollTimer?.cancel();
       SnackBarHandler.showSuccess(
         context,
         TranslationHandler.get('contract_saved_successfully'),
       );
+      _navigateToHome();
+    } catch (_) {
+      if (!mounted) return;
+      _isCompleting = false;
+      SnackBarHandler.showError(
+        context,
+        TranslationHandler.get('contract_unavailable'),
+      );
     }
-    _navigateToHome();
   }
 
   void _startScanning() {
@@ -251,9 +310,37 @@ class _ScanContractScreenState extends State<ScanContractScreen>
           : double.tryParse(jsonMap['price']?.toString() ?? '0') ?? 0;
       _scannedUserAName = jsonMap['userAName']?.toString();
       _scannedCreatorId = jsonMap['creatorId']?.toString();
+      _scannedDetailsHash = jsonMap['detailsHash']?.toString();
 
       if (_scannedTempId == null || _scannedTempId!.isEmpty) {
         throw FormatException('Missing tempId');
+      }
+
+      final computedDetailsHash = sha256
+          .convert(
+            utf8.encode(
+              '${_scannedTitle!}|${_scannedDescription!}|'
+              '${_scannedPrice!.toStringAsFixed(2)}',
+            ),
+          )
+          .toString();
+      if (_scannedDetailsHash == null ||
+          _scannedDetailsHash != computedDetailsHash) {
+        throw const FormatException('Contract integrity check failed');
+      }
+
+      final serverStatus = await _tempContractService.getStatus(
+        _scannedTempId!,
+      );
+      if (serverStatus.isUnavailable || serverStatus.isFinalized) {
+        throw const FormatException('Contract is no longer available');
+      }
+      if (serverStatus.detailsHash == null ||
+          serverStatus.detailsHash != _scannedDetailsHash) {
+        throw const FormatException('Contract integrity check failed');
+      }
+      if (serverStatus.userAName?.isNotEmpty ?? false) {
+        _scannedUserAName = serverStatus.userAName;
       }
 
       if (_scannedCreatorId != null &&
@@ -327,6 +414,7 @@ class _ScanContractScreenState extends State<ScanContractScreen>
       if (!mounted) return;
       context.read<TempContractCubit>().join(
         tempId: _scannedTempId!,
+        detailsHash: _scannedDetailsHash!,
         titleUserB: titleUserB,
         descriptionUserB: descriptionUserB,
         priceUserB: priceUserB,
@@ -338,6 +426,10 @@ class _ScanContractScreenState extends State<ScanContractScreen>
           TranslationHandler.get(
             error.message == 'Cannot join your own contract'
                 ? 'cannot_join_own_contract'
+                : error.message == 'Contract integrity check failed'
+                ? 'contract_integrity_failed'
+                : error.message == 'Contract is no longer available'
+                ? 'invitation_no_longer_available'
                 : error.message == 'Contract content is too long'
                 ? 'contract_content_invalid'
                 : 'failed_to_decode_contract',
@@ -372,6 +464,7 @@ class _ScanContractScreenState extends State<ScanContractScreen>
         if (state is TempContractJoinSuccess) {
           // Setup notification listener for User A's signature
           _setupNotificationListenerForTempContract(state.contract.tempId);
+          _startStatusPolling(state.contract.tempId);
           if (_reviewApproved) {
             context.read<TempContractCubit>().sign(state.contract.tempId);
           }
@@ -383,7 +476,7 @@ class _ScanContractScreenState extends State<ScanContractScreen>
 
           if (state.contractId != null && state.contractId!.isNotEmpty) {
             // Both users signed - contract is finalized, sync and go home
-            await _syncAndNavigateHome();
+            await _syncAndNavigateHome(contractId: state.contractId);
           } else {
             // User B signed but User A hasn't signed yet - wait for notification
             setState(() {

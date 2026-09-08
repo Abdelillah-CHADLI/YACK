@@ -13,12 +13,14 @@ import 'dart:io';
 /// and syncs data between the API and local Isar database.
 class ContractHandler {
   ContractHandler({HttpHandler? httpHandler})
-      : _tempContractService = TempContractService(httpHandler: httpHandler),
-        _contractListService = ContractListService(httpHandler: httpHandler),
-        _contractStateService = ContractStateService(httpHandler: httpHandler),
-        _contractVerificationService = ContractVerificationService(httpHandler: httpHandler),
-        _messageService = MessageService(httpHandler: httpHandler),
-        _mediaService = MediaService(httpHandler: httpHandler);
+    : _tempContractService = TempContractService(httpHandler: httpHandler),
+      _contractListService = ContractListService(httpHandler: httpHandler),
+      _contractStateService = ContractStateService(httpHandler: httpHandler),
+      _contractVerificationService = ContractVerificationService(
+        httpHandler: httpHandler,
+      ),
+      _messageService = MessageService(httpHandler: httpHandler),
+      _mediaService = MediaService(httpHandler: httpHandler);
 
   final TempContractService _tempContractService;
   final ContractListService _contractListService;
@@ -52,6 +54,7 @@ class ContractHandler {
   /// Join a temporary contract as user B
   Future<TempContractJoinResult> joinContract({
     required String tempId,
+    required String detailsHash,
     String? hash,
     required String titleUserB,
     required String descriptionUserB,
@@ -59,6 +62,7 @@ class ContractHandler {
   }) async {
     return await _tempContractService.join(
       tempId: tempId,
+      detailsHash: detailsHash,
       hash: hash,
       titleUserB: titleUserB,
       descriptionUserB: descriptionUserB,
@@ -187,4 +191,3 @@ class TempContractCreateResult {
 
   const TempContractCreateResult({required this.tempId});
 }
-
