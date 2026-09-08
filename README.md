@@ -71,13 +71,21 @@ flutter pub get
 
 ### 3. Point the app at your backend
 
-The backend base URL is set via a compile-time Dart define (defaults to `https://yack.leapcell.app`). For a local backend on an Android emulator:
+In development, YACK automatically connects to the local backend at
+`http://10.0.2.2:3000` on the Android emulator and `http://127.0.0.1:3000`
+on desktop, iOS simulator, and web. Start `YACK-Backend` first, then run:
 
 ```bash
-flutter run --dart-define=API_BASE_URL=http://10.0.2.2:3000
+flutter run
 ```
 
-Omit the define to use the default in `lib/logic/services/network/http_handler.dart`.
+For a physical device, pass the computer's LAN address. Release builds always
+require an explicit deployed HTTPS endpoint:
+
+```bash
+flutter run --dart-define=API_BASE_URL=http://192.168.1.20:3000
+flutter build apk --dart-define=API_BASE_URL=https://api.example.com
+```
 
 ### 4. Run the app
 
