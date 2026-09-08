@@ -16,6 +16,10 @@ const english = {
       'Open the invitation you created or scanned to continue this agreement.',
   'contract_unavailable':
       'This agreement is not available on this device yet. Refresh and try again.',
+  'invitation_no_longer_available':
+      'This invitation was cancelled or has expired.',
+  'invitation_cancel_failed':
+      'The invitation could not be cancelled. Check your connection and try again.',
   'settings_heading': 'Your workspace',
   'settings_heading_desc':
       'Manage your identity, security, and how YACK behaves on this device.',
@@ -156,6 +160,8 @@ const english = {
   'checking_account': 'Checking your account…',
   'contract': 'Agreement',
   'cannot_join_own_contract': 'You cannot join your own agreement invitation.',
+  'contract_integrity_failed':
+      'This invitation was changed or is no longer trustworthy. Ask the creator for a new link.',
   'contract_content_invalid':
       'This invitation contains terms that cannot be processed safely.',
   'joining_contract': 'Joining the agreement',
@@ -610,4 +616,26 @@ const english = {
   'completed_label': 'Completed',
   'create_contract_desc':
       'Fill in the details below to create a new contract. All fields are encrypted end-to-end.',
+  'contact_support': 'Contact support',
+  'support_chat': 'Dispute support',
+  'support': 'Support',
+  'support_load_failed': 'Could not load the support conversation.',
+  'support_send_failed': 'Could not send your support message.',
+  'support_share_failed': 'Could not share the case securely.',
+  'share_case_with_support': 'Share this case with support?',
+  'share_case_explanation':
+      'YACK will share only this contract and its conversation, encrypted for the support review key. Your account private key and encryption password are never shared.',
+  'share_securely': 'Share securely',
+  'share_case': 'Share case',
+  'sharing': 'Sharing…',
+  'case_shared_with_support': 'Case details shared securely.',
+  'support_access_granted':
+      'Support can securely review this contract and its conversation.',
+  'support_access_needed':
+      'Support can message you now. Share case access when you want them to review the encrypted details.',
+  'support_empty_message':
+      'Your dispute is open. Send a message or wait for the support team to contact you.',
+  'support_case_closed': 'This support case is closed.',
+  'support_message_hint': 'Message support…',
+  'send': 'Send',
 };

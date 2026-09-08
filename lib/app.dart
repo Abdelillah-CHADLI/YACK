@@ -17,6 +17,7 @@ import 'package:yack/presentation/screens/welcome.dart';
 import 'package:yack/presentation/theme/theme.dart';
 import 'package:yack/presentation/screens/profile.dart';
 import 'package:yack/presentation/screens/settings.dart';
+import 'package:yack/presentation/screens/support_chat.dart';
 import 'presentation/screens/create_contract.dart';
 import 'presentation/screens/scan_contract.dart';
 import 'package:yack/logic/services/translation_handler.dart';
@@ -141,6 +142,14 @@ class MyApp extends StatelessWidget {
               const SubscriptionScreen(),
               transparent: true,
             ),
+            '/support-chat': (context) {
+              final contractId =
+                  ModalRoute.of(context)!.settings.arguments as int;
+              return themedRoute(
+                context,
+                SupportChatScreen(contractId: contractId),
+              );
+            },
 
             '/': (context) => const AppWrapper(),
           },

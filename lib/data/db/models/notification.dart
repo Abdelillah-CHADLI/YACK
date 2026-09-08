@@ -11,6 +11,8 @@ enum NotificationType {
   contractMessage,
   contractMedia,
   unknown,
+  supportMessage,
+  disputeResolved,
 }
 
 @collection
@@ -50,7 +52,8 @@ class AppNotification {
   AppNotification();
 
   /// Create from FCM notification data payload
-  static AppNotification fromFcmData(Map<String, dynamic> data, {
+  static AppNotification fromFcmData(
+    Map<String, dynamic> data, {
     String? title,
     String? body,
   }) {
@@ -86,6 +89,10 @@ class AppNotification {
         return NotificationType.contractMessage;
       case 'contractMedia':
         return NotificationType.contractMedia;
+      case 'supportMessage':
+        return NotificationType.supportMessage;
+      case 'disputeResolved':
+        return NotificationType.disputeResolved;
       default:
         return NotificationType.unknown;
     }

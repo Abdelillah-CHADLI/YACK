@@ -195,12 +195,14 @@ class YackNotice extends StatelessWidget {
   final String message;
   final YackNoticeTone tone;
   final IconData? icon;
+  final Widget? action;
 
   const YackNotice({
     super.key,
     required this.message,
     this.tone = YackNoticeTone.neutral,
     this.icon,
+    this.action,
   });
 
   @override
@@ -256,6 +258,7 @@ class YackNotice extends StatelessWidget {
                 ),
               ),
             ),
+            if (action != null) ...[const SizedBox(width: 8), action!],
           ],
         ),
       ),

@@ -221,6 +221,8 @@ const _AppNotificationtypeEnumValueMap = {
   'contractMessage': 4,
   'contractMedia': 5,
   'unknown': 6,
+  'supportMessage': 7,
+  'disputeResolved': 8,
 };
 const _AppNotificationtypeValueEnumMap = {
   0: NotificationType.contractJoin,
@@ -230,6 +232,8 @@ const _AppNotificationtypeValueEnumMap = {
   4: NotificationType.contractMessage,
   5: NotificationType.contractMedia,
   6: NotificationType.unknown,
+  7: NotificationType.supportMessage,
+  8: NotificationType.disputeResolved,
 };
 
 Id _appNotificationGetId(AppNotification object) {

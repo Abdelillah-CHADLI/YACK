@@ -27,8 +27,13 @@ class NotificationRouterService {
       case ContractNotificationType.contractDispute:
       case ContractNotificationType.contractMessage:
       case ContractNotificationType.contractMedia:
+      case ContractNotificationType.disputeResolved:
         if (event.contractId != null) {
           await navigateToContract(event.contractId!);
+        }
+      case ContractNotificationType.supportMessage:
+        if (event.contractId != null) {
+          await navigateToSupport(event.contractId!);
         }
     }
   }
@@ -54,6 +59,18 @@ class NotificationRouterService {
     final navigator = navigatorKey.currentState;
     if (navigator == null || contract == null) return false;
     await navigator.pushNamed('/contract/view', arguments: contract.id);
+    return true;
+  }
+
+  static Future<bool> navigateToSupport(String externalContractId) async {
+    var contract = await getContractByExternalId(externalContractId);
+    if (contract == null) {
+      await _contractSyncService.syncSingleContract(externalContractId);
+      contract = await getContractByExternalId(externalContractId);
+    }
+    final navigator = navigatorKey.currentState;
+    if (navigator == null || contract == null) return false;
+    await navigator.pushNamed('/support-chat', arguments: contract.id);
     return true;
   }
 

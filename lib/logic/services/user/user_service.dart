@@ -138,6 +138,22 @@ class UserService {
     await _http.put('/user/profile', body: body);
   }
 
+  Future<void> registerFcmToken(String token) async {
+    if (token.trim().isEmpty) return;
+    await _http.post(
+      '/user/fcm-token/register',
+      body: {'fcmToken': token.trim()},
+    );
+  }
+
+  Future<void> unregisterFcmToken(String token) async {
+    if (token.trim().isEmpty) return;
+    await _http.post(
+      '/user/fcm-token/unregister',
+      body: {'fcmToken': token.trim()},
+    );
+  }
+
   Map<String, dynamic> _extractData(dynamic response) {
     if (response is Map<String, dynamic>) {
       // Check for nested data structures

@@ -1,3 +1,6 @@
+import 'dart:async';
+
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:isar/isar.dart';
@@ -10,6 +13,7 @@ import 'package:yack/data/db/models/notification.dart';
 import 'package:yack/firebase_options.dart';
 import 'package:yack/logic/services/notification/contract_notification_handler.dart';
 import 'package:yack/logic/services/notification/notification_router_service.dart';
+import 'package:yack/logic/services/user/user_service.dart';
 
 /// Service for handling push notifications from Firebase Cloud Messaging.
 /// Parses notification data and saves to local Isar database.
@@ -21,12 +25,17 @@ class NotificationService {
   /// Contract notification handler for real-time contract events
   final ContractNotificationHandler contractHandler =
       ContractNotificationHandler();
+  StreamSubscription<String>? _tokenRefreshSubscription;
 
   /// Initialize FCM and set up handlers
   Future<void> initialize() async {
     // Request notification permissions
     final messaging = FirebaseMessaging.instance;
     await messaging.requestPermission(alert: true, badge: true, sound: true);
+    await _tokenRefreshSubscription?.cancel();
+    _tokenRefreshSubscription = messaging.onTokenRefresh.listen(
+      (token) => unawaited(_registerToken(token)),
+    );
 
     // Initialize contract notification handler
     contractHandler.initialize();
@@ -68,6 +77,25 @@ class NotificationService {
   /// Get FCM token for registration with backend
   Future<String?> getToken() async {
     return await FirebaseMessaging.instance.getToken();
+  }
+
+  Future<void> registerCurrentToken() async {
+    if (FirebaseAuth.instance.currentUser == null) return;
+    try {
+      final token = await FirebaseMessaging.instance.getToken();
+      if (token != null && token.isNotEmpty) await _registerToken(token);
+    } catch (_) {
+      // Push is optional and must not block sign-in or contract access.
+    }
+  }
+
+  Future<void> _registerToken(String token) async {
+    if (FirebaseAuth.instance.currentUser == null || token.isEmpty) return;
+    try {
+      await UserService().registerFcmToken(token);
+    } catch (_) {
+      // The next refresh or authenticated app start retries registration.
+    }
   }
 
   /// Subscribe to a topic

@@ -6,6 +6,7 @@ import 'package:hive_flutter/hive_flutter.dart';
 import 'package:yack/logic/cubits/auth/auth_cubit.dart';
 import 'package:yack/logic/services/auth/account_service.dart';
 import 'package:yack/logic/services/translation_handler.dart';
+import 'package:yack/logic/services/user/user_service.dart';
 import 'package:yack/logic/utils/encryptionPasswordPopUp.dart';
 import 'package:yack/logic/utils/passwordPopUp.dart';
 import 'package:yack/presentation/theme/theme.dart';
@@ -119,6 +120,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
     setState(() => _loggingOut = true);
     try {
       try {
+        final token = await FirebaseMessaging.instance.getToken();
+        if (token != null && token.isNotEmpty) {
+          await UserService().unregisterFcmToken(token);
+        }
         await FirebaseMessaging.instance.deleteToken();
       } catch (_) {
         // Token cleanup is best effort; it must not trap the user in session.

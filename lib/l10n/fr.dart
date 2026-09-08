@@ -16,6 +16,10 @@ const french = {
       "Ouvrez l’invitation créée ou scannée pour poursuivre cet accord.",
   'contract_unavailable':
       "Cet accord n’est pas encore disponible sur cet appareil. Actualisez puis réessayez.",
+  'invitation_no_longer_available':
+      'Cette invitation a été annulée ou a expiré.',
+  'invitation_cancel_failed':
+      'L’invitation n’a pas pu être annulée. Vérifiez votre connexion puis réessayez.',
   'settings_heading': 'Votre espace de travail',
   'settings_heading_desc':
       "Gérez votre identité, votre sécurité et le comportement de YACK sur cet appareil.",
@@ -166,6 +170,8 @@ const french = {
   'contract': 'Contrat',
   'cannot_join_own_contract':
       'Vous ne pouvez pas rejoindre votre propre invitation.',
+  'contract_integrity_failed':
+      'Cette invitation a été modifiée ou n’est plus fiable. Demandez un nouveau lien au créateur.',
   'contract_content_invalid':
       'Cette invitation contient des termes qui ne peuvent pas être traités en toute sécurité.',
   'joining_contract': 'Connexion au contrat',
@@ -640,4 +646,28 @@ const french = {
   'completed_label': 'Terminés',
   'create_contract_desc':
       'Remplissez les détails ci-dessous pour créer un nouveau contrat. Tous les champs sont chiffrés de bout en bout.',
+  'contact_support': 'Contacter le support',
+  'support_chat': 'Support du litige',
+  'support': 'Support',
+  'support_load_failed':
+      'Impossible de charger la conversation avec le support.',
+  'support_send_failed': 'Impossible d’envoyer votre message au support.',
+  'support_share_failed':
+      'Impossible de partager le dossier de manière sécurisée.',
+  'share_case_with_support': 'Partager ce dossier avec le support ?',
+  'share_case_explanation':
+      'YACK partagera uniquement ce contrat et sa conversation, chiffrés pour la clé de révision du support. Votre clé privée et votre mot de passe de chiffrement ne sont jamais partagés.',
+  'share_securely': 'Partager de façon sécurisée',
+  'share_case': 'Partager le dossier',
+  'sharing': 'Partage…',
+  'case_shared_with_support': 'Dossier partagé de manière sécurisée.',
+  'support_access_granted':
+      'Le support peut examiner ce contrat et sa conversation en toute sécurité.',
+  'support_access_needed':
+      'Le support peut déjà vous écrire. Partagez l’accès au dossier lorsque vous souhaitez autoriser l’examen des détails chiffrés.',
+  'support_empty_message':
+      'Votre litige est ouvert. Envoyez un message ou attendez que le support vous contacte.',
+  'support_case_closed': 'Ce dossier de support est fermé.',
+  'support_message_hint': 'Message au support…',
+  'send': 'Envoyer',
 };

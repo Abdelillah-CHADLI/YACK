@@ -16,6 +16,9 @@ const arabic = {
       'افتح الدعوة التي أنشأتها أو مسحتها لمتابعة هذا الاتفاق.',
   'contract_unavailable':
       'هذا الاتفاق غير متاح على هذا الجهاز بعد. حدّث القائمة ثم حاول مجددًا.',
+  'invitation_no_longer_available': 'تم إلغاء هذه الدعوة أو انتهت صلاحيتها.',
+  'invitation_cancel_failed':
+      'تعذر إلغاء الدعوة. تحقق من اتصالك وحاول مرة أخرى.',
   'settings_heading': 'مساحة عملك',
   'settings_heading_desc': 'أدر هويتك وأمانك وطريقة عمل YACK على هذا الجهاز.',
   'notifications_info_subtitle': 'معلومات التسليم والتوفر',
@@ -144,6 +147,8 @@ const arabic = {
   'checking_account': 'جارٍ التحقق من حسابك…',
   'contract': 'عقد',
   'cannot_join_own_contract': 'لا يمكنك الانضمام إلى دعوة عقدك.',
+  'contract_integrity_failed':
+      'تم تعديل هذه الدعوة أو لم تعد موثوقة. اطلب رابطًا جديدًا من منشئ العقد.',
   'contract_content_invalid': 'تتضمن هذه الدعوة بنودًا لا يمكن معالجتها بأمان.',
   'joining_contract': 'جارٍ الانضمام إلى العقد',
   'joining_contract_desc': 'جارٍ تشفير نسختك وتأكيد توقيعك…',
@@ -590,4 +595,25 @@ const arabic = {
   'completed_label': 'مكتملة',
   'create_contract_desc':
       'املأ البيانات أدناه لإنشاء عقد جديد. جميع الحقول مشفرة من طرف إلى طرف.',
+  'contact_support': 'التواصل مع الدعم',
+  'support_chat': 'دعم النزاع',
+  'support': 'الدعم',
+  'support_load_failed': 'تعذر تحميل محادثة الدعم.',
+  'support_send_failed': 'تعذر إرسال رسالة الدعم.',
+  'support_share_failed': 'تعذرت مشاركة القضية بشكل آمن.',
+  'share_case_with_support': 'مشاركة هذه القضية مع الدعم؟',
+  'share_case_explanation':
+      'سيشارك YACK هذا العقد ومحادثته فقط بعد تشفيرهما لمفتاح مراجعة الدعم. لن تتم مشاركة مفتاح حسابك الخاص أو كلمة مرور التشفير.',
+  'share_securely': 'مشاركة آمنة',
+  'share_case': 'مشاركة القضية',
+  'sharing': 'جارٍ المشاركة…',
+  'case_shared_with_support': 'تمت مشاركة تفاصيل القضية بشكل آمن.',
+  'support_access_granted': 'يمكن للدعم مراجعة هذا العقد ومحادثته بشكل آمن.',
+  'support_access_needed':
+      'يمكن للدعم مراسلتك الآن. شارك الوصول عندما تريد منهم مراجعة التفاصيل المشفرة.',
+  'support_empty_message':
+      'نزاعك مفتوح. أرسل رسالة أو انتظر حتى يتواصل معك فريق الدعم.',
+  'support_case_closed': 'تم إغلاق قضية الدعم هذه.',
+  'support_message_hint': 'رسالة إلى الدعم…',
+  'send': 'إرسال',
 };

@@ -124,9 +124,9 @@ class _NotificationsPageState extends State<NotificationsPage> {
 
     final contractId = notification.contractId;
     if (contractId != null && contractId.isNotEmpty) {
-      final opened = await NotificationRouterService.navigateToContract(
-        contractId,
-      );
+      final opened = notification.type == NotificationType.supportMessage
+          ? await NotificationRouterService.navigateToSupport(contractId)
+          : await NotificationRouterService.navigateToContract(contractId);
       if (!opened && mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -460,12 +460,15 @@ class _ActivityRow extends StatelessWidget {
     NotificationType.contractDispute => Icons.report_problem_outlined,
     NotificationType.contractMessage => Icons.chat_bubble_outline,
     NotificationType.contractMedia => Icons.attach_file,
+    NotificationType.supportMessage => Icons.support_agent_outlined,
+    NotificationType.disputeResolved => Icons.gavel_outlined,
     NotificationType.unknown => Icons.notifications_none_outlined,
   };
 
   Color _toneColor(ColorScheme colors) => switch (notification.type) {
     NotificationType.contractDispute => colors.error,
     NotificationType.contractAccept => AppTheme.statusGreen,
+    NotificationType.disputeResolved => AppTheme.statusGreen,
     NotificationType.contractJoin ||
     NotificationType.contractSign => colors.secondary,
     _ => colors.primary,

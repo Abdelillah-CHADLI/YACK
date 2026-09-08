@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:flutter/foundation.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:yack/logic/services/contract/contract_sync_service.dart';
 
@@ -10,6 +11,8 @@ enum ContractNotificationType {
   contractDispute,
   contractMessage,
   contractMedia,
+  supportMessage,
+  disputeResolved,
 }
 
 /// Data payload for contract notifications
@@ -57,6 +60,12 @@ class ContractNotificationEvent {
       case 'contractMedia':
         type = ContractNotificationType.contractMedia;
         break;
+      case 'supportMessage':
+        type = ContractNotificationType.supportMessage;
+        break;
+      case 'disputeResolved':
+        type = ContractNotificationType.disputeResolved;
+        break;
       default:
         type = ContractNotificationType.contractMessage;
     }
@@ -82,7 +91,8 @@ class ContractNotificationHandler {
   factory ContractNotificationHandler() => _instance;
   ContractNotificationHandler._internal();
 
-  final _eventController = StreamController<ContractNotificationEvent>.broadcast();
+  final _eventController =
+      StreamController<ContractNotificationEvent>.broadcast();
   StreamSubscription<RemoteMessage>? _foregroundSubscription;
   StreamSubscription<RemoteMessage>? _backgroundSubscription;
 
@@ -105,11 +115,14 @@ class ContractNotificationHandler {
     _backgroundSubscription?.cancel();
 
     // Listen to foreground messages
-    _foregroundSubscription = FirebaseMessaging.onMessage.listen(_handleMessage);
+    _foregroundSubscription = FirebaseMessaging.onMessage.listen(
+      _handleMessage,
+    );
 
     // Listen to background message taps
-    _backgroundSubscription =
-        FirebaseMessaging.onMessageOpenedApp.listen(_handleMessage);
+    _backgroundSubscription = FirebaseMessaging.onMessageOpenedApp.listen(
+      _handleMessage,
+    );
   }
 
   /// Process incoming FCM message
@@ -117,16 +130,20 @@ class ContractNotificationHandler {
     final data = message.data;
     if (data.isEmpty) return;
 
-    print('[DEBUG ContractNotificationHandler] Received FCM message: $data');
+    debugPrint('[ContractNotificationHandler] Received FCM message: $data');
 
     final typeStr = data['type']?.toString() ?? '';
     if (!_isContractNotification(typeStr)) {
-      print('[DEBUG ContractNotificationHandler] Not a contract notification: $typeStr');
+      debugPrint(
+        '[ContractNotificationHandler] Not a contract notification: $typeStr',
+      );
       return;
     }
 
     final event = ContractNotificationEvent.fromFcmData(data);
-    print('[DEBUG ContractNotificationHandler] Emitting event: ${event.type}, tempId: ${event.tempId}, contractId: ${event.contractId}');
+    debugPrint(
+      '[ContractNotificationHandler] Emitting event: ${event.type}, tempId: ${event.tempId}, contractId: ${event.contractId}',
+    );
     _eventController.add(event);
 
     // Handle side effects based on notification type
@@ -141,6 +158,8 @@ class ContractNotificationHandler {
       'contractDispute',
       'contractMessage',
       'contractMedia',
+      'supportMessage',
+      'disputeResolved',
     ].contains(type);
   }
 
@@ -151,9 +170,11 @@ class ContractNotificationHandler {
     try {
       final syncService = ContractSyncService();
       await syncService.syncContracts();
-      print('[ContractNotificationHandler] Synced contracts after ${event.type}');
+      debugPrint(
+        '[ContractNotificationHandler] Synced contracts after ${event.type}',
+      );
     } catch (e) {
-      print('[ContractNotificationHandler] Error syncing contracts: $e');
+      debugPrint('[ContractNotificationHandler] Error syncing contracts: $e');
     }
   }
 
@@ -169,4 +190,3 @@ class ContractNotificationHandler {
     _eventController.close();
   }
 }
-
