@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:hive/hive.dart';
 import 'package:yack/logic/cubits/auth/auth_cubit.dart';
-import 'package:yack/logic/cubits/contract/contract_sync_cubit.dart';
 import 'package:yack/logic/cubits/user/user_cubit.dart';
 import 'package:yack/logic/cubits/user/user_state.dart';
 import 'package:yack/logic/services/auth/account_service.dart';
@@ -82,7 +81,7 @@ class _DecryptAccountScreenState extends State<DecryptAccountScreen> {
         onClick: _switchAccount,
       ),
       child: BlocConsumer<UserCubit, UserState>(
-        listener: (context, state) {
+        listener: (context, state) async {
           if (state is UserProfileMissingKeys) {
             Navigator.pushNamedAndRemoveUntil(
               context,
@@ -90,8 +89,8 @@ class _DecryptAccountScreenState extends State<DecryptAccountScreen> {
               (_) => false,
             );
           } else if (state is UserDecryptSuccess) {
-            context.read<ContractSyncCubit>().sync();
-            context.read<AuthCubit>().markAuthenticated();
+            final ready = await context.read<AuthCubit>().markAuthenticated();
+            if (!context.mounted || !ready) return;
             Navigator.pushNamedAndRemoveUntil(context, '/home', (_) => false);
           } else if (state is UserDecryptError) {
             SnackBarHandler.showError(

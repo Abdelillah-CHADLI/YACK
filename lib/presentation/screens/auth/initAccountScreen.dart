@@ -109,9 +109,10 @@ class _InitAccountScreenState extends State<InitAccountScreen> {
         onClick: _switchAccount,
       ),
       child: BlocConsumer<UserCubit, UserState>(
-        listener: (context, state) {
+        listener: (context, state) async {
           if (state is UserFinalizeSuccess) {
-            context.read<AuthCubit>().markAuthenticated();
+            final ready = await context.read<AuthCubit>().markAuthenticated();
+            if (!context.mounted || !ready) return;
             Navigator.pushNamedAndRemoveUntil(context, '/home', (_) => false);
           } else if (state is UserError) {
             SnackBarHandler.showError(context, state.message);

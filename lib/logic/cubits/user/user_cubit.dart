@@ -41,13 +41,21 @@ class UserCubit extends Cubit<UserState> {
       final profile = await _service.getProfile();
 
       // Check if keys are missing - this means account setup was not completed
-      if (profile.isComplete == false ||
-          (profile.publicKey == null || profile.publicKey!.isEmpty) &&
-              (profile.encryptedPrivateKey == null ||
-                  profile.encryptedPrivateKey!.isEmpty)) {
+      if (!profile.isComplete ||
+          profile.publicKey == null ||
+          profile.publicKey!.isEmpty ||
+          profile.encryptedPrivateKey == null ||
+          profile.encryptedPrivateKey!.isEmpty ||
+          profile.salt == null ||
+          profile.salt!.isEmpty ||
+          profile.iv == null ||
+          profile.iv!.isEmpty) {
         // Still cache other profile info
         try {
           final box = await Hive.openBox('user');
+          if (profile.userId != null) {
+            await box.put('userId', profile.userId);
+          }
           await box.put('firstName', profile.firstName);
           await box.put('lastName', profile.lastName);
           await box.put('email', profile.email);
@@ -61,6 +69,9 @@ class UserCubit extends Cubit<UserState> {
 
       try {
         final box = await Hive.openBox('user');
+        if (profile.userId != null) {
+          await box.put('userId', profile.userId);
+        }
         await box.put('encryptedPrivateKey', profile.encryptedPrivateKey);
         await box.put('privateKeySalt', profile.salt);
         await box.put('privateKeyIV', profile.iv);
@@ -83,13 +94,17 @@ class UserCubit extends Cubit<UserState> {
   }
 
   /// Update encrypted private key.
-  Future<void> updatePrivateKey(String encryptedPrivateKey) async {
+  Future<void> updatePrivateKey({
+    required String encryptedPrivateKey,
+    required String salt,
+    required String iv,
+  }) async {
     emit(const UserLoading());
     try {
       await _service.updatePrivateKey(
         encryptedPrivateKey: encryptedPrivateKey,
-        salt: '',
-        iv: '',
+        salt: salt,
+        iv: iv,
       );
       emit(const UserUpdateSuccess());
     } catch (e) {

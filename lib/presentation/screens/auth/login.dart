@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:yack/logic/cubits/auth/auth_cubit.dart';
+import 'package:yack/logic/cubits/auth/auth_state.dart';
 import 'package:yack/logic/cubits/auth/login_cubit.dart';
 import 'package:yack/logic/cubits/auth/login_state.dart';
 import 'package:yack/logic/services/snackBarHandler.dart';
@@ -105,18 +107,46 @@ class _LoginScreenState extends State<LoginScreen> {
               ),
               const SizedBox(height: 20),
               BlocConsumer<LoginCubit, LoginState>(
-                listener: (context, state) {
+                listener: (blocContext, state) async {
                   if (state is LoginSuccess) {
-                    Navigator.pushReplacementNamed(context, '/decrypt-account');
+                    final accountState = await blocContext
+                        .read<AuthCubit>()
+                        .resolveAccountAfterLogin();
+                    if (!blocContext.mounted) return;
+
+                    if (accountState is AccountNotComplete) {
+                      Navigator.pushNamedAndRemoveUntil(
+                        blocContext,
+                        '/init-account',
+                        (_) => false,
+                      );
+                    } else if (accountState is AccountCompleteButLocked) {
+                      Navigator.pushNamedAndRemoveUntil(
+                        blocContext,
+                        '/decrypt-account',
+                        (_) => false,
+                      );
+                    } else if (accountState is Authenticated) {
+                      Navigator.pushNamedAndRemoveUntil(
+                        blocContext,
+                        '/home',
+                        (_) => false,
+                      );
+                    } else {
+                      SnackBarHandler.showError(
+                        blocContext,
+                        TranslationHandler.get('auth_unexpected_error'),
+                      );
+                    }
                   } else if (state is LoginUnverified) {
                     Navigator.pushNamedAndRemoveUntil(
-                      context,
+                      blocContext,
                       '/confirm',
                       (_) => false,
                     );
                   } else if (state is LoginError) {
                     SnackBarHandler.showError(
-                      context,
+                      blocContext,
                       TranslationHandler.get(
                         state.message ?? 'auth_unexpected_error',
                       ),

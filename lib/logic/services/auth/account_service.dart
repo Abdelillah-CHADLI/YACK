@@ -21,8 +21,15 @@ class AccountService {
     if (profile.userId != null) {
       await box.put('userId', profile.userId);
     }
-    await box.put('firstName', profile.firstName);
-    await box.put('lastName', profile.lastName);
+    // A newly verified backend profile is created before finalization and may
+    // still have empty names. Keep the names saved locally during signup so a
+    // recovered login can finish encryption setup successfully.
+    if (profile.firstName.trim().isNotEmpty || !box.containsKey('firstName')) {
+      await box.put('firstName', profile.firstName);
+    }
+    if (profile.lastName.trim().isNotEmpty || !box.containsKey('lastName')) {
+      await box.put('lastName', profile.lastName);
+    }
     await box.put('email', profile.email);
     if (profile.publicKey != null) {
       await box.put('publicKey', profile.publicKey);
