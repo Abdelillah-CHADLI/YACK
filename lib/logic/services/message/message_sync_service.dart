@@ -88,25 +88,38 @@ class MessageSyncService {
         return 0;
       }
 
-      // Process each message - decrypt and store
+      // F-20: skip rows already persisted so previously decrypted messages are
+      // never re-decrypted, and decrypt the pending batch on a background
+      // isolate so long chats never jank the UI.
+      final knownIds = await getKnownMessageExternalIds(
+        contractId: localContractId,
+      );
+      final pending = messages
+          .where((msg) => !knownIds.contains(msg.id))
+          .toList();
+      if (pending.isEmpty) {
+        _lastSyncTime = DateTime.now();
+        return 0;
+      }
+
+      final plaintexts = await CryptoService.decryptBatchWithPrivateKey(
+        ciphertexts: pending.map((msg) => msg.content).toList(),
+        privateKeyBytes: privateKeyBytes,
+      );
+
+      // Persist each message to Isar
       int syncedCount = 0;
-      for (final msg in messages) {
+      for (var i = 0; i < pending.length; i++) {
         try {
-          // Decrypt message content using private key
-          String decryptedContent;
-          try {
-            decryptedContent = CryptoService.decryptWithPrivateKey(
-              ciphertextBase64: msg.content,
-              privateKeyBytes: privateKeyBytes,
-            );
-          } catch (e) {
-            decryptedContent = '[Unable to decrypt message]';
+          final msg = pending[i];
+          final decryptedContent =
+              plaintexts[i] ?? '[Unable to decrypt message]';
+          if (plaintexts[i] == null) {
             logDebug(
-              '[MessageSyncService] Failed to decrypt message ${msg.id}: $e',
+              '[MessageSyncService] Failed to decrypt message ${msg.id}',
             );
           }
 
-          // Save decrypted message to Isar
           await saveMessageToIsar(
             contractId: localContractId,
             externalId: msg.id,
@@ -119,7 +132,7 @@ class MessageSyncService {
           );
           syncedCount++;
         } catch (e) {
-          logDebug('[MessageSyncService] Failed to sync message ${msg.id}: $e');
+          logDebug('[MessageSyncService] Failed to sync message ${pending[i].id}: $e');
         }
       }
 

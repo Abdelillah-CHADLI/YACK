@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:isolate';
 import 'dart:math';
 import 'dart:typed_data';
 import 'package:crypto/crypto.dart' as crypto;
@@ -104,6 +105,38 @@ class CryptoService {
       ..init(false, AEADParameters(KeyParameter(key), 128, iv, Uint8List(0)));
 
     return cipher.process(ciphertext);
+  }
+
+  /// F-19: Argon2id (64 MB / 3-pass) derivation and key setup run on a
+  /// background isolate so the UI isolate never freezes during unlock,
+  /// account setup, or password change.
+  static Future<Uint8List> decryptPrivateKeyAsync({
+    required String ciphertextBase64,
+    required String password,
+    required String saltBase64,
+    required String ivBase64,
+  }) {
+    return Isolate.run(() => decryptPrivateKey(
+      ciphertextBase64: ciphertextBase64,
+      password: password,
+      saltBase64: saltBase64,
+      ivBase64: ivBase64,
+    ));
+  }
+
+  static Future<Map<String, String>> generateAndEncryptKeysAsync(
+    String password,
+  ) {
+    return Isolate.run(() => generateAndEncryptKeys(password));
+  }
+
+  static Future<Map<String, String>> encryptPrivateKeyAsync({
+    required Uint8List privateKeyBytes,
+    required String password,
+  }) {
+    return Isolate.run(
+      () => encryptPrivateKey(privateKeyBytes: privateKeyBytes, password: password),
+    );
   }
 
   static Future<Map<String, String>> generateAndEncryptKeys(
@@ -226,6 +259,29 @@ class CryptoService {
     final decrypted = decryptor.process(base64Decode(ciphertextBase64));
 
     return utf8.decode(decrypted);
+  }
+
+  /// F-20: batch per-message RSA decryption on a background isolate. Each
+  /// entry maps to its plaintext, or `null` when that ciphertext failed to
+  /// decrypt so one corrupt message never blocks the rest of the page.
+  static Future<List<String?>> decryptBatchWithPrivateKey({
+    required List<String> ciphertexts,
+    required Uint8List privateKeyBytes,
+  }) {
+    return Isolate.run(() {
+      return ciphertexts
+          .map((ciphertext) {
+            try {
+              return decryptWithPrivateKey(
+                ciphertextBase64: ciphertext,
+                privateKeyBytes: privateKeyBytes,
+              );
+            } catch (_) {
+              return null;
+            }
+          })
+          .toList();
+    });
   }
 
   // -----------------------------

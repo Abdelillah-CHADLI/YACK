@@ -10,7 +10,7 @@ class InitAccountService {
   final UserService _userService;
 
   Future<void> initializeAccount(String password) async {
-    final keyBundle = await CryptoService.generateAndEncryptKeys(password);
+    final keyBundle = await CryptoService.generateAndEncryptKeysAsync(password);
     await _userService.finalize(
       publicKey: keyBundle['publicKey']!,
       encryptedPrivateKey: keyBundle['encryptedPrivateKey']!,
@@ -19,7 +19,8 @@ class InitAccountService {
     );
 
     // Keep the unlocked private key in process memory for immediate use.
-    final decryptedPrivateKey = CryptoService.decryptPrivateKey(
+    // Runs on a background isolate so the first unlock stays responsive (F-19).
+    final decryptedPrivateKey = await CryptoService.decryptPrivateKeyAsync(
       ciphertextBase64: keyBundle['encryptedPrivateKey']!,
       password: password,
       saltBase64: keyBundle['salt']!,

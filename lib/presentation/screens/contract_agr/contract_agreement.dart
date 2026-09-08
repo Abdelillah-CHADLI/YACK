@@ -221,25 +221,29 @@ class _ContractAgreementState extends State<ContractAgreement> {
 
       final state = messageCubit.state;
       if (state is MessagesLoaded) {
-        // Decrypt and save messages to Isar
-        for (final msg in state.messages) {
-          String decryptedContent;
-          try {
-            decryptedContent = CryptoService.decryptWithPrivateKey(
-              ciphertextBase64: msg.content,
-              privateKeyBytes: _privateKeyBytes!,
-            );
-          } catch (e) {
-            decryptedContent = '[Unable to decrypt]';
-          }
+        // F-20: skip already-persisted messages and decrypt the pending batch
+        // on a background isolate so opening a chat never janks the UI.
+        final knownIds = await getKnownMessageExternalIds(
+          contractId: widget.contractId,
+        );
+        final pending = state.messages
+            .where((msg) => !knownIds.contains(msg.id))
+            .toList();
+        final plaintexts = await CryptoService.decryptBatchWithPrivateKey(
+          ciphertexts: pending.map((msg) => msg.content).toList(),
+          privateKeyBytes: _privateKeyBytes!,
+        );
 
+        for (var i = 0; i < pending.length; i++) {
+          final msg = pending[i];
+          final plaintext = plaintexts[i];
           await saveMessageToIsar(
             contractId: widget.contractId,
             externalId: msg.id,
             senderId: msg.senderId,
             senderFirstName: msg.senderFirstName,
             senderLastName: msg.senderLastName,
-            content: decryptedContent,
+            content: plaintext ?? '[Unable to decrypt]',
             contentHash: msg.contentHash,
             createdAt: msg.createdAt,
           );

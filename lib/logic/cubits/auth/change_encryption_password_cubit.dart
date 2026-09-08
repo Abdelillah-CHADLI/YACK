@@ -20,8 +20,6 @@ class ChangeEncryptionPasswordCubit extends Cubit<ChangeEncryptionPasswordState>
     }
 
     emit(ChangeEncryptionPasswordLoading());
-    // Allow UI to update before heavy crypto operations
-    await Future.delayed(const Duration(milliseconds: 50));
 
     try {
       final box = await Hive.openBox('user');
@@ -34,8 +32,9 @@ class ChangeEncryptionPasswordCubit extends Cubit<ChangeEncryptionPasswordState>
         return;
       }
 
-      // Decrypt with old password
-      final privateKeyBytes = CryptoService.decryptPrivateKey(
+      // Decrypt with old password. Both derivations run on a background
+      // isolate so the form stays responsive (F-19).
+      final privateKeyBytes = await CryptoService.decryptPrivateKeyAsync(
         ciphertextBase64: encryptedPrivateKey,
         password: oldPassword,
         saltBase64: salt,
@@ -43,7 +42,7 @@ class ChangeEncryptionPasswordCubit extends Cubit<ChangeEncryptionPasswordState>
       );
 
       // Re-encrypt with new password
-      final newEncrypted = CryptoService.encryptPrivateKey(
+      final newEncrypted = await CryptoService.encryptPrivateKeyAsync(
         privateKeyBytes: privateKeyBytes,
         password: newPassword,
       );

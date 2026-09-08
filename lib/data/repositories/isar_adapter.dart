@@ -276,6 +276,19 @@ Future<void> deleteContractFromIsar(String externalId) async {
 // Message Operations
 // ============================================================================
 
+/// F-20: returns the set of already-stored server message ids for a contract
+/// so callers can skip decrypting messages that are already persisted.
+Future<Set<String>> getKnownMessageExternalIds({
+  required int contractId,
+}) async {
+  final messages = await isar.messages
+      .filter()
+      .contractIdEqualTo(contractId)
+      .externalIdIsNotNull()
+      .findAll();
+  return messages.map((message) => message.externalId!).toSet();
+}
+
 /// Save a message to Isar
 Future<Message> saveMessageToIsar({
   required int contractId,

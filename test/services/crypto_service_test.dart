@@ -301,6 +301,96 @@ void main() {
         expect(privateKeyBytes.isNotEmpty, true);
       });
     });
+
+    group('background isolate variants (F-19/F-20)', () {
+      test('async keygen/decrypt round-trips to the same key material', () async {
+        const password = 'IsolatePassword1!';
+
+        final bundle = await CryptoService.generateAndEncryptKeysAsync(password);
+        final decrypted = await CryptoService.decryptPrivateKeyAsync(
+          ciphertextBase64: bundle['encryptedPrivateKey']!,
+          password: password,
+          saltBase64: bundle['salt']!,
+          ivBase64: bundle['iv']!,
+        );
+
+        final jsonStr = utf8.decode(decrypted);
+        final keyData = json.decode(jsonStr) as Map<String, dynamic>;
+        expect(keyData['n'], isNotEmpty);
+        expect(keyData['d'], isNotEmpty);
+        expect(keyData['p'], isNotEmpty);
+        expect(keyData['q'], isNotEmpty);
+      });
+
+      test('async re-encrypt produces decryptable ciphertext', () async {
+        const password = 'IsolatePassword1!';
+        const newPassword = 'NewIsolatePassword1!';
+
+        final bundle = await CryptoService.generateAndEncryptKeysAsync(password);
+        final privateKeyBytes = await CryptoService.decryptPrivateKeyAsync(
+          ciphertextBase64: bundle['encryptedPrivateKey']!,
+          password: password,
+          saltBase64: bundle['salt']!,
+          ivBase64: bundle['iv']!,
+        );
+
+        final reEncrypted = await CryptoService.encryptPrivateKeyAsync(
+          privateKeyBytes: privateKeyBytes,
+          password: newPassword,
+        );
+        final decryptedAgain = await CryptoService.decryptPrivateKeyAsync(
+          ciphertextBase64: reEncrypted['ciphertext']!,
+          password: newPassword,
+          saltBase64: reEncrypted['salt']!,
+          ivBase64: reEncrypted['iv']!,
+        );
+
+        expect(decryptedAgain, equals(privateKeyBytes));
+      });
+
+      test('batch decrypt matches isolated single decrypts', () async {
+        const password = 'IsolatePassword1!';
+        final bundle = await CryptoService.generateAndEncryptKeysAsync(password);
+        final privateKeyBytes = await CryptoService.decryptPrivateKeyAsync(
+          ciphertextBase64: bundle['encryptedPrivateKey']!,
+          password: password,
+          saltBase64: bundle['salt']!,
+          ivBase64: bundle['iv']!,
+        );
+        final ciphertexts = List.generate(
+          3,
+          (i) => CryptoService.encryptWithPublicKey(
+            plaintext: 'message-$i',
+            publicKeyBase64: bundle['publicKey']!,
+          ),
+        );
+
+        final plaintexts = await CryptoService.decryptBatchWithPrivateKey(
+          ciphertexts: ciphertexts,
+          privateKeyBytes: privateKeyBytes,
+        );
+
+        expect(plaintexts, equals(['message-0', 'message-1', 'message-2']));
+      });
+
+      test('batch decrypt isolates corrupt ciphertexts as null', () async {
+        const password = 'IsolatePassword1!';
+        final bundle = await CryptoService.generateAndEncryptKeysAsync(password);
+        final privateKeyBytes = await CryptoService.decryptPrivateKeyAsync(
+          ciphertextBase64: bundle['encryptedPrivateKey']!,
+          password: password,
+          saltBase64: bundle['salt']!,
+          ivBase64: bundle['iv']!,
+        );
+
+        final plaintexts = await CryptoService.decryptBatchWithPrivateKey(
+          ciphertexts: ['not-base64!!', ''],
+          privateKeyBytes: privateKeyBytes,
+        );
+
+        expect(plaintexts, equals([null, null]));
+      });
+    });
   });
 }
 
