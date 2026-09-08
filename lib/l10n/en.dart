@@ -637,5 +637,13 @@ const english = {
       'Your dispute is open. Send a message or wait for the support team to contact you.',
   'support_case_closed': 'This support case is closed.',
   'support_message_hint': 'Message support…',
+  'attach_file': 'Attach a file',
+  'uploading_file': 'Uploading…',
+  'file_uploaded_success': 'File attached successfully.',
+  'error_uploading_file': 'Failed to upload the file. Please try again.',
+  'remove_attachment': 'Remove attachment',
+  'no_attachments': 'No files attached yet.',
+  'preview_image': 'Tap to preview',
+  'support_attachment': 'Attachment',
   'send': 'Send',
 };

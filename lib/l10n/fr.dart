@@ -669,5 +669,13 @@ const french = {
       'Votre litige est ouvert. Envoyez un message ou attendez que le support vous contacte.',
   'support_case_closed': 'Ce dossier de support est fermé.',
   'support_message_hint': 'Message au support…',
+  'attach_file': 'Joindre un fichier',
+  'uploading_file': 'Envoi…',
+  'file_uploaded_success': 'Fichier joint avec succès.',
+  'error_uploading_file': 'Échec de l’envoi du fichier. Veuillez réessayer.',
+  'remove_attachment': 'Retirer la pièce jointe',
+  'no_attachments': 'Aucun fichier joint pour le moment.',
+  'preview_image': 'Appuyer pour prévisualiser',
+  'support_attachment': 'Pièce jointe',
   'send': 'Envoyer',
 };

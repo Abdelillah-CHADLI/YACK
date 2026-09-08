@@ -1,8 +1,10 @@
 import 'dart:convert';
+import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:crypto/crypto.dart';
 import 'package:hive/hive.dart';
+import 'package:mime/mime.dart';
 import 'package:yack/data/db/models/contract.dart';
 import 'package:yack/data/db/models/message.dart';
 import 'package:yack/logic/services/auth/cryptoService.dart';
@@ -25,18 +27,56 @@ class SupportMessage {
   bool get isFromSupport => senderType == 'admin';
 }
 
+class SupportAttachment {
+  const SupportAttachment({
+    required this.id,
+    this.whoId,
+    required this.originalFilename,
+    required this.url,
+    this.mimeType,
+    this.size,
+    required this.createdAt,
+  });
+
+  final String id;
+  final String? whoId;
+  final String originalFilename;
+  final String url;
+  final String? mimeType;
+  final int? size;
+  final DateTime createdAt;
+
+  bool get isImage => (mimeType ?? '').startsWith('image/');
+
+  factory SupportAttachment.fromJson(Map<String, dynamic> json) {
+    return SupportAttachment(
+      id: json['_id']?.toString() ?? json['id']?.toString() ?? '',
+      whoId: json['who']?.toString(),
+      originalFilename: json['originalFilename']?.toString() ?? '',
+      url: json['url']?.toString() ?? '',
+      mimeType: json['mimeType']?.toString(),
+      size: json['size'] is int ? json['size'] as int : null,
+      createdAt: DateTime.tryParse(json['createdAt']?.toString() ?? '')
+              ?.toLocal() ??
+          DateTime.now(),
+    );
+  }
+}
+
 class SupportConversation {
   const SupportConversation({
     required this.id,
     required this.status,
     required this.reviewAccessGranted,
     required this.messages,
+    this.attachments = const [],
   });
 
   final String id;
   final String status;
   final bool reviewAccessGranted;
   final List<SupportMessage> messages;
+  final List<SupportAttachment> attachments;
 }
 
 class SupportService {
@@ -98,7 +138,16 @@ class SupportService {
       status: payload['status']?.toString() ?? 'open',
       reviewAccessGranted: payload['reviewAccessGranted'] == true,
       messages: messages,
+      attachments: _parseAttachments(payload['attachments']),
     );
+  }
+
+  List<SupportAttachment> _parseAttachments(dynamic raw) {
+    if (raw is! List) return const [];
+    return raw.whereType<Map>().map((entry) {
+      final json = Map<String, dynamic>.from(entry);
+      return SupportAttachment.fromJson(json);
+    }).toList();
   }
 
   Future<void> sendMessage({
@@ -180,6 +229,51 @@ class SupportService {
             )
             .toList(),
       },
+    );
+  }
+
+  Future<void> uploadAttachment({
+    required String contractId,
+    required File file,
+    String? filename,
+  }) async {
+    final bytes = await file.readAsBytes();
+    if (bytes.isEmpty) {
+      throw StateError('The selected file is empty.');
+    }
+    final base64Buffer = base64Encode(bytes);
+    final actualFilename =
+        filename ?? file.path.split(Platform.pathSeparator).last;
+    final mimeType = lookupMimeType(actualFilename, headerBytes: bytes);
+
+    await _http.post(
+      '/support/attachments',
+      body: {
+        'contractId': contractId,
+        'file': {
+          'filename': actualFilename,
+          'buffer': base64Buffer,
+          if (mimeType != null) 'mimeType': mimeType,
+        },
+      },
+    );
+  }
+
+  Future<List<SupportAttachment>> getAttachments(String contractId) async {
+    final response = await _http.get(
+      '/support/attachments?contractId=${Uri.encodeQueryComponent(contractId)}',
+    );
+    return _parseAttachments(
+      response is Map ? response['attachments'] : null,
+    );
+  }
+
+  Future<void> deleteAttachment({
+    required String contractId,
+    required String attachmentId,
+  }) async {
+    await _http.delete(
+      '/support/attachments/$attachmentId?contractId=${Uri.encodeQueryComponent(contractId)}',
     );
   }
 

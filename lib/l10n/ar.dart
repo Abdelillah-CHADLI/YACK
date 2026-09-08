@@ -615,5 +615,13 @@ const arabic = {
       'نزاعك مفتوح. أرسل رسالة أو انتظر حتى يتواصل معك فريق الدعم.',
   'support_case_closed': 'تم إغلاق قضية الدعم هذه.',
   'support_message_hint': 'رسالة إلى الدعم…',
+  'attach_file': 'إرفاق ملف',
+  'uploading_file': 'جارٍ الرفع…',
+  'file_uploaded_success': 'تم إرفاق الملف بنجاح.',
+  'error_uploading_file': 'تعذر رفع الملف. يرجى المحاولة مرة أخرى.',
+  'remove_attachment': 'إزالة المرفق',
+  'no_attachments': 'لا توجد ملفات مرفقة بعد.',
+  'preview_image': 'اضغط للمعاينة',
+  'support_attachment': 'مرفق',
   'send': 'إرسال',
 };
