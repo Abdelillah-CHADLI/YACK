@@ -183,10 +183,14 @@ class ContractNotificationHandler {
     _eventController.add(event);
   }
 
-  /// Clean up resources
+  /// Clean up resources.
+  /// Safe to call on the singleton: subscriptions are cancelled and cleared
+  /// but the shared broadcast controller is kept alive so `initialize()`
+  /// (and any existing listeners) keep working afterwards.
   void dispose() {
     _foregroundSubscription?.cancel();
     _backgroundSubscription?.cancel();
-    _eventController.close();
+    _foregroundSubscription = null;
+    _backgroundSubscription = null;
   }
 }

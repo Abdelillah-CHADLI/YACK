@@ -4,6 +4,7 @@ import 'package:hive/hive.dart';
 import 'package:yack/logic/cubits/auth/change_encryption_password_state.dart';
 import 'package:yack/logic/services/auth/account_service.dart';
 import 'package:yack/logic/services/auth/cryptoService.dart';
+import 'package:yack/logic/services/debug_logger.dart';
 
 class ChangeEncryptionPasswordCubit extends Cubit<ChangeEncryptionPasswordState> {
   ChangeEncryptionPasswordCubit() : super(ChangeEncryptionPasswordInitial());
@@ -57,7 +58,7 @@ class ChangeEncryptionPasswordCubit extends Cubit<ChangeEncryptionPasswordState>
 
       emit(ChangeEncryptionPasswordSuccess());
     } catch (e) {
-      print('[ChangeEncryptionPasswordCubit] Error: $e');
+      logDebug('[ChangeEncryptionPasswordCubit] Error: $e');
       // If decryption fails, it's likely wrong password
       if (e.toString().contains('InvalidCipherText') ||
           e.toString().contains('mac check')) {

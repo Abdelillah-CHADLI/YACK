@@ -1,6 +1,7 @@
 import 'package:yack/data/repositories/isar_adapter.dart';
 import 'package:yack/logic/services/auth/cryptoService.dart';
 import 'package:yack/logic/services/auth/decrypted_key_cache.dart';
+import 'package:yack/logic/services/debug_logger.dart';
 import 'package:yack/logic/services/message/message_service.dart';
 
 /// Service to sync messages from backend to local Isar database.
@@ -33,7 +34,7 @@ class MessageSyncService {
     final syncKey = '$externalContractId:$localContractId:${limit ?? 'all'}';
     final activeSync = _activeSyncs[syncKey];
     if (activeSync != null) {
-      print(
+      logDebug(
         '[MessageSyncService] Matching sync already in progress, awaiting it...',
       );
       return activeSync;
@@ -60,14 +61,14 @@ class MessageSyncService {
     int? limit,
   }) async {
     try {
-      print(
+      logDebug(
         '[MessageSyncService] Starting message sync for contract $externalContractId...',
       );
 
       final privateKeyBytes = DecryptedKeyCache.value;
 
       if (privateKeyBytes == null) {
-        print(
+        logDebug(
           '[MessageSyncService] No decrypted private key found. User must unlock account first.',
         );
         return 0;
@@ -78,7 +79,7 @@ class MessageSyncService {
         contractId: externalContractId,
         limit: limit,
       );
-      print(
+      logDebug(
         '[MessageSyncService] Fetched ${messages.length} messages from backend',
       );
 
@@ -100,7 +101,7 @@ class MessageSyncService {
             );
           } catch (e) {
             decryptedContent = '[Unable to decrypt message]';
-            print(
+            logDebug(
               '[MessageSyncService] Failed to decrypt message ${msg.id}: $e',
             );
           }
@@ -118,18 +119,18 @@ class MessageSyncService {
           );
           syncedCount++;
         } catch (e) {
-          print('[MessageSyncService] Failed to sync message ${msg.id}: $e');
+          logDebug('[MessageSyncService] Failed to sync message ${msg.id}: $e');
         }
       }
 
       _lastSyncTime = DateTime.now();
-      print(
+      logDebug(
         '[MessageSyncService] Sync complete. Synced $syncedCount messages.',
       );
 
       return syncedCount;
     } catch (e) {
-      print('[MessageSyncService] Sync failed: $e');
+      logDebug('[MessageSyncService] Sync failed: $e');
       rethrow;
     }
   }
@@ -152,7 +153,7 @@ class MessageSyncService {
 
       return totalSynced;
     } catch (e) {
-      print('[MessageSyncService] Failed to sync all messages: $e');
+      logDebug('[MessageSyncService] Failed to sync all messages: $e');
       rethrow;
     }
   }

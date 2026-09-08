@@ -19,6 +19,9 @@ const arabic = {
   'invitation_no_longer_available': 'تم إلغاء هذه الدعوة أو انتهت صلاحيتها.',
   'invitation_cancel_failed':
       'تعذر إلغاء الدعوة. تحقق من اتصالك وحاول مرة أخرى.',
+  'unverified_content': 'تعذر التحقق من هذه الرسالة',
+  'details_verified': 'تم التحقق من تفاصيل الاتفاق',
+  'details_unverified': 'تعذر التحقق من تفاصيل الاتفاق',
   'settings_heading': 'مساحة عملك',
   'settings_heading_desc': 'أدر هويتك وأمانك وطريقة عمل YACK على هذا الجهاز.',
   'notifications_info_subtitle': 'معلومات التسليم والتوفر',

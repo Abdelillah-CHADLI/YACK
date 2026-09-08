@@ -44,6 +44,9 @@ class AccountService {
       await box.put('privateKeyIV', profile.iv);
     }
     await box.put('isComplete', profile.isComplete);
+    if (profile.language.isNotEmpty) {
+      await box.put('language', profile.language);
+    }
 
     return profile;
   }
@@ -61,6 +64,7 @@ class AccountService {
       'salt': box.get('privateKeySalt'),
       'iv': box.get('privateKeyIV'),
       'isComplete': box.get('isComplete') ?? false,
+      'language': box.get('language') ?? 'en',
     };
   }
 
@@ -133,6 +137,7 @@ class AccountService {
     await box.delete('hiddenContractIds');
     await box.delete('didFirstLogin');
     await box.delete('authStatus');
+    await box.delete('language');
 
     // Clear all Isar data (contracts, messages, media, notifications)
     await clearAllIsarData();

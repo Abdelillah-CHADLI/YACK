@@ -142,9 +142,38 @@ class MediaService {
 
   /// Return all media entries for a contract.
   /// GET /media/all?contractId=...
+  /// Paged API responses are walked until `hasMore` is false (F-14).
   Future<List<ContractMedia>> getAll({required String contractId}) async {
-    final response = await _http.get('/media/all?contractId=$contractId');
-    return _parseMediaList(response);
+    const int pageSize = 100; // backend upper bound
+    final all = <ContractMedia>[];
+    var offset = 0;
+    var hasMore = true;
+
+    while (hasMore) {
+      final response = await _http.get(
+        '/media/all?contractId=$contractId&limit=$pageSize&offset=$offset',
+      );
+      final page = _parseMediaList(response);
+      all.addAll(page);
+      hasMore = _hasMore(response, offset, page.length);
+      offset += page.length;
+      if (hasMore && page.isEmpty) hasMore = false;
+    }
+
+    return all;
+  }
+
+  /// Whether the response has another page of media.
+  static bool _hasMore(dynamic response, int offset, int pageLength) {
+    if (response is! Map) return false;
+    final pagination = response['pagination'];
+    if (pagination is Map) {
+      final explicit = pagination['hasMore'];
+      if (explicit is bool) return explicit;
+      final total = pagination['total'];
+      if (total is int) return offset + pageLength < total;
+    }
+    return false;
   }
 
   /// Get a specific media by ID.

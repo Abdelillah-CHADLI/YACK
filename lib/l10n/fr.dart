@@ -20,6 +20,9 @@ const french = {
       'Cette invitation a été annulée ou a expiré.',
   'invitation_cancel_failed':
       'L’invitation n’a pas pu être annulée. Vérifiez votre connexion puis réessayez.',
+  'unverified_content': 'Impossible de vérifier ce message',
+  'details_verified': 'Détails de l’accord vérifiés',
+  'details_unverified': 'Impossible de vérifier les détails de l’accord',
   'settings_heading': 'Votre espace de travail',
   'settings_heading_desc':
       "Gérez votre identité, votre sécurité et le comportement de YACK sur cet appareil.",

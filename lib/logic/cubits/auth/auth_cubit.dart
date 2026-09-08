@@ -7,6 +7,7 @@ import 'package:yack/logic/services/contract/contract_sync_service.dart';
 import 'package:yack/logic/services/auth/account_service.dart';
 import 'package:hive/hive.dart';
 import 'package:yack/logic/services/auth/decrypted_key_cache.dart';
+import 'package:yack/logic/services/debug_logger.dart';
 import 'package:yack/logic/services/notification/notification_service.dart';
 
 class AuthCubit extends Cubit<AuthState> {
@@ -107,10 +108,10 @@ class AuthCubit extends Cubit<AuthState> {
     _syncService
         .syncContracts()
         .then((count) {
-          print('[AuthCubit] Synced $count contracts in background');
+          logDebug('[AuthCubit] Synced $count contracts in background');
         })
         .catchError((e) {
-          print('[AuthCubit] Background contract sync failed: $e');
+          logDebug('[AuthCubit] Background contract sync failed: $e');
         });
   }
 

@@ -11,6 +11,7 @@ class UserProfile {
   final bool isComplete;
   final String? salt;
   final String? iv;
+  final String language;
 
   const UserProfile({
     this.userId,
@@ -22,6 +23,7 @@ class UserProfile {
     required this.isComplete,
     this.salt,
     this.iv,
+    this.language = 'en',
   });
 
   factory UserProfile.fromJson(Map<String, dynamic> json) {
@@ -35,6 +37,7 @@ class UserProfile {
       isComplete: json['isComplete'] == true,
       salt: json['salt']?.toString(),
       iv: json['iv']?.toString(),
+      language: json['language']?.toString() ?? 'en',
     );
   }
 
@@ -49,6 +52,7 @@ class UserProfile {
       'isComplete': isComplete,
       'salt': salt,
       'iv': iv,
+      'language': language,
     };
   }
 }

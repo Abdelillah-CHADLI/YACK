@@ -20,6 +20,9 @@ const english = {
       'This invitation was cancelled or has expired.',
   'invitation_cancel_failed':
       'The invitation could not be cancelled. Check your connection and try again.',
+  'unverified_content': 'Unable to verify this message',
+  'details_verified': 'Agreement details verified',
+  'details_unverified': 'Unable to verify agreement details',
   'settings_heading': 'Your workspace',
   'settings_heading_desc':
       'Manage your identity, security, and how YACK behaves on this device.',

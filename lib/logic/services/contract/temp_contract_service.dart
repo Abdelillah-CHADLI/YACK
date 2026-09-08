@@ -1,4 +1,5 @@
 import 'package:yack/data/models/contract/temp_contract.dart';
+import 'package:yack/logic/services/debug_logger.dart';
 import 'package:yack/logic/services/network/http_handler.dart';
 
 class TempContractService {
@@ -54,19 +55,19 @@ class TempContractService {
     if (hash != null && hash.isNotEmpty) body['hash'] = hash;
 
     final response = await _http.post('/contracts/join', body: body);
-    print('[DEBUG TempContractService] Join response: $response');
+    logDebug('[TempContractService] Join response: $response');
 
     final contract = _materializeContract(response, fallbackTempId: tempId);
-    print(
-      '[DEBUG TempContractService] Materialized contract - userAName: ${contract.userAName}, userAId: ${contract.userAId}',
+    logDebug(
+      '[TempContractService] Materialized contract - userAName: ${contract.userAName}, userAId: ${contract.userAId}',
     );
 
     final userAPublicKey = _extractUserAPublicKey(response);
-    print('[DEBUG TempContractService] userAPublicKey: $userAPublicKey');
+    logDebug('[TempContractService] userAPublicKey: $userAPublicKey');
 
     // NEW: extract user A full name returned by backend
     final userAFullName = _extractUserAFullName(response);
-    print('[DEBUG TempContractService] userAFullName: $userAFullName');
+    logDebug('[TempContractService] userAFullName: $userAFullName');
 
     return TempContractJoinResult(
       contract: contract,
@@ -98,11 +99,11 @@ class TempContractService {
       '/contracts/sign',
       body: {'tempID': tempId},
     );
-    print('[DEBUG TempContractService] Sign response: $response');
+    logDebug('[TempContractService] Sign response: $response');
 
     final contract = _materializeContract(response, fallbackTempId: tempId);
     final contractId = _extractContractId(response);
-    print('[DEBUG TempContractService] Sign result - contractId: $contractId');
+    logDebug('[TempContractService] Sign result - contractId: $contractId');
 
     return TempContractSignResult(contract: contract, contractId: contractId);
   }
@@ -191,7 +192,11 @@ class TempContractService {
     }
 
     if (!payload.containsKey('tempID')) {
-      throw StateError('S mpID field.');
+      throw const ApiException(
+        code: 'MISSING_TEMP_ID',
+        message:
+            'The server response did not include the temp contract ID. Please try again.',
+      );
     }
 
     return TempContract.fromJson(payload);
@@ -267,9 +272,7 @@ class TempContractStatus {
   final DateTime? expiresAt;
 
   bool get isFinalized =>
-      status == 'completed' ||
-      status == 'finalized' ||
-      (contractId?.isNotEmpty ?? false);
+      status == 'completed' || (contractId?.isNotEmpty ?? false);
   bool get isUnavailable => status == 'cancelled' || status == 'expired';
 
   factory TempContractStatus.fromResponse(

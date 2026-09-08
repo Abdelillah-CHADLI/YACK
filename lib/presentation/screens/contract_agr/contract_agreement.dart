@@ -567,11 +567,18 @@ class _ContractAgreementState extends State<ContractAgreement> {
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
       appBar: AppBar(
-        title: Text(contract.title, overflow: TextOverflow.ellipsis),
+        title: Text(
+          _privateKeyBytes == null
+              ? TranslationHandler.get('agreement_locked_title')
+              : contract.title,
+          overflow: TextOverflow.ellipsis,
+        ),
         actions: [
           IconButton(
             tooltip: TranslationHandler.get('contract_details'),
-            onPressed: () => _showContractDetails(contract),
+            onPressed: _privateKeyBytes == null
+                ? null
+                : () => _showContractDetails(contract),
             icon: const Icon(Icons.info_outline),
           ),
           const SizedBox(width: 4),
@@ -794,7 +801,8 @@ class _ContractAgreementState extends State<ContractAgreement> {
             final messages = msgSnapshot.data ?? [];
             final mediaFiles = mediaSnapshot.data ?? [];
 
-            if (messages.isEmpty && mediaFiles.isEmpty) {
+            if (_privateKeyBytes == null ||
+            (messages.isEmpty && mediaFiles.isEmpty)) {
               return RefreshIndicator(
                 onRefresh: _onRefresh,
                 child: ListView(
@@ -889,6 +897,21 @@ class _ContractAgreementState extends State<ContractAgreement> {
     final colors = Theme.of(context).colorScheme;
     final senderName = _getSenderName(message);
 
+    // F-18: contentHash is the only tamper-detection for message plaintext.
+    // Show a warning when a stored hash is present but does not match the
+    // decrypted content (decryption sentinels are excluded).
+    final isDecryptionSentinel =
+        message.content.startsWith('[Unable to') ||
+        message.content.startsWith('[Unable to decrypt');
+    final hashVerified = CryptoService.plaintextMatchesHash(
+      plaintext: message.content,
+      expectedHex: message.contentHash,
+    );
+    final showUnverified =
+        !isDecryptionSentinel &&
+        (message.contentHash?.isNotEmpty ?? false) &&
+        !hashVerified;
+
     return Container(
       margin: const EdgeInsets.symmetric(vertical: 4, horizontal: 12),
       child: Row(
@@ -929,6 +952,33 @@ class _ContractAgreementState extends State<ContractAgreement> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  if (showUnverified) ...[
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          Icons.error_outline,
+                          size: 14,
+                          color: isMe
+                              ? colors.onPrimary.withValues(alpha: .8)
+                              : colors.error,
+                        ),
+                        const SizedBox(width: 4),
+                        Flexible(
+                          child: Text(
+                            TranslationHandler.get('unverified_content'),
+                            style: Theme.of(context).textTheme.labelSmall
+                                ?.copyWith(
+                                  color: isMe
+                                      ? colors.onPrimary.withValues(alpha: .8)
+                                      : colors.error,
+                                ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 4),
+                  ],
                   SelectableText(
                     message.content,
                     style: Theme.of(context).textTheme.bodyMedium?.copyWith(
@@ -1369,6 +1419,16 @@ class _ContractAgreementState extends State<ContractAgreement> {
                             '${contract.price} ${TranslationHandler.get('currency')}',
                             Icons.payments_outlined,
                           ),
+                          if (contract.detailsHash?.isNotEmpty ?? false) ...[
+                            const SizedBox(height: 8),
+                            _buildVerificationBanner(
+                              verified: CryptoService.plaintextMatchesHash(
+                                plaintext:
+                                    '${contract.title}|${contract.description}|${contract.price}',
+                                expectedHex: contract.detailsHash,
+                              ),
+                            ),
+                          ],
                           const SizedBox(height: 14),
                           Text(
                             TranslationHandler.get('description'),
@@ -1478,6 +1538,41 @@ class _ContractAgreementState extends State<ContractAgreement> {
                   ),
                 ),
               ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildVerificationBanner({required bool verified}) {
+    final colors = Theme.of(context).colorScheme;
+    final color = verified ? colors.primary : colors.error;
+    return Container(
+      margin: const EdgeInsets.only(bottom: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: .08),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: color.withValues(alpha: .35)),
+      ),
+      child: Row(
+        children: [
+          Icon(
+            verified ? Icons.verified_outlined : Icons.error_outline,
+            size: 18,
+            color: color,
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              TranslationHandler.get(
+                verified ? 'details_verified' : 'details_unverified',
+              ),
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                color: color,
+                fontWeight: FontWeight.w600,
+              ),
             ),
           ),
         ],

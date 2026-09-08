@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:math';
 import 'dart:typed_data';
+import 'package:crypto/crypto.dart' as crypto;
 import 'package:pointycastle/export.dart';
 
 class CryptoService {
@@ -201,7 +202,7 @@ class CryptoService {
       );
     }
     final publicKey = _decodeRSAPublicKey(publicKeyBase64);
-    final encryptor = OAEPEncoding(RSAEngine())
+    final encryptor = OAEPEncoding.withSHA256(RSAEngine())
       ..init(true, PublicKeyParameter<RSAPublicKey>(publicKey));
 
     final encrypted = encryptor.process(
@@ -219,11 +220,38 @@ class CryptoService {
     required Uint8List privateKeyBytes,
   }) {
     final privateKey = _decodeRSAPrivateKey(privateKeyBytes);
-    final decryptor = OAEPEncoding(RSAEngine())
+    final decryptor = OAEPEncoding.withSHA256(RSAEngine())
       ..init(false, PrivateKeyParameter<RSAPrivateKey>(privateKey));
 
     final decrypted = decryptor.process(base64Decode(ciphertextBase64));
 
     return utf8.decode(decrypted);
   }
+
+  // -----------------------------
+  // HASH HELPERS (F-18)
+  // -----------------------------
+
+  /// SHA-256 hex digest (lowercase) of the given UTF-8 plaintext.
+  static String sha256Hex(String plaintext) =>
+      crypto.sha256.convert(utf8.encode(plaintext)).toString();
+
+  /// Compares a previously asserted hash with the recomputed hash of the
+  /// decrypted plaintext. Returns `true` only when an expected hash is present
+  /// and matches; an empty expected hash reports an unchecked/legacy value.
+  static bool plaintextMatchesHash({
+    required String plaintext,
+    required String? expectedHex,
+  }) =>
+      (expectedHex?.isNotEmpty ?? false) &&
+      sha256Hex(plaintext) == expectedHex;
+
+  /// Recomputes the grant `detailsHash` after decryption. The separator
+  /// matches the convention used at contract creation (`title|description|price`).
+  static String detailsHashOf({
+    required String title,
+    required String description,
+    required String price,
+  }) =>
+      sha256Hex('$title|$description|$price');
 }

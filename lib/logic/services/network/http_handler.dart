@@ -1,10 +1,27 @@
 import 'dart:convert';
 import 'dart:async';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:yack/logic/services/crashlytics_service.dart';
+
+/// Typed API error carrying the HTTP status and the backend error `code`
+/// (e.g. `EMAIL_NOT_VERIFIED`, `ACCOUNT_INCOMPLETE`, `CONTRACT_EXPIRED`).
+/// The backend error `code` was previously discarded (F-49).
+class ApiException implements Exception {
+  final int statusCode;
+  final String code;
+  final String message;
+
+  const ApiException({
+    this.statusCode = 0,
+    this.code = '',
+    required this.message,
+  });
+
+  @override
+  String toString() => message;
+}
 
 class HttpHandler {
   static final HttpHandler _instance = HttpHandler._internal();
@@ -54,20 +71,6 @@ class HttpHandler {
     return token;
   }
 
-  Future<String?> _getFcmToken() async {
-    try {
-      return await FirebaseMessaging.instance.getToken();
-    } catch (error, stackTrace) {
-      // Push registration must never prevent the underlying API action.
-      CrashlyticsService.recordError(
-        error,
-        stackTrace,
-        reason: 'FCM token unavailable while preparing API request',
-      );
-      return null;
-    }
-  }
-
   Future<Map<String, String>> _headers() async {
     final token = await _getIdToken();
     return {
@@ -78,9 +81,7 @@ class HttpHandler {
 
   Future<dynamic> post(String endpoint, {Map<String, dynamic>? body}) async {
     final url = Uri.parse("$baseUrl$endpoint");
-    final fcm = await _getFcmToken();
     final requestBody = <String, dynamic>{...?body};
-    if (fcm != null) requestBody["fcmToken"] = fcm;
 
     final response = await _performRequest(
       () async => http.post(
@@ -105,10 +106,7 @@ class HttpHandler {
 
   Future<dynamic> put(String endpoint, {Map<String, dynamic>? body}) async {
     final url = Uri.parse("$baseUrl$endpoint");
-
     final requestBody = <String, dynamic>{...?body};
-    final fcm = await _getFcmToken();
-    if (fcm != null) requestBody["fcmToken"] = fcm;
 
     final response = await _performRequest(
       () async => http.put(
@@ -124,10 +122,7 @@ class HttpHandler {
 
   Future<dynamic> patch(String endpoint, {Map<String, dynamic>? body}) async {
     final url = Uri.parse("$baseUrl$endpoint");
-
     final requestBody = <String, dynamic>{...?body};
-    final fcm = await _getFcmToken();
-    if (fcm != null) requestBody["fcmToken"] = fcm;
 
     final response = await _performRequest(
       () async => http.patch(
@@ -185,7 +180,10 @@ class HttpHandler {
 
     if (res.body.trim().isEmpty) {
       if (isSuccess) return null;
-      throw Exception('Server error (HTTP $status)');
+      throw ApiException(
+        statusCode: status,
+        message: 'Server error (HTTP $status)',
+      );
     }
 
     // Always try to decode JSON so we can surface the server's real error message.
@@ -194,15 +192,18 @@ class HttpHandler {
       final decoded = jsonDecode(res.body);
       if (decoded is! Map<String, dynamic>) {
         if (isSuccess) return decoded;
-        throw Exception('Server error (HTTP $status): $res.body');
+        throw ApiException(
+          statusCode: status,
+          message: 'Server error (HTTP $status): $res.body',
+        );
       }
       json = decoded;
     } catch (e) {
-      if (e is Exception && !isSuccess) {
+      if (e is ApiException) {
         rethrow;
       }
       final errorMessage = 'Invalid response (HTTP $status): ${res.body}';
-      final error = Exception(errorMessage);
+      final error = ApiException(statusCode: status, message: errorMessage);
       CrashlyticsService.recordError(
         error,
         StackTrace.current,
@@ -213,13 +214,28 @@ class HttpHandler {
 
     if (isSuccess) return json;
 
-    final errorMessage =
-        json["error"]?.toString() ?? 'Unknown server error (HTTP $status)';
-    final error = Exception(errorMessage);
+    // Backend errors are `{ error: "...", code: "..." }`. The error value may
+    // be a Map on the admin/review endpoints, so only treat strings as text.
+    String message;
+    final rawError = json['error'];
+    if (rawError is String) {
+      message = rawError;
+    } else if (rawError is Map) {
+      message = rawError['message']?.toString() ??
+          rawError['error']?.toString() ??
+          'Server error (HTTP $status)';
+    } else {
+      message = 'Unknown server error (HTTP $status)';
+    }
+    final error = ApiException(
+      statusCode: status,
+      code: json['code']?.toString() ?? '',
+      message: message,
+    );
     CrashlyticsService.recordError(
       error,
       StackTrace.current,
-      reason: 'HTTP $status: $errorMessage',
+      reason: 'HTTP $status [$error.code]: $error.message',
     );
     throw error;
   }

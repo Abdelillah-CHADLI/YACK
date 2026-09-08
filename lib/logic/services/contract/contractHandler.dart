@@ -95,18 +95,18 @@ class ContractHandler {
   // Contract State Operations
   // ============================================================================
 
-  /// Accept a contract and update local state
+  /// Accept a contract and update local state with the server status.
   Future<void> acceptContract(String contractId) async {
-    await _contractStateService.accept(contractId);
-    // Update local state after successful API call
-    // The specific user acceptance will be determined by the backend
-    await updateContractStatusInIsar(contractId, 'accepted');
+    final status = await _contractStateService.accept(contractId);
+    // The server may report "completed" when both parties have agreed; a hardcoded
+    // local 'accepted' masked that until the next list sync (F-31).
+    await updateContractStatusInIsar(contractId, status);
   }
 
   /// Dispute a contract and update local state
   Future<void> disputeContract(String contractId, {String? reason}) async {
-    await _contractStateService.dispute(contractId, reason: reason);
-    await updateContractStatusInIsar(contractId, 'disputed');
+    final status = await _contractStateService.dispute(contractId, reason: reason);
+    await updateContractStatusInIsar(contractId, status);
   }
 
   // ============================================================================

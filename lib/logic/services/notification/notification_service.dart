@@ -26,6 +26,8 @@ class NotificationService {
   final ContractNotificationHandler contractHandler =
       ContractNotificationHandler();
   StreamSubscription<String>? _tokenRefreshSubscription;
+  StreamSubscription<RemoteMessage>? _foregroundMessageSubscription;
+  StreamSubscription<RemoteMessage>? _openedAppSubscription;
 
   /// Initialize FCM and set up handlers
   Future<void> initialize() async {
@@ -41,10 +43,14 @@ class NotificationService {
     contractHandler.initialize();
 
     // Handle foreground messages
-    FirebaseMessaging.onMessage.listen(_handleForegroundMessage);
+    await _foregroundMessageSubscription?.cancel();
+    _foregroundMessageSubscription =
+        FirebaseMessaging.onMessage.listen(_handleForegroundMessage);
 
     // Handle background/terminated message taps
-    FirebaseMessaging.onMessageOpenedApp.listen(_handleMessageOpenedApp);
+    await _openedAppSubscription?.cancel();
+    _openedAppSubscription =
+        FirebaseMessaging.onMessageOpenedApp.listen(_handleMessageOpenedApp);
 
     // Check if app was opened from a terminated state via notification
     final initialMessage = await messaging.getInitialMessage();

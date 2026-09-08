@@ -138,9 +138,40 @@ class ContractListService {
 
   /// Fetch all contracts involving the caller.
   /// Returns only caller's encrypted fields (title, description, price).
+  /// Paged API responses are walked until `hasMore` is false (F-14).
   Future<List<ContractListItem>> list() async {
-    final response = await _http.get('/contracts/list');
-    return _parseContractList(response);
+    const int pageSize = 100; // backend upper bound
+    final contracts = <ContractListItem>[];
+    var offset = 0;
+    var hasMore = true;
+
+    while (hasMore) {
+      final response = await _http.get(
+        '/contracts/list?limit=$pageSize&offset=$offset',
+      );
+      final page = _parseContractList(response);
+      contracts.addAll(page);
+      hasMore = _hasMore(response, offset, page.length);
+      offset += page.length;
+      // Guard against a misbehaving server that reports hasMore forever.
+      if (hasMore && page.isEmpty) hasMore = false;
+    }
+
+    return contracts;
+  }
+
+  /// Whether the response has another page of contracts.
+  static bool _hasMore(dynamic response, int offset, int pageLength) {
+    if (response is! Map) return false;
+    final pagination = response['pagination'];
+    if (pagination is Map) {
+      final explicit = pagination['hasMore'];
+      if (explicit is bool) return explicit;
+      final total = pagination['total'];
+      if (total is int) return offset + pageLength < total;
+    }
+    // Legacy/unpaginated responses contain the whole list in one page.
+    return false;
   }
 
   List<ContractListItem> _parseContractList(dynamic response) {

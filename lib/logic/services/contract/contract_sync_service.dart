@@ -3,6 +3,7 @@ import 'package:yack/data/repositories/isar_adapter.dart';
 import 'package:yack/logic/services/contract/contract_list_service.dart';
 import 'package:yack/logic/services/auth/cryptoService.dart';
 import 'package:yack/logic/services/auth/decrypted_key_cache.dart';
+import 'package:yack/logic/services/debug_logger.dart';
 
 /// Service to sync contracts from backend to local Isar database.
 /// Should be called after user authentication/login and after user has unlocked their account.
@@ -30,7 +31,7 @@ class ContractSyncService {
   Future<int> syncContracts() {
     final activeSync = _activeSync;
     if (activeSync != null) {
-      print('[ContractSyncService] Sync already in progress, awaiting it...');
+      logDebug('[ContractSyncService] Sync already in progress, awaiting it...');
       return activeSync;
     }
 
@@ -46,7 +47,7 @@ class ContractSyncService {
 
   Future<int> _performSync() async {
     try {
-      print('[ContractSyncService] Starting contract sync...');
+      logDebug('[ContractSyncService] Starting contract sync...');
 
       // Get current user ID and the process-memory private key.
       final userBox = await Hive.openBox('user');
@@ -55,7 +56,7 @@ class ContractSyncService {
       final privateKeyBytes = DecryptedKeyCache.value;
 
       if (privateKeyBytes == null) {
-        print(
+        logDebug(
           '[ContractSyncService] No decrypted private key found. User must unlock account first.',
         );
         return 0;
@@ -63,7 +64,7 @@ class ContractSyncService {
 
       // Fetch contracts from backend
       final contracts = await _listService.list();
-      print(
+      logDebug(
         '[ContractSyncService] Fetched ${contracts.length} contracts from backend',
       );
 
@@ -88,7 +89,7 @@ class ContractSyncService {
             );
           } catch (e) {
             title = 'ERROR';
-            print(
+            logDebug(
               '[ContractSyncService] Failed to decrypt title for ${contract.id}: $e',
             );
             // Keep original value (may be encrypted or empty)
@@ -101,7 +102,7 @@ class ContractSyncService {
             );
           } catch (e) {
             description = 'ERROR';
-            print(
+            logDebug(
               '[ContractSyncService] Failed to decrypt description for ${contract.id}: $e',
             );
           }
@@ -113,7 +114,7 @@ class ContractSyncService {
             );
           } catch (e) {
             price = 'ERROR';
-            print(
+            logDebug(
               '[ContractSyncService] Failed to decrypt price for ${contract.id}: $e',
             );
           }
@@ -147,20 +148,20 @@ class ContractSyncService {
           );
           syncedCount++;
         } catch (e) {
-          print(
+          logDebug(
             '[ContractSyncService] Failed to sync contract ${contract.id}: $e',
           );
         }
       }
 
       _lastSyncTime = DateTime.now();
-      print(
+      logDebug(
         '[ContractSyncService] Sync complete. Synced $syncedCount contracts.',
       );
 
       return syncedCount;
     } catch (e) {
-      print('[ContractSyncService] Sync failed: $e');
+      logDebug('[ContractSyncService] Sync failed: $e');
       rethrow;
     }
   }
@@ -173,7 +174,7 @@ class ContractSyncService {
       await syncContracts();
       return true;
     } catch (e) {
-      print(
+      logDebug(
         '[ContractSyncService] Failed to sync single contract $contractId: $e',
       );
       return false;
