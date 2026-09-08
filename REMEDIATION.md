@@ -13,8 +13,9 @@ F-28, F-29, F-54, F-68, F-69, F-70, F-71, F-02, F-03, F-35 from the first
 pass; then mobile batch F-17, F-18, F-21, F-30, F-31, F-33, F-37, F-43,
 F-48, F-49, F-50, F-62; then admin batch F-22, F-23, F-25, F-26, F-52,
 F-53, F-55, F-56, F-57, F-58, F-63, F-64, F-65, F-66; then F-11, F-12,
-F-16, F-19, F-20, F-24, F-38, F-59, F-61 from the subsequent batches —
-49 complete in total). F-05 is fully implemented across all three
+F-16, F-19, F-20, F-24, F-38, F-59, F-61 from the subsequent batches;
+then F-15, F-40, F-41, F-44, F-45, F-46 from the backend index/ops batch —
+55 complete in total). F-05 is fully implemented across all three
 repositories (envelope validation, client-side hybrid encryption, admin
 in-browser decrypt) with cross-repo unit tests green; only the live
 end-to-end smoke remains blocked on a configured Cloudinary. Four findings
@@ -105,7 +106,7 @@ before it can move to `Complete`.
 | F-12 | Medium | Dispute confidentiality | All | F-03,F-05,F-21 | DSP,NTF | Remove plaintext reason from push/storage or add compatible encrypted envelopes | Cross-client crypto/API tests; inspect FCM payload | Complete |
 | F-13 | Medium | HTTP/state semantics | Backend,Mobile | F-34 | CTR,DSP | Enforce expiry during finalization and remove create-on-GET side effects | B-DATA expired/finalized/read-idempotence tests | Pending |
 | F-14 | Medium | Pagination | All | F-01,F-23,F-51 | CTR,MED,ADM | Cursor pagination, projections and validated bounds across all consumers | B-DATA + M-API + A-UX paging tests | Pending |
-| F-15 | Medium | Backend reliability | Backend | F-69 | OPS | Await DB before listen; real health/readiness, timeouts and graceful shutdown | OPS startup/outage/SIGTERM/in-flight tests | Pending |
+| F-15 | Medium | Backend reliability | Backend | F-69 | OPS | Await DB before listen; real health/readiness, timeouts and graceful shutdown | OPS startup/outage/SIGTERM/in-flight tests | Complete |
 | F-16 | Medium | Test coverage | All | all confirmed findings | all | Add route, client, crypto and concurrency regressions with real pre-fix failure value | Broad suites and coverage inventory | Complete |
 | F-17 | Medium | Locked-state exposure | Mobile | F-04 | INIT,CTR,MSG | Gate plaintext UI and cache access on current unlock state | M-SEC restart/lock widget tests | Complete |
 | F-18 | Medium | Integrity verification | Mobile,Admin | F-21 | MSG,DSP | Verify message hashes and case details after decrypt; isolate failures | M-SEC + A-SEC tamper tests | Complete |
@@ -130,13 +131,13 @@ before it can move to `Complete`.
 | F-37 | Medium | Production debug output | Mobile | F-47 | all mobile | Replace unconditional prints with debug-gated/redacted logging | CLEAN search + release analyze/test | Complete |
 | F-38 | Medium | Mobile dependencies/storage | Mobile | F-04 | INIT,OPS | Commit lockfile, move test deps, prune confirmed unused packages; defer storage consolidation safely | CLEAN dependency build and migration review | Complete |
 | F-39 | Low | Temp metadata disclosure | Backend,Mobile | F-13,F-34 | CTR | Minimize pre-join response; disclose participant/hash metadata only after authorization | B-SEC guessed-ID/pre/post-join tests | Pending |
-| F-40 | Low | Hash verification | Backend,Mobile | F-18 | CTR | Bound/normalize and timing-safe compare hashes | B-SEC malformed/case/timing-safe path tests | Pending |
-| F-41 | Low | Ciphertext validation | Backend,All clients | F-18,F-21 | CTR,DSP | Central canonical ciphertext/hash validators shared by write paths | B-SEC malformed/noncanonical/oversized tests | Pending |
+| F-40 | Low | Hash verification | Backend,Mobile | F-18 | CTR | Bound/normalize and timing-safe compare hashes | B-SEC malformed/case/timing-safe path tests | Complete |
+| F-41 | Low | Ciphertext validation | Backend,All clients | F-18,F-21 | CTR,DSP | Central canonical ciphertext/hash validators shared by write paths | B-SEC malformed/noncanonical/oversized tests | Complete |
 | F-42 | Low | MIME spoofing | Backend,Mobile | F-05 | MED | Magic-byte sniff allowlist with documented format policy | B-SEC extension/content mismatch tests | Pending |
 | F-43 | Low | User-route authorization | Backend | F-02,F-35,F-70 | AUTH | Verified-email/state gates appropriate to each `/user` mutation | B-SEC unverified/incomplete route matrix | Complete |
-| F-44 | Low | Attachment cap race | Backend | F-01,F-36 | DSP,MED | Conditional atomic attachment append and orphan cleanup | B-DATA simultaneous 25th/26th upload test | Pending |
-| F-45 | Low | Support upsert race | Backend | F-01 | DSP | Retry/refetch on duplicate-key concurrent creation | B-DATA parallel ensure test | Pending |
-| F-46 | Low | Missing indexes | Backend | F-14,F-36 | OPS,ADM,NTF | Add indexes only for verified query shapes with migration notes | B-DATA schema/index inspection and query plans where possible | Pending |
+| F-44 | Low | Attachment cap race | Backend | F-01,F-36 | DSP,MED | Conditional atomic attachment append and orphan cleanup | B-DATA simultaneous 25th/26th upload test | Complete |
+| F-45 | Low | Support upsert race | Backend | F-01 | DSP | Retry/refetch on duplicate-key concurrent creation | B-DATA parallel ensure test | Complete |
+| F-46 | Low | Missing indexes | Backend | F-14,F-36 | OPS,ADM,NTF | Add indexes only for verified query shapes with migration notes | B-DATA schema/index inspection and query plans where possible | Complete |
 | F-47 | Low | Logging/audit trail | Backend | F-07,F-15 | OPS,ADM,DSP | Structured redacted request logs and append-only admin action audit | B-SEC log masking + B-DATA audit write tests | Pending |
 | F-48 | Low | Push listener lifecycle | Mobile | F-30 | NTF | Retain/cancel subscriptions and keep singleton restart-safe | M-API repeated-init/dispose tests | Complete |
 | F-49 | Low | Structured client errors | Mobile,Backend | F-25,F-34 | all mobile | Typed API exception preserving status/code and localized mappings | M-API representative error tests | Complete |
@@ -559,6 +560,17 @@ Decisions:
 
 ### Backend
 
+- Index/ops batch (F-46 confirmed complete; F-15/F-40/F-41/F-44/F-45 verified
+  as already implemented): `src/models/Contract.js` adds the
+  `{ status: 1, disputeState: 1 }` compound index serving the admin
+  open-dispute `$or` (`disputeState:"open"` ∪ `status:"disputed", disputeState
+  ≠ "resolved"`); the participant list indexes (`userA`/`userB` + `updatedAt`),
+  the admin status/dispute indexes and the `TempContract` quota/recovery
+  indexes (`userA,cancelledAt,finalContract,expiresAt` and sparse
+  `finalContract`) were already present and are now pinned by regression tests.
+  `test/contractModels.test.js` asserts index presence for these verified query
+  shapes; `test/quotaValidation.test.js` gains the `arrayBelowCap` empty-array
+  semantics and the documented MAX_* cap values.
 - F-05 batch: `src/models/Contract.js` (media envelope schema + `size`),
   `src/models/SupportThread.js` (attachment envelope schema),
   `src/utils/mediaHandler.js` (`validateEncryptedMediaPayload`,
@@ -657,6 +669,13 @@ Decisions:
 - Admin final batch: `npm run lint` 0 warnings/errors; `npm test` 12 passed
   (security-boundaries + crypto-interop + config); `npm run build` succeeds
   (rsc/client/ssr environments); `npm audit` 0 vulnerabilities.
+- Admin deploy batch: lockfile regenerated (`f956bd7`) so Render's `npm ci`
+  resolves the `@emnapi/core`/`@emnapi/runtime` optional-platform peers nested
+  under `@tailwindcss/oxide-wasm32-wasi`; validated end-to-end in a scratch
+  copy (`npm ci` + `npm run build` both green).
+- Backend F-46 batch: `node --check` on `Contract.js`, `TempContract.js` and the
+  touched tests passed; `npm test` 73 tests, 72 passed, 1 skipped (live
+  integration).
 
 ## Blocked External Actions
 
