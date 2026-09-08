@@ -1,6 +1,8 @@
 import 'dart:convert';
+import 'dart:async';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:yack/logic/services/crashlytics_service.dart';
 
@@ -12,24 +14,58 @@ class HttpHandler {
 
   static const Duration _requestTimeout = Duration(seconds: 20);
 
-  // Backend base URL.
-  // Override at build/run time with:
-  //   flutter run --dart-define=API_BASE_URL=https://your-backend.example
-  // Keep the default in sync with where you actually host the backend.
-  static const String baseUrl = String.fromEnvironment(
+  static const String _configuredBaseUrl = String.fromEnvironment(
     'API_BASE_URL',
-    defaultValue: 'https://yack.leapcell.app',
   );
 
-  Future<String?> _getIdToken() async {
+  /// Uses the local backend automatically for development. Production builds
+  /// must provide an explicit HTTPS endpoint with `--dart-define=API_BASE_URL=...`.
+  static String get baseUrl {
+    final configured = _configuredBaseUrl.trim();
+    if (configured.isNotEmpty) {
+      return configured.endsWith('/')
+          ? configured.substring(0, configured.length - 1)
+          : configured;
+    }
+
+    if (kReleaseMode) {
+      throw StateError(
+        'API_BASE_URL is required for release builds. '
+        'Build with --dart-define=API_BASE_URL=https://your-backend.example',
+      );
+    }
+
+    if (kIsWeb) return 'http://127.0.0.1:3000';
+    return defaultTargetPlatform == TargetPlatform.android
+        ? 'http://10.0.2.2:3000'
+        : 'http://127.0.0.1:3000';
+  }
+
+  Future<String> _getIdToken() async {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) throw Exception("User not logged in");
 
-    return await user.getIdToken(true);
+    final token = await user.getIdToken();
+    if (token == null || token.isEmpty) {
+      throw Exception(
+        'Unable to authenticate this request. Please sign in again.',
+      );
+    }
+    return token;
   }
 
   Future<String?> _getFcmToken() async {
-    return await FirebaseMessaging.instance.getToken();
+    try {
+      return await FirebaseMessaging.instance.getToken();
+    } catch (error, stackTrace) {
+      // Push registration must never prevent the underlying API action.
+      CrashlyticsService.recordError(
+        error,
+        stackTrace,
+        reason: 'FCM token unavailable while preparing API request',
+      );
+      return null;
+    }
   }
 
   Future<Map<String, String>> _headers() async {
@@ -43,34 +79,45 @@ class HttpHandler {
   Future<dynamic> post(String endpoint, {Map<String, dynamic>? body}) async {
     final url = Uri.parse("$baseUrl$endpoint");
     final fcm = await _getFcmToken();
-    body ??= {};
-    if (fcm != null) body["fcmToken"] = fcm;
+    final requestBody = <String, dynamic>{...?body};
+    if (fcm != null) requestBody["fcmToken"] = fcm;
 
-    final response = await http
-        .post(url, headers: await _headers(), body: jsonEncode(body))
-        .timeout(_requestTimeout);
+    final response = await _performRequest(
+      () async => http.post(
+        url,
+        headers: await _headers(),
+        body: jsonEncode(requestBody),
+      ),
+      url,
+    );
 
     return _handleResponse(response);
   }
 
   Future<dynamic> get(String endpoint) async {
     final url = Uri.parse("$baseUrl$endpoint");
-    final response = await http
-        .get(url, headers: await _headers())
-        .timeout(_requestTimeout);
+    final response = await _performRequest(
+      () async => http.get(url, headers: await _headers()),
+      url,
+    );
     return _handleResponse(response);
   }
 
   Future<dynamic> put(String endpoint, {Map<String, dynamic>? body}) async {
     final url = Uri.parse("$baseUrl$endpoint");
 
-    body ??= {};
+    final requestBody = <String, dynamic>{...?body};
     final fcm = await _getFcmToken();
-    if (fcm != null) body["fcmToken"] = fcm;
+    if (fcm != null) requestBody["fcmToken"] = fcm;
 
-    final response = await http
-        .put(url, headers: await _headers(), body: jsonEncode(body))
-        .timeout(_requestTimeout);
+    final response = await _performRequest(
+      () async => http.put(
+        url,
+        headers: await _headers(),
+        body: jsonEncode(requestBody),
+      ),
+      url,
+    );
 
     return _handleResponse(response);
   }
@@ -78,13 +125,18 @@ class HttpHandler {
   Future<dynamic> patch(String endpoint, {Map<String, dynamic>? body}) async {
     final url = Uri.parse("$baseUrl$endpoint");
 
-    body ??= {};
+    final requestBody = <String, dynamic>{...?body};
     final fcm = await _getFcmToken();
-    if (fcm != null) body["fcmToken"] = fcm;
+    if (fcm != null) requestBody["fcmToken"] = fcm;
 
-    final response = await http
-        .patch(url, headers: await _headers(), body: jsonEncode(body))
-        .timeout(_requestTimeout);
+    final response = await _performRequest(
+      () async => http.patch(
+        url,
+        headers: await _headers(),
+        body: jsonEncode(requestBody),
+      ),
+      url,
+    );
 
     return _handleResponse(response);
   }
@@ -92,11 +144,39 @@ class HttpHandler {
   Future<dynamic> delete(String endpoint) async {
     final url = Uri.parse("$baseUrl$endpoint");
 
-    final response = await http
-        .delete(url, headers: await _headers())
-        .timeout(_requestTimeout);
+    final response = await _performRequest(
+      () async => http.delete(url, headers: await _headers()),
+      url,
+    );
 
     return _handleResponse(response);
+  }
+
+  Future<http.Response> _performRequest(
+    Future<http.Response> Function() request,
+    Uri url,
+  ) async {
+    try {
+      return await request().timeout(_requestTimeout);
+    } on TimeoutException catch (error, stackTrace) {
+      CrashlyticsService.recordError(
+        error,
+        stackTrace,
+        reason: 'API request timed out: ${url.path}',
+      );
+      throw Exception(
+        'The YACK server did not respond. Check the backend connection and try again.',
+      );
+    } on http.ClientException catch (error, stackTrace) {
+      CrashlyticsService.recordError(
+        error,
+        stackTrace,
+        reason: 'API connection failed: ${url.path}',
+      );
+      throw Exception(
+        'Unable to reach the YACK server. Check your connection and backend URL.',
+      );
+    }
   }
 
   dynamic _handleResponse(http.Response res) {

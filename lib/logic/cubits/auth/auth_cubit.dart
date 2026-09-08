@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'auth_state.dart';
 import 'package:yack/logic/services/auth/auth_service.dart';
@@ -5,6 +7,7 @@ import 'package:yack/logic/services/contract/contract_sync_service.dart';
 import 'package:yack/logic/services/auth/account_service.dart';
 import 'package:hive/hive.dart';
 import 'package:yack/logic/services/auth/decrypted_key_cache.dart';
+import 'package:yack/logic/services/notification/notification_service.dart';
 
 class AuthCubit extends Cubit<AuthState> {
   AuthCubit() : super(AuthInitial());
@@ -68,41 +71,38 @@ class AuthCubit extends Cubit<AuthState> {
   Future<void> _evaluateAccountStateAndEmit({
     required bool fromOnlineCheck,
   }) async {
-    try {
-      // When coming from online, refresh profile cache to have latest isComplete, keys, etc.
-      if (fromOnlineCheck) {
-        await _accountService.fetchAndCacheProfile();
-      }
-
-      final box = await Hive.openBox('user');
-      final isComplete = box.get('isComplete') ?? false;
-      // Migrate away from older versions that persisted the unlocked key.
-      if (box.containsKey('decryptedPrivateKey')) {
-        await box.delete('decryptedPrivateKey');
-      }
-
-      if (!isComplete) {
-        // Account not finished (no keypair initialized, etc.)
-        emit(AccountNotComplete());
-        return;
-      }
-
-      // Account is complete
-      if (!DecryptedKeyCache.isUnlocked) {
-        // Need to decrypt private key first
-        emit(AccountCompleteButLocked());
-        return;
-      }
-
-      // Account complete and the process-memory key exists -> fully authenticated
-      emit(Authenticated());
-    } catch (_) {
-      throw 'error';
+    // When coming from online, refresh profile cache to have latest isComplete, keys, etc.
+    if (fromOnlineCheck) {
+      await _accountService.fetchAndCacheProfile();
     }
+
+    final box = await Hive.openBox('user');
+    final isComplete = box.get('isComplete') ?? false;
+    // Migrate away from older versions that persisted the unlocked key.
+    if (box.containsKey('decryptedPrivateKey')) {
+      await box.delete('decryptedPrivateKey');
+    }
+
+    if (!isComplete) {
+      // Account not finished (no keypair initialized, etc.)
+      emit(AccountNotComplete());
+      return;
+    }
+
+    // Account is complete
+    if (!DecryptedKeyCache.isUnlocked) {
+      // Need to decrypt private key first
+      emit(AccountCompleteButLocked());
+      return;
+    }
+
+    // Account complete and the process-memory key exists -> fully authenticated
+    emit(Authenticated());
   }
 
   /// Sync contracts in background (non-blocking)
   void _syncContractsInBackground() {
+    unawaited(NotificationService().registerCurrentToken());
     // Run in background, don't await
     _syncService
         .syncContracts()
@@ -132,11 +132,30 @@ class AuthCubit extends Cubit<AuthState> {
     } catch (e) {}
   }
 
-  void markAuthenticated() async {
-    // Mark as authenticated according to account state instead of blindly emitting
-    await _evaluateAccountStateAndEmit(fromOnlineCheck: true);
-    if (state is Authenticated) {
-      _syncContractsInBackground();
+  /// Refresh the backend profile after a successful Firebase login and return
+  /// the account state the UI should route to.
+  Future<AuthState> resolveAccountAfterLogin() async {
+    try {
+      await _evaluateAccountStateAndEmit(fromOnlineCheck: true);
+    } catch (_) {
+      emit(AuthError('auth_unexpected_error'));
+    }
+    return state;
+  }
+
+  Future<bool> markAuthenticated() async {
+    try {
+      // Refreshing the backend profile also guarantees that the Mongo user ID
+      // is cached before contract decryption decides which party key to use.
+      await _evaluateAccountStateAndEmit(fromOnlineCheck: true);
+      if (state is Authenticated) {
+        _syncContractsInBackground();
+        return true;
+      }
+      return false;
+    } catch (error) {
+      emit(AuthError(error.toString()));
+      return false;
     }
   }
 

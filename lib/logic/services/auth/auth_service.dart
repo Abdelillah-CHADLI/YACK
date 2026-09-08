@@ -148,10 +148,25 @@ class AuthService {
 
     try {
       // Create user in Firebase Auth
-      await auth.createUserWithEmailAndPassword(
+      final credential = await auth.createUserWithEmailAndPassword(
         email: email,
         password: password,
       );
+
+      // Start verification immediately. Previously the first email was only
+      // sent when the user manually tapped "Resend", which made the normal
+      // sign-up path appear stuck. If delivery itself fails, keep the account
+      // creation successful so the confirmation screen's Resend action can
+      // recover instead of leaving the user with an already-created account.
+      try {
+        await credential.user?.sendEmailVerification();
+      } catch (error, stack) {
+        CrashlyticsService.recordError(
+          error,
+          stack,
+          reason: 'Initial verification email delivery failed',
+        );
+      }
 
       // Save local user information
       final userBox = await Hive.openBox('user');
@@ -221,9 +236,19 @@ class AuthService {
       // Persist latest status
       await _saveAuthStatus(verified ? 'authenticated' : 'unverified');
       return verified;
-    } on FirebaseAuthException {
+    } on FirebaseAuthException catch (error, stack) {
+      CrashlyticsService.recordError(
+        error,
+        stack,
+        reason: 'Confirm account: ${error.code}',
+      );
       throw "auth_unknown_error";
-    } catch (_) {
+    } catch (error, stack) {
+      CrashlyticsService.recordError(
+        error,
+        stack,
+        reason: 'Confirm account error',
+      );
       throw "auth_unexpected_error";
     }
   }
