@@ -14,8 +14,9 @@ pass; then mobile batch F-17, F-18, F-21, F-30, F-31, F-33, F-37, F-43,
 F-48, F-49, F-50, F-62; then admin batch F-22, F-23, F-25, F-26, F-52,
 F-53, F-55, F-56, F-57, F-58, F-63, F-64, F-65, F-66; then F-11, F-12,
 F-16, F-19, F-20, F-24, F-38, F-59, F-61 from the subsequent batches;
-then F-15, F-40, F-41, F-44, F-45, F-46 from the backend index/ops batch —
-55 complete in total). F-05 is fully implemented across all three
+then F-15, F-40, F-41, F-44, F-45, F-46 from the backend index/ops batch;
+then F-13, F-34, F-39 from the temp-contract semantics batch —
+58 complete in total). F-05 is fully implemented across all three
 repositories (envelope validation, client-side hybrid encryption, admin
 in-browser decrypt) with cross-repo unit tests green; only the live
 end-to-end smoke remains blocked on a configured Cloudinary. Four findings
@@ -104,7 +105,7 @@ before it can move to `Complete`.
 | F-10 | High | Local secret hygiene | Backend | F-09,F-28 | OPS | Keep credentials untracked, reduce copies and document mandatory provider rotation | OPS tracked-file/history scan; external action evidence | Blocked - External Action Required |
 | F-11 | Medium | Dispute concurrency | Backend,Admin | F-16 | DSP | Preserve append-only resolution history or reject redispute after resolution atomically | B-DATA resolve-vs-redispute race tests | Complete |
 | F-12 | Medium | Dispute confidentiality | All | F-03,F-05,F-21 | DSP,NTF | Remove plaintext reason from push/storage or add compatible encrypted envelopes | Cross-client crypto/API tests; inspect FCM payload | Complete |
-| F-13 | Medium | HTTP/state semantics | Backend,Mobile | F-34 | CTR,DSP | Enforce expiry during finalization and remove create-on-GET side effects | B-DATA expired/finalized/read-idempotence tests | Pending |
+| F-13 | Medium | HTTP/state semantics | Backend,Mobile | F-34 | CTR,DSP | Enforce expiry during finalization and remove create-on-GET side effects | B-DATA expired/finalized/read-idempotence tests | Complete |
 | F-14 | Medium | Pagination | All | F-01,F-23,F-51 | CTR,MED,ADM | Cursor pagination, projections and validated bounds across all consumers | B-DATA + M-API + A-UX paging tests | Pending |
 | F-15 | Medium | Backend reliability | Backend | F-69 | OPS | Await DB before listen; real health/readiness, timeouts and graceful shutdown | OPS startup/outage/SIGTERM/in-flight tests | Complete |
 | F-16 | Medium | Test coverage | All | all confirmed findings | all | Add route, client, crypto and concurrency regressions with real pre-fix failure value | Broad suites and coverage inventory | Complete |
@@ -125,12 +126,12 @@ before it can move to `Complete`.
 | F-31 | Medium | Accept-state mismatch | Mobile,Backend | F-11 | CTR | Persist authoritative server status after accept | M-API accepted/completed response tests | Complete |
 | F-32 | Medium | Dispute model mismatch | Mobile,Backend | F-04,F-11 | CTR,DSP | Add compatible local dispute/resolution fields and sync mapping | M-API legacy/new JSON + Isar migration tests | Deferred - Documented (schema/build_runner) |
 | F-33 | Medium | Language sync mismatch | Mobile,Backend | none | AUTH | Parse/cache backend language and reconcile startup preference | M-API profile/restart tests | Complete |
-| F-34 | Medium | Temp status authorization | Backend,Mobile | F-13,F-43 | AUTH,CTR | Permit safe cold-join status metadata without broadening protected data | B-SEC account-state/participant tests + M-API | Pending |
+| F-34 | Medium | Temp status authorization | Backend,Mobile | F-13,F-43 | AUTH,CTR | Permit safe cold-join status metadata without broadening protected data | B-SEC account-state/participant tests + M-API | Complete |
 | F-35 | Medium | Account creation abuse | Backend | F-02,F-43 | AUTH | Throttle first-touch upserts and require verified email for writes | B-SEC burst/unverified tests | Complete |
 | F-36 | Medium | Resource quotas | Backend | F-01,F-02 | CTR,MSG,MED,NTF | Per-user/per-contract count and byte quotas with atomic enforcement | B-DATA boundary/concurrent quota tests | Pending |
 | F-37 | Medium | Production debug output | Mobile | F-47 | all mobile | Replace unconditional prints with debug-gated/redacted logging | CLEAN search + release analyze/test | Complete |
 | F-38 | Medium | Mobile dependencies/storage | Mobile | F-04 | INIT,OPS | Commit lockfile, move test deps, prune confirmed unused packages; defer storage consolidation safely | CLEAN dependency build and migration review | Complete |
-| F-39 | Low | Temp metadata disclosure | Backend,Mobile | F-13,F-34 | CTR | Minimize pre-join response; disclose participant/hash metadata only after authorization | B-SEC guessed-ID/pre/post-join tests | Pending |
+| F-39 | Low | Temp metadata disclosure | Backend,Mobile | F-13,F-34 | CTR | Minimize pre-join response; disclose participant/hash metadata only after authorization | B-SEC guessed-ID/pre/post-join tests | Complete |
 | F-40 | Low | Hash verification | Backend,Mobile | F-18 | CTR | Bound/normalize and timing-safe compare hashes | B-SEC malformed/case/timing-safe path tests | Complete |
 | F-41 | Low | Ciphertext validation | Backend,All clients | F-18,F-21 | CTR,DSP | Central canonical ciphertext/hash validators shared by write paths | B-SEC malformed/noncanonical/oversized tests | Complete |
 | F-42 | Low | MIME spoofing | Backend,Mobile | F-05 | MED | Magic-byte sniff allowlist with documented format policy | B-SEC extension/content mismatch tests | Pending |
@@ -560,6 +561,18 @@ Decisions:
 
 ### Backend
 
+- Temp-contract semantics batch (F-13 verified, F-34, F-39 verified): the
+  atomic expiry check in `finalizeTempContract`
+  (`expiresAt: { $gt: new Date() }`) was already enforced. The create-on-GET
+  in `getTempContractStatus` is retained and now documented as an intentional,
+  idempotent recovery path — the mobile client polls it (`getStatus` in
+  `temp_contract_service.dart`, "UI recovers when push notifications are
+  delayed or disabled") so it can materialize a contract whose /sign response
+  was lost; it is exactly-once (deterministic `_id` + duplicate-key retry),
+  expiry-checked and quota-bounded. Pre-join metadata minimization
+  (`tempStatusPayload`) drops participant PII unless the caller is a party and
+  keeps `detailsHash` for the QR cross-check (documented against the mobile
+  scan flow).
 - Index/ops batch (F-46 confirmed complete; F-15/F-40/F-41/F-44/F-45 verified
   as already implemented): `src/models/Contract.js` adds the
   `{ status: 1, disputeState: 1 }` compound index serving the admin
@@ -639,6 +652,13 @@ Decisions:
   `test/crypto-interop.test.mjs` (new) for the crypto/fingerprint/API regressions.
 - Docs: README rewritten with the required no-fallback env vars, fingerprint
   check, and Test/Build sections.
+- Responsiveness batch: `app/layout.tsx` adds an explicit mobile `viewport`;
+  `app/page.tsx` — `min-w-0` on `SidebarInset` (fixes horizontal page
+  overflow), sidebar trigger visible on desktop too (offcanvas collapse),
+  cases table now scrolls horizontally with `min-w` and progressive column
+  hiding (Reason < `sm`, Opened < `md`), compact header controls (search
+  `min-w-0`, refresh collapses to icon < `sm`), heading scales on mobile, and
+  the sticky resolve bar stacks full-width on small screens.
 
 ## Test Results
 
@@ -676,6 +696,12 @@ Decisions:
 - Backend F-46 batch: `node --check` on `Contract.js`, `TempContract.js` and the
   touched tests passed; `npm test` 73 tests, 72 passed, 1 skipped (live
   integration).
+- Backend F-13 batch: `node --check src/controllers/contractController.js`
+  passed. F-34/F-39/F-13 live-gated assertions already exist in
+  `test/liveApi.integration.test.js` (pre-join `waiting_for_join` +
+  `detailsHash` disclosure, sign-then-poll recovery).
+- Admin responsiveness batch: `npm run lint` 0 warnings/errors; `npm run build`
+  succeeds; `npm test` 12 passed.
 
 ## Blocked External Actions
 
