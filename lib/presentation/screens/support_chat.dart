@@ -57,10 +57,12 @@ class _SupportChatScreenState extends State<SupportChatScreen> {
       if (contract == null || externalId == null || externalId.isEmpty) {
         throw StateError('Contract unavailable');
       }
+      if (mounted) {
+        setState(() => _contract = contract);
+      }
       final conversation = await _service.getConversation(externalId);
       if (!mounted) return;
       setState(() {
-        _contract = contract;
         _conversation = conversation;
         _loading = false;
       });
