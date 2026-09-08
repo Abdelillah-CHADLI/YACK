@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:isar/isar.dart';
@@ -21,12 +23,16 @@ class ContractsScreen extends StatefulWidget {
 
 class _ContractsScreenState extends State<ContractsScreen> {
   final _searchController = TextEditingController();
+  Stream<List<Contract>>? _contractsStream;
+  Timer? _filterDebounce;
   bool _isRefreshing = false;
+  bool _filtering = false;
   String _query = '';
   _AgreementFilter _filter = _AgreementFilter.all;
 
   @override
   void dispose() {
+    _filterDebounce?.cancel();
     _searchController.dispose();
     super.dispose();
   }
@@ -132,7 +138,9 @@ class _ContractsScreenState extends State<ContractsScreen> {
       body: isar == null
           ? const Center(child: CircularProgressIndicator())
           : StreamBuilder<List<Contract>>(
-              stream: isar.contracts.where().watch(fireImmediately: true),
+              stream: _contractsStream ??= isar.contracts
+                  .where()
+                  .watch(fireImmediately: true),
               builder: (context, snapshot) {
                 if (snapshot.connectionState == ConnectionState.waiting) {
                   return const _ContractsLoadingView();
@@ -282,38 +290,66 @@ class _ContractsScreenState extends State<ContractsScreen> {
                 message: TranslationHandler.get('no_contracts_desc'),
               ),
             )
-          else if (visible.isEmpty)
-            SliverFillRemaining(
-              hasScrollBody: false,
-              child: YackEmptyState(
-                icon: Icons.search_off_outlined,
-                title: TranslationHandler.get('no_matching_contracts'),
-                message: TranslationHandler.get('no_matching_contracts_desc'),
-                action: OutlinedButton(
-                  onPressed: () {
-                    _searchController.clear();
-                    setState(() {
-                      _query = '';
-                      _filter = _AgreementFilter.all;
-                    });
-                  },
-                  child: Text(TranslationHandler.get('clear_filters')),
-                ),
-              ),
-            )
           else
-            SliverPadding(
-              padding: const EdgeInsets.fromLTRB(
-                AppTheme.pagePadding,
-                0,
-                AppTheme.pagePadding,
-                104,
-              ),
-              sliver: SliverList.separated(
-                itemCount: visible.length,
-                separatorBuilder: (_, __) => const SizedBox(height: 10),
-                itemBuilder: (context, index) =>
-                    ContractCard(contract: visible[index], isar: isar),
+            SliverToBoxAdapter(
+              child: AnimatedSwitcher(
+                duration: const Duration(milliseconds: 260),
+                switchInCurve: Curves.easeOut,
+                switchOutCurve: Curves.easeIn,
+                child: KeyedSubtree(
+                  key: ValueKey(_filter),
+                  child: _filtering
+                      ? const Padding(
+                          padding: EdgeInsets.symmetric(vertical: 56),
+                          child: Center(
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          ),
+                        )
+                      : visible.isEmpty
+                          ? YackEmptyState(
+                              icon: Icons.search_off_outlined,
+                              title: TranslationHandler.get(
+                                'no_matching_contracts',
+                              ),
+                              message: TranslationHandler.get(
+                                'no_matching_contracts_desc',
+                              ),
+                              action: OutlinedButton(
+                                onPressed: () {
+                                  _searchController.clear();
+                                  setState(() {
+                                    _query = '';
+                                    _filter = _AgreementFilter.all;
+                                  });
+                                },
+                                child: Text(
+                                  TranslationHandler.get('clear_filters'),
+                                ),
+                              ),
+                            )
+                          : Padding(
+                              padding: const EdgeInsets.fromLTRB(
+                                AppTheme.pagePadding,
+                                0,
+                                AppTheme.pagePadding,
+                                104,
+                              ),
+                              child: Column(
+                                children: [
+                                  for (final contract in visible)
+                                    Padding(
+                                      padding: const EdgeInsets.only(
+                                        bottom: 10,
+                                      ),
+                                      child: ContractCard(
+                                        contract: contract,
+                                        isar: isar,
+                                      ),
+                                    ),
+                                ],
+                              ),
+                            ),
+                ),
               ),
             ),
         ],
@@ -326,7 +362,17 @@ class _ContractsScreenState extends State<ContractsScreen> {
       padding: const EdgeInsetsDirectional.only(end: 8),
       child: FilterChip(
         selected: _filter == value,
-        onSelected: (_) => setState(() => _filter = value),
+        onSelected: (_) {
+          if (_filter == value) return;
+          setState(() {
+            _filter = value;
+            _filtering = true;
+          });
+          _filterDebounce?.cancel();
+          _filterDebounce = Timer(const Duration(milliseconds: 220), () {
+            if (mounted) setState(() => _filtering = false);
+          });
+        },
         label: Text('$label  $count'),
         showCheckmark: false,
       ),
