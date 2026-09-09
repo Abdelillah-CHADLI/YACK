@@ -17,13 +17,13 @@ F-16, F-19, F-20, F-24, F-38, F-59, F-61 from the subsequent batches;
 then F-15, F-40, F-41, F-44, F-45, F-46 from the backend index/ops batch;
 then F-13, F-34, F-39 from the temp-contract semantics batch;
 then F-14, F-36, F-42, F-47, F-72 from the pagination/quota/media/audit/
-identity closes — 63 complete in total). F-05 is fully implemented across all
+identity closes; then F-32, F-51, F-60, F-73 from the mobile sync/schema
+batch — 67 complete in total). F-05 is fully implemented across all
 three repositories (envelope validation, client-side hybrid encryption, admin
 in-browser decrypt) with cross-repo unit tests green; only the live
-end-to-end smoke remains blocked on a configured Cloudinary. Four findings
-are deferred with documented decisions (F-04 data-at-rest envelope, F-32
-dispute local model, F-51 query/sync efficiency, F-60 contract hash
-persistence) plus F-73 (UI-only subscription feature, out of scope). The remaining audit
+end-to-end smoke remains blocked on a configured Cloudinary. One finding
+remains deferred with a documented decision (F-04 data-at-rest envelope;
+device backup/restore carries the plaintext caveat noted in the decision). The remaining audit
 claims have been triaged into confirmed pending, external-action, and
 not-reproducible work.
 
@@ -125,7 +125,7 @@ before it can move to `Complete`.
 | F-29 | Medium | Hardcoded production config | Admin | F-08,F-64 | ADM,OPS | Require explicit local/build environment variables; no live fallback | A-SEC missing-env build/start test | Complete |
 | F-30 | Medium | FCM contract mismatch | Backend,Mobile | F-49 | MED,NTF | Normalize `mediaId`/`mediaPath` producer and both parsers | B-SEC payload + M-API parser tests | Complete |
 | F-31 | Medium | Accept-state mismatch | Mobile,Backend | F-11 | CTR | Persist authoritative server status after accept | M-API accepted/completed response tests | Complete |
-| F-32 | Medium | Dispute model mismatch | Mobile,Backend | F-04,F-11 | CTR,DSP | Add compatible local dispute/resolution fields and sync mapping | M-API legacy/new JSON + Isar migration tests | Deferred - Documented (schema/build_runner) |
+| F-32 | Medium | Dispute model mismatch | Mobile,Backend | F-04,F-11 | CTR,DSP | Add compatible local dispute/resolution fields and sync mapping | M-API legacy/new JSON + Isar migration tests | Complete |
 | F-33 | Medium | Language sync mismatch | Mobile,Backend | none | AUTH | Parse/cache backend language and reconcile startup preference | M-API profile/restart tests | Complete |
 | F-34 | Medium | Temp status authorization | Backend,Mobile | F-13,F-43 | AUTH,CTR | Permit safe cold-join status metadata without broadening protected data | B-SEC account-state/participant tests + M-API | Complete |
 | F-35 | Medium | Account creation abuse | Backend | F-02,F-43 | AUTH | Throttle first-touch upserts and require verified email for writes | B-SEC burst/unverified tests | Complete |
@@ -144,7 +144,7 @@ before it can move to `Complete`.
 | F-48 | Low | Push listener lifecycle | Mobile | F-30 | NTF | Retain/cancel subscriptions and keep singleton restart-safe | M-API repeated-init/dispose tests | Complete |
 | F-49 | Low | Structured client errors | Mobile,Backend | F-25,F-34 | all mobile | Typed API exception preserving status/code and localized mappings | M-API representative error tests | Complete |
 | F-50 | Low | Corrupt error copy | Mobile | F-49 | CTR | Replace broken message with typed descriptive error | M-API regression assertion | Complete |
-| F-51 | Low | Mobile query/sync efficiency | Mobile,Backend | F-14,F-20 | CTR,MED | Indexed dedup, dedicated single-contract fetch, debounced search | M-API query/call-count tests | Deferred - Documented (schema/build_runner) |
+| F-51 | Low | Mobile query/sync efficiency | Mobile,Backend | F-14,F-20 | CTR,MED | Indexed dedup, dedicated single-contract fetch, debounced search | M-API query/call-count tests | Complete |
 | F-52 | Low | Admin partial decryption | Admin | F-18,F-21 | DSP,ADM | Per-field/item failure isolation with integrity labels | A-SEC one-corrupt-item test | Complete |
 | F-53 | Low | Review-key identity | Admin,Backend | F-08,F-21,F-71 | DSP,ADM | Compare public modulus/fingerprint/key ID before accepting key | A-SEC wrong/correct/rotated key tests | Complete |
 | F-54 | Low | Admin auth persistence | Admin | F-06 | AUTH,ADM | Use session persistence and clear sensitive state on lifecycle boundaries | A-SEC reload/tab/sign-out tests | Complete |
@@ -153,7 +153,7 @@ before it can move to `Complete`.
 | F-57 | Low | Destructive/draft UX | Admin | F-06,F-26,F-53 | ADM,DSP | Confirm sign-out/key swap/resolve and guard unsaved support drafts | A-UX interaction tests | Complete |
 | F-58 | Low | Admin dependency/tests | Admin | F-16,F-56 | OPS,ADM | Prune confirmed unused UI/deps; pin scripts and add focused tests | CLEAN install/lint/test/build | Complete |
 | F-59 | Low | Unused media endpoint | Mobile,Backend | F-05,F-51 | MED | Verify dynamic use; wire refresh semantics or remove endpoint/service together | CLEAN cross-repo reference + media tests | Complete |
-| F-60 | Low | Contract hash persistence | Mobile,Backend | F-32 | CTR | Persist/map hash only if an active workflow consumes it | M-API model migration and verify flow | Deferred - Documented (schema/build_runner) |
+| F-60 | Low | Contract hash persistence | Mobile,Backend | F-32 | CTR | Persist/map hash for the verify workflow and single-contract refetch | M-API model migration and verify flow | Complete |
 | F-61 | Low | Development port drift | Backend,Mobile | F-64,F-69 | OPS | Align documented local defaults without changing production host behavior | OPS local startup + M-API base URL check | Complete |
 | F-62 | Low | Temp status enum drift | Mobile,Backend | F-13 | CTR | Remove unreachable alias or document/emit a canonical value | M-API status matrix | Complete |
 | F-63 | Low | Admin type narrowing | Admin,Backend | F-14 | ADM,DSP | Verify server normalization invariant; document or widen type | A-UX type/build + response tests | Complete |
@@ -165,7 +165,7 @@ before it can move to `Complete`.
 | F-70 | Medium | Token revocation/account block | Backend | F-03,F-43 | AUTH,ADM | Revocation-aware verification and consistent disabled/blocked account enforcement | B-SEC revoked/disabled/blocked tests | Complete |
 | F-71 | Low | Review private-key placement | Admin,Backend | F-08,F-53 | DSP,OPS | Move key material outside repo tree and verify public/private match without logging it | OPS secret scan + A-SEC fingerprint test | Complete |
 | F-72 | Low | Mobile platform identity | Mobile | F-64 | AUTH,NTF,OPS | Verify intended Android application ID; leave unshipped platforms documented | M-API Android Firebase/build validation | Complete |
-| F-73 | Low | Feature completeness | Mobile | none | subscription | Verify as intentional UI-only feature; mark out-of-scope unless required for correctness | Documentation/source review | Deferred - Documented |
+| F-73 | Low | Feature completeness | Mobile | none | subscription | Verified as intentional UI-only feature; no correctness requirement | Documentation/source review | Complete - Documented |
 
 ## Active Lifecycle Records
 
@@ -514,7 +514,7 @@ Re-audit: no plaintext media bytes are ever stored or transmitted by the backend
 for envelope uploads; support attachment keys are wrapped for the review key so
 admins can decrypt without ever handling user private keys.
 
-### Deferred decisions — F-04, F-32, F-51, F-60, F-73
+### Deferred decisions — F-04
 
 Status: Deferred - Documented
 
@@ -524,17 +524,44 @@ Decisions:
   because it breaks every Isar query/link and touches every render path on
   mobile. Mitigation in place: F-17 lock-gate hides plaintext UI without a key
   in memory, Isar is cleared on logout, and decrypted state lives only in
-  process memory. Revisit only with a dedicated storage-consolidation effort.
-- **F-32 / F-51 / F-60 (Isar schema/build_runner):** These require new local
-  Isar fields/migration (`dispute_state`, single-contract fetch indexes,
-  persisted contract hash). They are deferred with F-04 until one coordinated
-  schema/build_runner change is accepted, and are not required for the current
-  verified workflows (titles/descriptions/price verification is re-derived
-  render-time via F-18).
+  process memory. Re-audit caveat accepted and documented: a device backup or
+  restore can carry the on-disk Isar database, so at-rest plaintext is not
+  guaranteed for a restored device. Revisit only with a dedicated
+  storage-consolidation effort.
+
+Resolved in this batch (previously deferred with F-04 pending the coordinated
+Isar schema/build_runner change; landed in commit `51003a7` on `develop`):
+
+- **F-32 / F-51 / F-60:** local Isar schema extended with
+  `disputeReasonUserA/B`, `disputedAtUserA/B`, `disputeState`,
+  `resolutionOutcome`, `resolutionNote`, `resolvedAt`, `resolvedBy` and `hash`
+  (additive nullable properties auto-migrate; Isar 3.1.0 has no migration API),
+  `contract.g.dart` regenerated via `build_runner`, `ContractListItem`
+  parses/serializes the new fields, `ContractListService.fetch()` calls the new
+  `GET /contracts/:id`, media dedup uses the `externalId` unique index instead
+  of a full scan, and the home search is debounced (250 ms) instead of
+  filtering per keystroke.
 
 ## Changes by Repository
 
 ### Mobile
+
+- F-32/F-51/F-60 batch (`51003a7`): `contract.dart` extended with
+  `disputeReasonUserA/B`, `disputedAtUserA/B`, `disputeState`,
+  `resolutionOutcome`, `resolutionNote`, `resolvedAt`, `resolvedBy`, `hash`
+  (additive nullable; auto-migrates, no Isar 3.1.0 migration API);
+  `contract.g.dart` regenerated (`build_runner`); `ContractListItem` parses and
+  serializes the fields (`_parseDate` for timestamps); `ContractListService.fetch()`
+  hits `GET /contracts/:id` for single-contract sync; `isar_adapter` persists
+  the new fields on save and dedups media by `externalId` unique index
+  (filtered query instead of full-scan); `ContractSyncService` extracts
+  `_decryptAndSave` and `syncSingleContract` now refetches the one contract
+  instead of a full `syncContracts()`; `home.dart` debounces the search query
+  (250 ms, clear cancels and applies immediately). Tests added in
+  `test/services/contract_list_service_test.dart` (new-field parsing,
+  empty-string backend defaults, toJson round trip, fetch success/null/map);
+  `flutter test` 132/132; `flutter analyze` 0 errors (96 pre-existing
+  issues, none new).
 
 - F-05 batch: new `lib/logic/services/media/media_crypto.dart` (AES-256-GCM +
   RSA-OAEP-SHA256 hybrid envelope via `Isolate.run`), `media_service.dart`
@@ -562,6 +589,15 @@ Decisions:
 
 ### Backend
 
+- F-32/F-51 batch (`e1a5e16`): `getContracts` now maps each item through
+  `mapContractListItem` (adds `disputeReasonUserA/B`, `disputeState`,
+  `resolutionOutcome`, `resolutionNote`, `resolvedAt`, `resolvedBy`), new
+  participant-gated `getContractById` with a `mapContractListItem`-shaped
+  response and 404 for non-participants/invalid ids, and route
+  `GET /contracts/:id` registered after the static `/list`/`/verify`/
+  `/temp/status` paths. `test/liveApi.integration.test.js` extended (list
+  fields, single fetch, admin non-participant 404, invalid-id 404);
+  `npm test` 77/76/1.
 - Temp-contract semantics batch (F-13 verified, F-34, F-39 verified): the
   atomic expiry check in `finalizeTempContract`
   (`expiresAt: { $gt: new Date() }`) was already enforced. The create-on-GET
