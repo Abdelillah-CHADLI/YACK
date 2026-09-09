@@ -18,13 +18,12 @@ then F-15, F-40, F-41, F-44, F-45, F-46 from the backend index/ops batch;
 then F-13, F-34, F-39 from the temp-contract semantics batch;
 then F-14, F-36, F-42, F-47, F-72 from the pagination/quota/media/audit/
 identity closes; then F-32, F-51, F-60, F-73 from the mobile sync/schema
-batch; then F-10 from the secret-history verification — 68 complete in
-total). F-05 is fully implemented across all
-three repositories (envelope validation, client-side hybrid encryption, admin
-in-browser decrypt) with cross-repo unit tests green; the live end-to-end smoke
-is unblockable locally once the backend `.env` `MONGO_URI` is updated to a
-currently-valid Atlas credential (the value on disk fails Atlas auth, so the
-backend will not boot). One finding
+batch; then F-10 from the secret-history verification; then F-05 from the
+live end-to-end run — 69 complete in total). F-05's client-side hybrid
+encryption is fully implemented across all three repositories (envelope
+validation, encrypted media upload, admin in-browser decrypt), and the real
+end-to-end smoke (Cloudinary upload + envelope round-trip through the live
+backend) now passes with the configured account. One finding
 remains deferred with a documented decision (F-04 data-at-rest envelope;
 device backup/restore carries the plaintext caveat noted in the decision). F-09
 remains not reproducible (no credential file exists anywhere in the Git history
@@ -102,7 +101,7 @@ before it can move to `Complete`.
 | F-02 | High | Abuse | Backend | F-35,F-36,F-43 | AUTH,CTR,MSG,MED,DSP,ADM | Layered IP/user/operation rate limits, proxy-safe keys and 429 responses | B-SEC limit, bypass and reset tests | Complete |
 | F-03 | High | FCM security/concurrency | Backend,Mobile | F-02,F-36 | AUTH,NTF | Remove implicit token mutation; explicit bounded atomic registration with defensible ownership semantics | B-SEC + M-API stolen/replay/concurrent token tests | Complete |
 | F-04 | High | Mobile data at rest | Mobile | F-17,F-19,F-20 | INIT,CTR,MSG | Persist ciphertext or locally encrypted data with backward-compatible migration | M-SEC restart/locked/migration tests | Deferred - Documented (lock-gate mitigation) |
-| F-05 | High | Media confidentiality | All | F-21,F-55 | MED,DSP | Client-side hybrid encryption or private signed delivery; migrate legacy records safely | B-SEC + M-SEC + A-SEC media round trip/access tests | Implemented - Live e2e pending |
+| F-05 | High | Media confidentiality | All | F-21,F-55 | MED,DSP | Client-side hybrid encryption or private signed delivery; migrate legacy records safely | B-SEC + M-SEC + A-SEC media round trip/access tests | Complete |
 | F-06 | High | Admin session security | Admin | F-53,F-54,F-57 | AUTH,ADM,DSP | Clear key, plaintext, case and drafts on sign-out/account switch | A-SEC two-operator session regression test | Complete |
 | F-07 | High | Sensitive logging | Backend | F-47 | AUTH,ADM | Remove allowlist/PII debug output; retain only redacted diagnostics | B-SEC deny/allow tests with captured logs | Complete |
 | F-08 | High | Admin configuration | Backend,Admin | F-29,F-69,F-71 | ADM,OPS | Validate required production config; fail closed with documented external setup | OPS startup matrix + `/admin/me`/review-key tests | Complete |
@@ -487,7 +486,23 @@ and `vinext@1.0.0-beta.9`.
 
 ### F-05 / F-11 / F-16 — Client-side media encryption and terminal dispute resolution
 
-Status: F-11, F-16 Complete; F-05 `Implemented - Live e2e pending`.
+Status: F-11, F-16, F-05 Complete.
+
+**Live end-to-end (F-05):** `RUN_LIVE_INTEGRATION=1 node --env-file-if-exists=.env
+--test test/liveApi.integration.test.js` (backend booted on `127.0.0.1:3000`
+with real Firebase + MongoDB + the configured Cloudinary account) now passes:
+account finalize/profile/FCM, temp create → preview → join → dual-sign contract
+lifecycle, the F-32/F-51 list/single-fetch assertions (including non-participant
+and invalid-id 404), terminal dispute resolution (resolve → 409 → reopen 409),
+encrypted messaging, and a **real Cloudinary media upload with envelope fields**
+plus the `media.all` read-back. Running the suite surfaced and fixed two latent
+regressions: the F-03 atomic FCM bind passed an aggregation pipeline to
+`updateMany` without `updatePipeline: true` (first case where a real MongoDB
+driver ran the code — mocked unit tests could not catch it), and disputing a
+`completed` contract 500'd because `statusBeforeDispute: "completed"` is not in
+the schema enum (F-11) — the controller now maps non-`pending/active/accepted`
+statuses to the stored `statusBeforeDispute`/`"active"`. Both shipped in
+`YACK-Backend` commit `d734d17`.
 
 Root fixes:
 
@@ -515,9 +530,10 @@ Root fixes:
 
 Tests:
 
-- Backend: `npm test` 68 tests, 67 passed, 1 skipped (live integration);
-  encrypted-payload validation/round-trip cases new in
-  `test/mediaHandler.test.js`; `node --check` on all touched files passed.
+- Backend: `npm test` 77 tests, 76 passed, 1 skipped (live integration, which
+  itself passes when `RUN_LIVE_INTEGRATION=1`); encrypted-payload
+  validation/round-trip cases new in `test/mediaHandler.test.js`; `node --check`
+  on all touched files passed.
 - Mobile: 3 new hybrid-encryption round-trip tests (owner/participant/open,
   wrong-recipient rejects, tampered hash → null) in
   `test/services/crypto_service_test.dart`; full `flutter test` 126/126;
@@ -780,21 +796,18 @@ Isar schema/build_runner change; landed in commit `51003a7` on `develop`):
 
 ## Blocked External Actions
 
-Pending: update `YACK-Backend/.env` `MONGO_URI` to a currently-valid Atlas
-connection string (the value on disk fails Atlas auth with `Bad auth`, so the
-backend cannot boot — this is a config fix, not a security rotation; F-10's
-rotation recommendation was superseded by the verified-clean Git history
-sweep). Production environment changes and redeployment remain: set
-`ADMIN_EMAILS`, `ADMIN_REVIEW_PUBLIC_KEY` and `CORS_ORIGINS`
+Pending: production environment changes and redeployment. Set `ADMIN_EMAILS`,
+`ADMIN_REVIEW_PUBLIC_KEY` and `CORS_ORIGINS` on the host
 (F-08/F-68 — without `CORS_ORIGINS` the deployed admin dashboard is
 CORS-blocked), then deploy YACK-Admin to Render and register the admin review
-public key. F-05's live end-to-end smoke (upload an encrypted attachment
-on-device and decrypt it in the admin dashboard) is implementable now that the
-Cloudinary account is configured and its credentials are present in
-`YACK-Backend/.env`; it historically ran via
-`RUN_LIVE_INTEGRATION=1 node --env-file-if-exists=.env --test
-test/liveApi.integration.test.js` against a booted backend, needs
-`FIREBASE_WEB_API_KEY` set, and cannot run until the Mongo URI is fixed.
+public key. The backend was verified locally with the current `.env`
+(`MONGO_URI` updated): `RUN_LIVE_INTEGRATION=1 node
+--env-file-if-exists=.env --test test/liveApi.integration.test.js` now passes
+against a booted backend with real Firebase, MongoDB and the configured
+Cloudinary account — the F-05 live end-to-end smoke (real encrypted media
+upload + envelope round-trip) is complete (commit `d734d17`). The produced
+on-device → admin-dashboard visual smoke still requires the deployed admin
+build.
 
 ## Final Re-Audit Results
 
