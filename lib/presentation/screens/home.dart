@@ -111,38 +111,46 @@ class _ContractsScreenState extends State<ContractsScreen> {
     return Scaffold(
       appBar: AppBar(
         automaticallyImplyLeading: false,
-        title: const YackBrand(),
+        toolbarHeight: isWide ? 72 : 84,
+        title: YackBrand(size: isWide ? 38 : 46),
         actions: [
           if (_isRefreshing)
             const Padding(
-              padding: EdgeInsets.all(15),
+              padding: EdgeInsets.symmetric(horizontal: 18),
               child: SizedBox.square(
-                dimension: 20,
-                child: CircularProgressIndicator(strokeWidth: 2),
+                dimension: 24,
+                child: CircularProgressIndicator(strokeWidth: 2.4),
               ),
             )
           else
-            IconButton(
-              tooltip: TranslationHandler.get('refresh'),
-              onPressed: _onRefresh,
-              icon: const Icon(Icons.sync),
+            Padding(
+              padding: const EdgeInsetsDirectional.only(end: 10),
+              child: IconButton(
+                tooltip: TranslationHandler.get('refresh'),
+                onPressed: _onRefresh,
+                icon: const Icon(Icons.sync_rounded, size: 29),
+              ),
             ),
-          const SizedBox(width: 8),
         ],
       ),
       floatingActionButton: isWide
           ? null
           : FloatingActionButton.extended(
               onPressed: _createContract,
-              icon: const Icon(Icons.add),
+              elevation: 3,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(28),
+              ),
+              extendedPadding: const EdgeInsets.symmetric(horizontal: 24),
+              icon: const Icon(Icons.add_rounded, size: 28),
               label: Text(TranslationHandler.get('add_contract_short')),
             ),
       body: isar == null
           ? const Center(child: CircularProgressIndicator())
           : StreamBuilder<List<Contract>>(
-              stream: _contractsStream ??= isar.contracts
-                  .where()
-                  .watch(fireImmediately: true),
+              stream: _contractsStream ??= isar.contracts.where().watch(
+                fireImmediately: true,
+              ),
               builder: (context, snapshot) {
                 if (snapshot.connectionState == ConnectionState.waiting) {
                   return const _ContractsLoadingView();
@@ -200,64 +208,95 @@ class _ContractsScreenState extends State<ContractsScreen> {
             child: YackContent(
               padding: const EdgeInsets.fromLTRB(
                 AppTheme.pagePadding,
-                8,
+                14,
                 AppTheme.pagePadding,
                 0,
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  YackPageHeading(
-                    eyebrow: firstName.isEmpty
+                  _HomeHeading(
+                    greeting: firstName.isEmpty
                         ? _greeting()
                         : '${_greeting()}, $firstName',
-                    title: TranslationHandler.get('contracts'),
-                    subtitle:
-                        '${TranslationHandler.get('total_contracts_label')}: ${availableContracts.length}',
-                    trailing: isWide
-                        ? FilledButton.icon(
-                            onPressed: _createContract,
-                            icon: const Icon(Icons.add),
-                            label: Text(
-                              TranslationHandler.get('add_contract_short'),
-                            ),
-                          )
-                        : null,
+                    contractCount: availableContracts.length,
+                    isWide: isWide,
+                    onCreateContract: _createContract,
                   ),
-                  const SizedBox(height: 24),
-                  TextField(
-                    controller: _searchController,
-                    // F-51: debounce the query so the per-keystroke filter pass
-                    // (title/description/names across every contract) only runs
-                    // once the user settles.
-                    onChanged: (value) {
-                      _searchDebounce?.cancel();
-                      _searchDebounce = Timer(
-                        const Duration(milliseconds: 250),
-                        () {
-                          if (mounted) setState(() => _query = value);
-                        },
-                      );
-                    },
-                    textInputAction: TextInputAction.search,
-                    decoration: InputDecoration(
-                      labelText: TranslationHandler.get('search_contracts'),
-                      hintText: TranslationHandler.get('search_contracts'),
-                      prefixIcon: const Icon(Icons.search),
-                      suffixIcon: _query.isEmpty
-                          ? null
-                          : IconButton(
-                              tooltip: TranslationHandler.get('clear'),
-                              onPressed: () {
-                                _searchDebounce?.cancel();
-                                _searchController.clear();
-                                setState(() => _query = '');
-                              },
-                              icon: const Icon(Icons.close),
-                            ),
+                  const SizedBox(height: 28),
+                  DecoratedBox(
+                    decoration: BoxDecoration(
+                      boxShadow:
+                          Theme.of(context).brightness == Brightness.light
+                          ? const [
+                              BoxShadow(
+                                color: Color(0x0D0E1512),
+                                blurRadius: 20,
+                                offset: Offset(0, 7),
+                              ),
+                            ]
+                          : null,
+                    ),
+                    child: TextField(
+                      controller: _searchController,
+                      // F-51: debounce the query so the per-keystroke filter pass
+                      // (title/description/names across every contract) only runs
+                      // once the user settles.
+                      onChanged: (value) {
+                        _searchDebounce?.cancel();
+                        _searchDebounce = Timer(
+                          const Duration(milliseconds: 250),
+                          () {
+                            if (mounted) setState(() => _query = value);
+                          },
+                        );
+                      },
+                      textInputAction: TextInputAction.search,
+                      style: Theme.of(context).textTheme.bodyLarge,
+                      decoration: InputDecoration(
+                        hintText: TranslationHandler.get('search_contracts'),
+                        prefixIcon: const Padding(
+                          padding: EdgeInsetsDirectional.only(start: 4),
+                          child: Icon(Icons.search_rounded, size: 27),
+                        ),
+                        prefixIconConstraints: const BoxConstraints(
+                          minWidth: 58,
+                        ),
+                        suffixIcon: _query.isEmpty
+                            ? const Icon(Icons.tune_rounded, size: 25)
+                            : IconButton(
+                                tooltip: TranslationHandler.get('clear'),
+                                onPressed: () {
+                                  _searchDebounce?.cancel();
+                                  _searchController.clear();
+                                  setState(() => _query = '');
+                                },
+                                icon: const Icon(Icons.close_rounded),
+                              ),
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 18,
+                          vertical: 20,
+                        ),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(16),
+                          borderSide: BorderSide(
+                            color: Theme.of(context).colorScheme.outlineVariant,
+                          ),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(16),
+                          borderSide: BorderSide(
+                            color: Theme.of(context).colorScheme.primary,
+                            width: 1.8,
+                          ),
+                        ),
+                      ),
                     ),
                   ),
-                  const SizedBox(height: 14),
+                  const SizedBox(height: 18),
                   SingleChildScrollView(
                     scrollDirection: Axis.horizontal,
                     child: Row(
@@ -285,11 +324,28 @@ class _ContractsScreenState extends State<ContractsScreen> {
                       ],
                     ),
                   ),
-                  const SizedBox(height: 24),
+                  const SizedBox(height: 30),
                   if (visible.isNotEmpty)
-                    YackSectionHeading(
-                      title: _sectionTitle(),
-                      caption: '${visible.length}',
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 14),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            _sectionTitle(),
+                            style: Theme.of(context).textTheme.titleLarge
+                                ?.copyWith(
+                                  fontSize: 22,
+                                  fontWeight: FontWeight.w800,
+                                ),
+                          ),
+                          const SizedBox(height: 3),
+                          Text(
+                            '${visible.length}',
+                            style: Theme.of(context).textTheme.bodyMedium,
+                          ),
+                        ],
+                      ),
                     ),
                 ],
               ),
@@ -320,49 +376,47 @@ class _ContractsScreenState extends State<ContractsScreen> {
                           ),
                         )
                       : visible.isEmpty
-                          ? YackEmptyState(
-                              icon: Icons.search_off_outlined,
-                              title: TranslationHandler.get(
-                                'no_matching_contracts',
-                              ),
-                              message: TranslationHandler.get(
-                                'no_matching_contracts_desc',
-                              ),
-                              action: OutlinedButton(
-                                onPressed: () {
-                                  _searchController.clear();
-                                  setState(() {
-                                    _query = '';
-                                    _filter = _AgreementFilter.all;
-                                  });
-                                },
-                                child: Text(
-                                  TranslationHandler.get('clear_filters'),
-                                ),
-                              ),
-                            )
-                          : Padding(
-                              padding: const EdgeInsets.fromLTRB(
-                                AppTheme.pagePadding,
-                                0,
-                                AppTheme.pagePadding,
-                                104,
-                              ),
-                              child: Column(
-                                children: [
-                                  for (final contract in visible)
-                                    Padding(
-                                      padding: const EdgeInsets.only(
-                                        bottom: 10,
-                                      ),
-                                      child: ContractCard(
-                                        contract: contract,
-                                        isar: isar,
-                                      ),
-                                    ),
-                                ],
-                              ),
+                      ? YackEmptyState(
+                          icon: Icons.search_off_outlined,
+                          title: TranslationHandler.get(
+                            'no_matching_contracts',
+                          ),
+                          message: TranslationHandler.get(
+                            'no_matching_contracts_desc',
+                          ),
+                          action: OutlinedButton(
+                            onPressed: () {
+                              _searchController.clear();
+                              setState(() {
+                                _query = '';
+                                _filter = _AgreementFilter.all;
+                              });
+                            },
+                            child: Text(
+                              TranslationHandler.get('clear_filters'),
                             ),
+                          ),
+                        )
+                      : Padding(
+                          padding: const EdgeInsets.fromLTRB(
+                            AppTheme.pagePadding,
+                            0,
+                            AppTheme.pagePadding,
+                            104,
+                          ),
+                          child: Column(
+                            children: [
+                              for (final contract in visible)
+                                Padding(
+                                  padding: const EdgeInsets.only(bottom: 10),
+                                  child: ContractCard(
+                                    contract: contract,
+                                    isar: isar,
+                                  ),
+                                ),
+                            ],
+                          ),
+                        ),
                 ),
               ),
             ),
@@ -373,10 +427,18 @@ class _ContractsScreenState extends State<ContractsScreen> {
 
   Widget _filterChip(_AgreementFilter value, String label, int count) {
     return Padding(
-      padding: const EdgeInsetsDirectional.only(end: 8),
-      child: FilterChip(
+      padding: const EdgeInsetsDirectional.only(end: 10),
+      child: _HomeFilterChip(
+        icon: switch (value) {
+          _AgreementFilter.all => Icons.grid_view_rounded,
+          _AgreementFilter.open => Icons.pending_actions_outlined,
+          _AgreementFilter.completed => Icons.task_alt_rounded,
+          _AgreementFilter.disputed => Icons.shield_outlined,
+        },
+        label: label,
+        count: count,
         selected: _filter == value,
-        onSelected: (_) {
+        onTap: () {
           if (_filter == value) return;
           setState(() {
             _filter = value;
@@ -387,8 +449,6 @@ class _ContractsScreenState extends State<ContractsScreen> {
             if (mounted) setState(() => _filtering = false);
           });
         },
-        label: Text('$label  $count'),
-        showCheckmark: false,
       ),
     );
   }
@@ -399,6 +459,137 @@ class _ContractsScreenState extends State<ContractsScreen> {
     _AgreementFilter.completed => TranslationHandler.get('closed'),
     _AgreementFilter.disputed => TranslationHandler.get('status_disputed'),
   };
+}
+
+class _HomeHeading extends StatelessWidget {
+  final String greeting;
+  final int contractCount;
+  final bool isWide;
+  final VoidCallback onCreateContract;
+
+  const _HomeHeading({
+    required this.greeting,
+    required this.contractCount,
+    required this.isWide,
+    required this.onCreateContract,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colors = theme.colorScheme;
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.end,
+      children: [
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                greeting,
+                style: theme.textTheme.titleMedium?.copyWith(
+                  color: colors.primary,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              const SizedBox(height: 6),
+              Text(
+                TranslationHandler.get('contracts'),
+                style: theme.textTheme.displaySmall?.copyWith(
+                  fontSize: isWide ? 38 : 34,
+                  letterSpacing: -1,
+                ),
+              ),
+              const SizedBox(height: 9),
+              Text(
+                '${TranslationHandler.get('total_contracts_label')}: $contractCount',
+                style: theme.textTheme.bodyLarge?.copyWith(
+                  color: colors.onSurfaceVariant,
+                ),
+              ),
+            ],
+          ),
+        ),
+        if (isWide) ...[
+          const SizedBox(width: 20),
+          FilledButton.icon(
+            onPressed: onCreateContract,
+            icon: const Icon(Icons.add_rounded),
+            label: Text(TranslationHandler.get('add_contract_short')),
+          ),
+        ],
+      ],
+    );
+  }
+}
+
+class _HomeFilterChip extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final int count;
+  final bool selected;
+  final VoidCallback onTap;
+
+  const _HomeFilterChip({
+    required this.icon,
+    required this.label,
+    required this.count,
+    required this.selected,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colors = theme.colorScheme;
+    final foreground = selected ? colors.onPrimary : colors.onSurfaceVariant;
+
+    return Semantics(
+      button: true,
+      selected: selected,
+      label: '$label, $count',
+      child: Material(
+        color: selected ? colors.primary : colors.surface,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(13),
+          side: BorderSide(
+            color: selected ? colors.primary : colors.outlineVariant,
+          ),
+        ),
+        elevation: selected ? 2 : 0,
+        shadowColor: colors.primary.withValues(alpha: .28),
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          onTap: onTap,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 14),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(icon, size: 20, color: foreground),
+                const SizedBox(width: 9),
+                Text(
+                  label,
+                  style: theme.textTheme.labelMedium?.copyWith(
+                    color: foreground,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Text(
+                  '$count',
+                  style: theme.textTheme.labelMedium?.copyWith(
+                    color: foreground,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
 }
 
 class ContractCard extends StatelessWidget {
@@ -426,6 +617,15 @@ class ContractCard extends StatelessWidget {
     ContractStatus.disputed => AppTheme.statusRed,
     ContractStatus.completed => AppTheme.statusGreen,
     ContractStatus.rejected => AppTheme.statusGray,
+  };
+
+  IconData _statusIcon() => switch (_displayStatus) {
+    ContractStatus.active => Icons.description_outlined,
+    ContractStatus.accepted => Icons.draw_outlined,
+    ContractStatus.pending => Icons.schedule_outlined,
+    ContractStatus.disputed => Icons.gavel_outlined,
+    ContractStatus.completed => Icons.task_alt_outlined,
+    ContractStatus.rejected => Icons.cancel_outlined,
   };
 
   Future<void> _hideContract(BuildContext context) async {
@@ -499,106 +699,169 @@ class ContractCard extends StatelessWidget {
       label:
           '${contract.title}, ${contract.price} '
           '${TranslationHandler.get('currency')}',
-      child: Material(
-        color: colors.surface,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(AppTheme.radiusMd),
-          side: BorderSide(color: colors.outlineVariant),
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: theme.brightness == Brightness.light
+              ? const [
+                  BoxShadow(
+                    color: Color(0x0C0E1512),
+                    blurRadius: 18,
+                    offset: Offset(0, 6),
+                  ),
+                ]
+              : null,
         ),
-        clipBehavior: Clip.antiAlias,
-        child: InkWell(
-          onTap: () => Navigator.of(
-            context,
-            rootNavigator: true,
-          ).pushNamed('/contract/view', arguments: contract.id),
-          child: IntrinsicHeight(
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Container(width: 4, color: _statusColor()),
-                Expanded(
-                  child: Padding(
-                    padding: const EdgeInsets.fromLTRB(15, 14, 8, 14),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Expanded(
-                              child: Text(
-                                contract.title,
-                                maxLines: 2,
-                                overflow: TextOverflow.ellipsis,
-                                style: theme.textTheme.titleMedium,
+        child: Material(
+          color: colors.surface,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+            side: BorderSide(color: colors.outlineVariant),
+          ),
+          clipBehavior: Clip.antiAlias,
+          child: InkWell(
+            onTap: () => Navigator.of(
+              context,
+              rootNavigator: true,
+            ).pushNamed('/contract/view', arguments: contract.id),
+            child: IntrinsicHeight(
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Container(width: 4, color: _statusColor()),
+                  Expanded(
+                    child: Padding(
+                      padding: const EdgeInsets.fromLTRB(15, 16, 12, 16),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Container(
+                                width: 52,
+                                height: 52,
+                                decoration: BoxDecoration(
+                                  color: _statusColor().withValues(alpha: .11),
+                                  borderRadius: BorderRadius.circular(13),
+                                ),
+                                child: Icon(
+                                  _statusIcon(),
+                                  size: 25,
+                                  color: _statusColor(),
+                                ),
                               ),
-                            ),
-                            const SizedBox(width: 12),
-                            StatusBadge(status: _displayStatus),
-                          ],
-                        ),
-                        if (contract.description.trim().isNotEmpty) ...[
-                          const SizedBox(height: 7),
-                          Text(
-                            contract.description,
-                            maxLines: 2,
-                            overflow: TextOverflow.ellipsis,
-                            style: theme.textTheme.bodyMedium,
+                              const SizedBox(width: 13),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      contract.title,
+                                      maxLines: 2,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: theme.textTheme.titleMedium
+                                          ?.copyWith(
+                                            fontWeight: FontWeight.w800,
+                                          ),
+                                    ),
+                                    if (contract.description
+                                        .trim()
+                                        .isNotEmpty) ...[
+                                      const SizedBox(height: 5),
+                                      Text(
+                                        contract.description,
+                                        maxLines: 2,
+                                        overflow: TextOverflow.ellipsis,
+                                        style: theme.textTheme.bodyMedium,
+                                      ),
+                                    ],
+                                  ],
+                                ),
+                              ),
+                              const SizedBox(width: 9),
+                              Column(
+                                crossAxisAlignment: CrossAxisAlignment.end,
+                                children: [
+                                  StatusBadge(status: _displayStatus),
+                                  const SizedBox(height: 10),
+                                  if (_isClosed)
+                                    PopupMenuButton<String>(
+                                      tooltip: TranslationHandler.get(
+                                        'more_options',
+                                      ),
+                                      padding: EdgeInsets.zero,
+                                      constraints: const BoxConstraints(
+                                        minWidth: 36,
+                                        minHeight: 36,
+                                      ),
+                                      onSelected: (value) {
+                                        if (value == 'hide') {
+                                          _hideContract(context);
+                                        }
+                                      },
+                                      itemBuilder: (context) => [
+                                        PopupMenuItem(
+                                          value: 'hide',
+                                          child: Row(
+                                            children: [
+                                              Icon(
+                                                Icons.visibility_off_outlined,
+                                                color: colors.onSurfaceVariant,
+                                              ),
+                                              const SizedBox(width: 10),
+                                              Text(
+                                                TranslationHandler.get(
+                                                  'hide_from_device',
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                      ],
+                                      icon: Icon(
+                                        Icons.more_horiz_rounded,
+                                        color: colors.onSurfaceVariant,
+                                      ),
+                                    )
+                                  else
+                                    Icon(
+                                      Icons.chevron_right_rounded,
+                                      color: colors.onSurface,
+                                    ),
+                                ],
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 15),
+                          Wrap(
+                            spacing: 16,
+                            runSpacing: 8,
+                            crossAxisAlignment: WrapCrossAlignment.center,
+                            children: [
+                              _MetaItem(
+                                icon: Icons.payments_outlined,
+                                text:
+                                    '${contract.price} '
+                                    '${TranslationHandler.get('currency')}',
+                                emphasized: true,
+                              ),
+                              _MetaItem(
+                                icon: Icons.person_outline,
+                                text: party,
+                              ),
+                              _MetaItem(
+                                icon: Icons.calendar_today_outlined,
+                                text: _formatDate(contract.createdAt),
+                              ),
+                            ],
                           ),
                         ],
-                        const SizedBox(height: 12),
-                        Wrap(
-                          spacing: 16,
-                          runSpacing: 7,
-                          crossAxisAlignment: WrapCrossAlignment.center,
-                          children: [
-                            _MetaItem(
-                              icon: Icons.payments_outlined,
-                              text:
-                                  '${contract.price} '
-                                  '${TranslationHandler.get('currency')}',
-                              emphasized: true,
-                            ),
-                            _MetaItem(icon: Icons.person_outline, text: party),
-                            _MetaItem(
-                              icon: Icons.calendar_today_outlined,
-                              text: _formatDate(contract.createdAt),
-                            ),
-                          ],
-                        ),
-                      ],
+                      ),
                     ),
                   ),
-                ),
-                if (_isClosed)
-                  PopupMenuButton<String>(
-                    tooltip: TranslationHandler.get('more_options'),
-                    onSelected: (value) {
-                      if (value == 'hide') _hideContract(context);
-                    },
-                    itemBuilder: (context) => [
-                      PopupMenuItem(
-                        value: 'hide',
-                        child: Row(
-                          children: [
-                            Icon(
-                              Icons.visibility_off_outlined,
-                              color: colors.onSurfaceVariant,
-                            ),
-                            const SizedBox(width: 10),
-                            Text(TranslationHandler.get('hide_from_device')),
-                          ],
-                        ),
-                      ),
-                    ],
-                    icon: const Icon(Icons.more_vert),
-                  )
-                else
-                  const Padding(
-                    padding: EdgeInsetsDirectional.only(end: 10),
-                    child: Icon(Icons.chevron_right),
-                  ),
-              ],
+                ],
+              ),
             ),
           ),
         ),

@@ -269,7 +269,7 @@ const english = {
   'close': 'Close',
   'about_title': 'YACK - Contract Management App',
   'app_version': 'Version: 1.0.0',
-  'app_copyright': '© 2025 YACK. All rights reserved.',
+  'app_copyright': '© 2026 YACK. All rights reserved.',
   'about_description':
       'YACK helps you manage contracts efficiently with features like QR code scanning, digital signatures, and secure storage.',
   'under_construction': 'This feature is under construction',

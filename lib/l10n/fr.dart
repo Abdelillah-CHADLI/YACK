@@ -281,7 +281,7 @@ const french = {
   'close': 'Fermer',
   'about_title': 'YACK - Application de gestion de contrats',
   'app_version': 'Version : 1.0.0',
-  'app_copyright': '© 2025 YACK. Tous droits réservés.',
+  'app_copyright': '© 2026 YACK. Tous droits réservés.',
   'about_description':
       'YACK vous aide à gérer vos contrats efficacement avec des fonctions comme le scan de QR, les signatures numériques et un stockage sécurisé.',
   'under_construction': 'Cette fonctionnalité est en cours de construction',
