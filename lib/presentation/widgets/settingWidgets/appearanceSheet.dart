@@ -2,7 +2,6 @@ import 'package:flutter/cupertino.dart';
 import 'package:hive/hive.dart';
 import 'package:yack/logic/services/translation_handler.dart';
 import 'package:yack/presentation/widgets/settingWidgets/settingsSheet.dart';
-import 'package:yack/logic/services/snackBarHandler.dart';
 
 class AppearanceSettingsSheet extends StatefulWidget {
   const AppearanceSettingsSheet({super.key});
@@ -62,19 +61,7 @@ class _AppearanceSettingsSheetState extends State<AppearanceSettingsSheet> {
       ],
       applyLabel: TranslationHandler.get('apply'),
       onApply: () {
-        final box = Hive.box('user');
-        final value = selectedTheme == 'Light'
-            ? 1
-            : selectedTheme == 'Dark'
-            ? 2
-            : 3;
-        box.put('theme', value);
-
-        SnackBarHandler.showSuccess(
-          context,
-          TranslationHandler.get('theme_updated'),
-        );
-        Navigator.pop(context);
+        Navigator.pop(context, selectedTheme);
       },
     );
   }

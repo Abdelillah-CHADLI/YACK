@@ -5,6 +5,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:yack/logic/cubits/auth/auth_cubit.dart';
 import 'package:yack/logic/services/auth/account_service.dart';
+import 'package:yack/logic/services/snackBarHandler.dart';
 import 'package:yack/logic/services/translation_handler.dart';
 import 'package:yack/logic/services/user/user_service.dart';
 import 'package:yack/logic/utils/encryptionPasswordPopUp.dart';
@@ -31,13 +32,62 @@ class SettingsScreen extends StatefulWidget {
 class _SettingsScreenState extends State<SettingsScreen> {
   bool _loggingOut = false;
 
-  Future<void> _showSheet(Widget sheet) async {
-    await showModalBottomSheet<void>(
-      context: context,
+  Future<T?> _showSheet<T>(Widget sheet) async {
+    final navigator = Navigator.of(context);
+    final localizations = MaterialLocalizations.of(context);
+    final route = ModalBottomSheetRoute<T>(
       isScrollControlled: true,
       useSafeArea: true,
       builder: (_) => sheet,
+      capturedThemes: InheritedTheme.capture(
+        from: context,
+        to: navigator.context,
+      ),
+      barrierLabel: localizations.scrimLabel,
+      barrierOnTapHint: localizations.scrimOnTapHint(
+        localizations.bottomSheetLabel,
+      ),
     );
+    final result = await navigator.push(route);
+    await route.completed;
+    return result;
+  }
+
+  Future<void> _changeAppearance() async {
+    final selected = await _showSheet<String>(const AppearanceSettingsSheet());
+    if (selected == null || !mounted) return;
+
+    final value = selected == 'Light'
+        ? 1
+        : selected == 'Dark'
+        ? 2
+        : 3;
+    await Hive.box('user').put('theme', value);
+    if (!mounted) return;
+    SnackBarHandler.showSuccess(
+      context,
+      TranslationHandler.get('theme_updated'),
+    );
+  }
+
+  Future<void> _changeLanguage() async {
+    final result = await _showSheet<({String language, bool serverUpdated})>(
+      const LanguageSettingsSheet(),
+    );
+    if (result == null || !mounted) return;
+
+    await TranslationHandler.changeLanguage(result.language);
+    if (!mounted) return;
+    final message = TranslationHandler.get(
+      result.serverUpdated
+          ? 'language_updated'
+          : 'language_updated_device_only',
+    );
+    if (result.serverUpdated) {
+      SnackBarHandler.showSuccess(context, message);
+    } else {
+      SnackBarHandler.showWarning(context, message);
+    }
   }
 
   String get _themeLabel {
@@ -227,7 +277,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     title: TranslationHandler.get('appearance'),
                     subtitle: TranslationHandler.get('appearance_subtitle'),
                     value: _themeLabel,
-                    onTap: () => _showSheet(const AppearanceSettingsSheet()),
+                    onTap: _changeAppearance,
                   ),
                   Divider(height: 1, color: theme.dividerTheme.color),
                   SettingsItem(
@@ -238,7 +288,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     title: TranslationHandler.get('language'),
                     subtitle: TranslationHandler.get('language_subtitle'),
                     value: _languageLabel,
-                    onTap: () => _showSheet(const LanguageSettingsSheet()),
+                    onTap: _changeLanguage,
                   ),
                   Divider(height: 1, color: theme.dividerTheme.color),
                   SettingsItem(
