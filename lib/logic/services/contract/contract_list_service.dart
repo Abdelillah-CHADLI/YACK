@@ -30,6 +30,17 @@ class ContractListItem {
   final bool disputedUserA;
   final bool disputedUserB;
 
+  // F-32: per-party reasons/timestamps and full dispute/resolution state
+  final String? disputeReasonUserA;
+  final String? disputeReasonUserB;
+  final DateTime? disputedAtUserA;
+  final DateTime? disputedAtUserB;
+  final String? disputeState;
+  final String? resolutionOutcome;
+  final String? resolutionNote;
+  final DateTime? resolvedAt;
+  final String? resolvedBy;
+
   final String? hash;
   final DateTime? createdAt;
   final DateTime? updatedAt;
@@ -51,6 +62,15 @@ class ContractListItem {
     this.agreedUserB = false,
     this.disputedUserA = false,
     this.disputedUserB = false,
+    this.disputeReasonUserA,
+    this.disputeReasonUserB,
+    this.disputedAtUserA,
+    this.disputedAtUserB,
+    this.disputeState,
+    this.resolutionOutcome,
+    this.resolutionNote,
+    this.resolvedAt,
+    this.resolvedBy,
     this.hash,
     this.createdAt,
     this.updatedAt,
@@ -89,6 +109,15 @@ class ContractListItem {
       agreedUserB: json['agreedUserB'] == true,
       disputedUserA: json['disputedUserA'] == true,
       disputedUserB: json['disputedUserB'] == true,
+      disputeReasonUserA: json['disputeReasonUserA']?.toString(),
+      disputeReasonUserB: json['disputeReasonUserB']?.toString(),
+      disputedAtUserA: _parseDate(json['disputedAtUserA']),
+      disputedAtUserB: _parseDate(json['disputedAtUserB']),
+      disputeState: json['disputeState']?.toString(),
+      resolutionOutcome: json['resolutionOutcome']?.toString(),
+      resolutionNote: json['resolutionNote']?.toString(),
+      resolvedAt: _parseDate(json['resolvedAt']),
+      resolvedBy: json['resolvedBy']?.toString(),
       hash: json['hash']?.toString(),
       createdAt: _parseDate(json['createdAt']),
       updatedAt: _parseDate(json['updatedAt']),
@@ -123,6 +152,15 @@ class ContractListItem {
       'agreedUserB': agreedUserB,
       'disputedUserA': disputedUserA,
       'disputedUserB': disputedUserB,
+      'disputeReasonUserA': disputeReasonUserA,
+      'disputeReasonUserB': disputeReasonUserB,
+      'disputedAtUserA': disputedAtUserA?.toIso8601String(),
+      'disputedAtUserB': disputedAtUserB?.toIso8601String(),
+      'disputeState': disputeState,
+      'resolutionOutcome': resolutionOutcome,
+      'resolutionNote': resolutionNote,
+      'resolvedAt': resolvedAt?.toIso8601String(),
+      'resolvedBy': resolvedBy,
       'hash': hash,
       'createdAt': createdAt?.toIso8601String(),
       'updatedAt': updatedAt?.toIso8601String(),
@@ -172,6 +210,16 @@ class ContractListService {
     }
     // Legacy/unpaginated responses contain the whole list in one page.
     return false;
+  }
+
+  /// F-51: fetch a single contract by id (participant-gated on the backend).
+  /// Returns null when the caller is not a participant or the id is malformed.
+  Future<ContractListItem?> fetch(String contractId) async {
+    final response = await _http.get('/contracts/$contractId');
+    if (response is Map && response['contract'] is Map) {
+      return ContractListItem.fromJson(response['contract'] as Map<String, dynamic>);
+    }
+    return null;
   }
 
   List<ContractListItem> _parseContractList(dynamic response) {

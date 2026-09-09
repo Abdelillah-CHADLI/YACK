@@ -37,84 +37,134 @@ const ContractSchema = CollectionSchema(
       name: r'disputeReason',
       type: IsarType.string,
     ),
-    r'disputedBy': PropertySchema(
+    r'disputeReasonUserA': PropertySchema(
       id: 4,
+      name: r'disputeReasonUserA',
+      type: IsarType.string,
+    ),
+    r'disputeReasonUserB': PropertySchema(
+      id: 5,
+      name: r'disputeReasonUserB',
+      type: IsarType.string,
+    ),
+    r'disputeState': PropertySchema(
+      id: 6,
+      name: r'disputeState',
+      type: IsarType.string,
+    ),
+    r'disputedAtUserA': PropertySchema(
+      id: 7,
+      name: r'disputedAtUserA',
+      type: IsarType.dateTime,
+    ),
+    r'disputedAtUserB': PropertySchema(
+      id: 8,
+      name: r'disputedAtUserB',
+      type: IsarType.dateTime,
+    ),
+    r'disputedBy': PropertySchema(
+      id: 9,
       name: r'disputedBy',
       type: IsarType.string,
     ),
     r'externalId': PropertySchema(
-      id: 5,
+      id: 10,
       name: r'externalId',
       type: IsarType.string,
     ),
+    r'hash': PropertySchema(
+      id: 11,
+      name: r'hash',
+      type: IsarType.string,
+    ),
     r'price': PropertySchema(
-      id: 6,
+      id: 12,
       name: r'price',
       type: IsarType.string,
     ),
+    r'resolutionNote': PropertySchema(
+      id: 13,
+      name: r'resolutionNote',
+      type: IsarType.string,
+    ),
+    r'resolutionOutcome': PropertySchema(
+      id: 14,
+      name: r'resolutionOutcome',
+      type: IsarType.string,
+    ),
+    r'resolvedAt': PropertySchema(
+      id: 15,
+      name: r'resolvedAt',
+      type: IsarType.dateTime,
+    ),
+    r'resolvedBy': PropertySchema(
+      id: 16,
+      name: r'resolvedBy',
+      type: IsarType.string,
+    ),
     r'status': PropertySchema(
-      id: 7,
+      id: 17,
       name: r'status',
       type: IsarType.byte,
       enumMap: _ContractstatusEnumValueMap,
     ),
     r'title': PropertySchema(
-      id: 8,
+      id: 18,
       name: r'title',
       type: IsarType.string,
     ),
     r'updatedAt': PropertySchema(
-      id: 9,
+      id: 19,
       name: r'updatedAt',
       type: IsarType.dateTime,
     ),
     r'userAAccepted': PropertySchema(
-      id: 10,
+      id: 20,
       name: r'userAAccepted',
       type: IsarType.bool,
     ),
     r'userAId': PropertySchema(
-      id: 11,
+      id: 21,
       name: r'userAId',
       type: IsarType.string,
     ),
     r'userAName': PropertySchema(
-      id: 12,
+      id: 22,
       name: r'userAName',
       type: IsarType.string,
     ),
     r'userAPublicKey': PropertySchema(
-      id: 13,
+      id: 23,
       name: r'userAPublicKey',
       type: IsarType.string,
     ),
     r'userASigned': PropertySchema(
-      id: 14,
+      id: 24,
       name: r'userASigned',
       type: IsarType.bool,
     ),
     r'userBAccepted': PropertySchema(
-      id: 15,
+      id: 25,
       name: r'userBAccepted',
       type: IsarType.bool,
     ),
     r'userBId': PropertySchema(
-      id: 16,
+      id: 26,
       name: r'userBId',
       type: IsarType.string,
     ),
     r'userBName': PropertySchema(
-      id: 17,
+      id: 27,
       name: r'userBName',
       type: IsarType.string,
     ),
     r'userBPublicKey': PropertySchema(
-      id: 18,
+      id: 28,
       name: r'userBPublicKey',
       type: IsarType.string,
     ),
     r'userBSigned': PropertySchema(
-      id: 19,
+      id: 29,
       name: r'userBSigned',
       type: IsarType.bool,
     )
@@ -180,6 +230,24 @@ int _contractEstimateSize(
     }
   }
   {
+    final value = object.disputeReasonUserA;
+    if (value != null) {
+      bytesCount += 3 + value.length * 3;
+    }
+  }
+  {
+    final value = object.disputeReasonUserB;
+    if (value != null) {
+      bytesCount += 3 + value.length * 3;
+    }
+  }
+  {
+    final value = object.disputeState;
+    if (value != null) {
+      bytesCount += 3 + value.length * 3;
+    }
+  }
+  {
     final value = object.disputedBy;
     if (value != null) {
       bytesCount += 3 + value.length * 3;
@@ -191,7 +259,31 @@ int _contractEstimateSize(
       bytesCount += 3 + value.length * 3;
     }
   }
+  {
+    final value = object.hash;
+    if (value != null) {
+      bytesCount += 3 + value.length * 3;
+    }
+  }
   bytesCount += 3 + object.price.length * 3;
+  {
+    final value = object.resolutionNote;
+    if (value != null) {
+      bytesCount += 3 + value.length * 3;
+    }
+  }
+  {
+    final value = object.resolutionOutcome;
+    if (value != null) {
+      bytesCount += 3 + value.length * 3;
+    }
+  }
+  {
+    final value = object.resolvedBy;
+    if (value != null) {
+      bytesCount += 3 + value.length * 3;
+    }
+  }
   bytesCount += 3 + object.title.length * 3;
   bytesCount += 3 + object.userAId.length * 3;
   {
@@ -237,22 +329,32 @@ void _contractSerialize(
   writer.writeString(offsets[1], object.description);
   writer.writeString(offsets[2], object.detailsHash);
   writer.writeString(offsets[3], object.disputeReason);
-  writer.writeString(offsets[4], object.disputedBy);
-  writer.writeString(offsets[5], object.externalId);
-  writer.writeString(offsets[6], object.price);
-  writer.writeByte(offsets[7], object.status.index);
-  writer.writeString(offsets[8], object.title);
-  writer.writeDateTime(offsets[9], object.updatedAt);
-  writer.writeBool(offsets[10], object.userAAccepted);
-  writer.writeString(offsets[11], object.userAId);
-  writer.writeString(offsets[12], object.userAName);
-  writer.writeString(offsets[13], object.userAPublicKey);
-  writer.writeBool(offsets[14], object.userASigned);
-  writer.writeBool(offsets[15], object.userBAccepted);
-  writer.writeString(offsets[16], object.userBId);
-  writer.writeString(offsets[17], object.userBName);
-  writer.writeString(offsets[18], object.userBPublicKey);
-  writer.writeBool(offsets[19], object.userBSigned);
+  writer.writeString(offsets[4], object.disputeReasonUserA);
+  writer.writeString(offsets[5], object.disputeReasonUserB);
+  writer.writeString(offsets[6], object.disputeState);
+  writer.writeDateTime(offsets[7], object.disputedAtUserA);
+  writer.writeDateTime(offsets[8], object.disputedAtUserB);
+  writer.writeString(offsets[9], object.disputedBy);
+  writer.writeString(offsets[10], object.externalId);
+  writer.writeString(offsets[11], object.hash);
+  writer.writeString(offsets[12], object.price);
+  writer.writeString(offsets[13], object.resolutionNote);
+  writer.writeString(offsets[14], object.resolutionOutcome);
+  writer.writeDateTime(offsets[15], object.resolvedAt);
+  writer.writeString(offsets[16], object.resolvedBy);
+  writer.writeByte(offsets[17], object.status.index);
+  writer.writeString(offsets[18], object.title);
+  writer.writeDateTime(offsets[19], object.updatedAt);
+  writer.writeBool(offsets[20], object.userAAccepted);
+  writer.writeString(offsets[21], object.userAId);
+  writer.writeString(offsets[22], object.userAName);
+  writer.writeString(offsets[23], object.userAPublicKey);
+  writer.writeBool(offsets[24], object.userASigned);
+  writer.writeBool(offsets[25], object.userBAccepted);
+  writer.writeString(offsets[26], object.userBId);
+  writer.writeString(offsets[27], object.userBName);
+  writer.writeString(offsets[28], object.userBPublicKey);
+  writer.writeBool(offsets[29], object.userBSigned);
 }
 
 Contract _contractDeserialize(
@@ -266,25 +368,35 @@ Contract _contractDeserialize(
   object.description = reader.readString(offsets[1]);
   object.detailsHash = reader.readStringOrNull(offsets[2]);
   object.disputeReason = reader.readStringOrNull(offsets[3]);
-  object.disputedBy = reader.readStringOrNull(offsets[4]);
-  object.externalId = reader.readStringOrNull(offsets[5]);
+  object.disputeReasonUserA = reader.readStringOrNull(offsets[4]);
+  object.disputeReasonUserB = reader.readStringOrNull(offsets[5]);
+  object.disputeState = reader.readStringOrNull(offsets[6]);
+  object.disputedAtUserA = reader.readDateTimeOrNull(offsets[7]);
+  object.disputedAtUserB = reader.readDateTimeOrNull(offsets[8]);
+  object.disputedBy = reader.readStringOrNull(offsets[9]);
+  object.externalId = reader.readStringOrNull(offsets[10]);
+  object.hash = reader.readStringOrNull(offsets[11]);
   object.id = id;
-  object.price = reader.readString(offsets[6]);
+  object.price = reader.readString(offsets[12]);
+  object.resolutionNote = reader.readStringOrNull(offsets[13]);
+  object.resolutionOutcome = reader.readStringOrNull(offsets[14]);
+  object.resolvedAt = reader.readDateTimeOrNull(offsets[15]);
+  object.resolvedBy = reader.readStringOrNull(offsets[16]);
   object.status =
-      _ContractstatusValueEnumMap[reader.readByteOrNull(offsets[7])] ??
+      _ContractstatusValueEnumMap[reader.readByteOrNull(offsets[17])] ??
           ContractStatus.pending;
-  object.title = reader.readString(offsets[8]);
-  object.updatedAt = reader.readDateTimeOrNull(offsets[9]);
-  object.userAAccepted = reader.readBool(offsets[10]);
-  object.userAId = reader.readString(offsets[11]);
-  object.userAName = reader.readStringOrNull(offsets[12]);
-  object.userAPublicKey = reader.readStringOrNull(offsets[13]);
-  object.userASigned = reader.readBool(offsets[14]);
-  object.userBAccepted = reader.readBool(offsets[15]);
-  object.userBId = reader.readStringOrNull(offsets[16]);
-  object.userBName = reader.readStringOrNull(offsets[17]);
-  object.userBPublicKey = reader.readStringOrNull(offsets[18]);
-  object.userBSigned = reader.readBool(offsets[19]);
+  object.title = reader.readString(offsets[18]);
+  object.updatedAt = reader.readDateTimeOrNull(offsets[19]);
+  object.userAAccepted = reader.readBool(offsets[20]);
+  object.userAId = reader.readString(offsets[21]);
+  object.userAName = reader.readStringOrNull(offsets[22]);
+  object.userAPublicKey = reader.readStringOrNull(offsets[23]);
+  object.userASigned = reader.readBool(offsets[24]);
+  object.userBAccepted = reader.readBool(offsets[25]);
+  object.userBId = reader.readStringOrNull(offsets[26]);
+  object.userBName = reader.readStringOrNull(offsets[27]);
+  object.userBPublicKey = reader.readStringOrNull(offsets[28]);
+  object.userBSigned = reader.readBool(offsets[29]);
   return object;
 }
 
@@ -308,33 +420,53 @@ P _contractDeserializeProp<P>(
     case 5:
       return (reader.readStringOrNull(offset)) as P;
     case 6:
-      return (reader.readString(offset)) as P;
-    case 7:
-      return (_ContractstatusValueEnumMap[reader.readByteOrNull(offset)] ??
-          ContractStatus.pending) as P;
-    case 8:
-      return (reader.readString(offset)) as P;
-    case 9:
-      return (reader.readDateTimeOrNull(offset)) as P;
-    case 10:
-      return (reader.readBool(offset)) as P;
-    case 11:
-      return (reader.readString(offset)) as P;
-    case 12:
       return (reader.readStringOrNull(offset)) as P;
+    case 7:
+      return (reader.readDateTimeOrNull(offset)) as P;
+    case 8:
+      return (reader.readDateTimeOrNull(offset)) as P;
+    case 9:
+      return (reader.readStringOrNull(offset)) as P;
+    case 10:
+      return (reader.readStringOrNull(offset)) as P;
+    case 11:
+      return (reader.readStringOrNull(offset)) as P;
+    case 12:
+      return (reader.readString(offset)) as P;
     case 13:
       return (reader.readStringOrNull(offset)) as P;
     case 14:
-      return (reader.readBool(offset)) as P;
+      return (reader.readStringOrNull(offset)) as P;
     case 15:
-      return (reader.readBool(offset)) as P;
+      return (reader.readDateTimeOrNull(offset)) as P;
     case 16:
       return (reader.readStringOrNull(offset)) as P;
     case 17:
-      return (reader.readStringOrNull(offset)) as P;
+      return (_ContractstatusValueEnumMap[reader.readByteOrNull(offset)] ??
+          ContractStatus.pending) as P;
     case 18:
-      return (reader.readStringOrNull(offset)) as P;
+      return (reader.readString(offset)) as P;
     case 19:
+      return (reader.readDateTimeOrNull(offset)) as P;
+    case 20:
+      return (reader.readBool(offset)) as P;
+    case 21:
+      return (reader.readString(offset)) as P;
+    case 22:
+      return (reader.readStringOrNull(offset)) as P;
+    case 23:
+      return (reader.readStringOrNull(offset)) as P;
+    case 24:
+      return (reader.readBool(offset)) as P;
+    case 25:
+      return (reader.readBool(offset)) as P;
+    case 26:
+      return (reader.readStringOrNull(offset)) as P;
+    case 27:
+      return (reader.readStringOrNull(offset)) as P;
+    case 28:
+      return (reader.readStringOrNull(offset)) as P;
+    case 29:
       return (reader.readBool(offset)) as P;
     default:
       throw IsarError('Unknown property with id $propertyId');
@@ -1055,6 +1187,613 @@ extension ContractQueryFilter
     });
   }
 
+  QueryBuilder<Contract, Contract, QAfterFilterCondition>
+      disputeReasonUserAIsNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(const FilterCondition.isNull(
+        property: r'disputeReasonUserA',
+      ));
+    });
+  }
+
+  QueryBuilder<Contract, Contract, QAfterFilterCondition>
+      disputeReasonUserAIsNotNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(const FilterCondition.isNotNull(
+        property: r'disputeReasonUserA',
+      ));
+    });
+  }
+
+  QueryBuilder<Contract, Contract, QAfterFilterCondition>
+      disputeReasonUserAEqualTo(
+    String? value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'disputeReasonUserA',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Contract, Contract, QAfterFilterCondition>
+      disputeReasonUserAGreaterThan(
+    String? value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        include: include,
+        property: r'disputeReasonUserA',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Contract, Contract, QAfterFilterCondition>
+      disputeReasonUserALessThan(
+    String? value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.lessThan(
+        include: include,
+        property: r'disputeReasonUserA',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Contract, Contract, QAfterFilterCondition>
+      disputeReasonUserABetween(
+    String? lower,
+    String? upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.between(
+        property: r'disputeReasonUserA',
+        lower: lower,
+        includeLower: includeLower,
+        upper: upper,
+        includeUpper: includeUpper,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Contract, Contract, QAfterFilterCondition>
+      disputeReasonUserAStartsWith(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.startsWith(
+        property: r'disputeReasonUserA',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Contract, Contract, QAfterFilterCondition>
+      disputeReasonUserAEndsWith(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.endsWith(
+        property: r'disputeReasonUserA',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Contract, Contract, QAfterFilterCondition>
+      disputeReasonUserAContains(String value, {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.contains(
+        property: r'disputeReasonUserA',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Contract, Contract, QAfterFilterCondition>
+      disputeReasonUserAMatches(String pattern, {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.matches(
+        property: r'disputeReasonUserA',
+        wildcard: pattern,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Contract, Contract, QAfterFilterCondition>
+      disputeReasonUserAIsEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'disputeReasonUserA',
+        value: '',
+      ));
+    });
+  }
+
+  QueryBuilder<Contract, Contract, QAfterFilterCondition>
+      disputeReasonUserAIsNotEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        property: r'disputeReasonUserA',
+        value: '',
+      ));
+    });
+  }
+
+  QueryBuilder<Contract, Contract, QAfterFilterCondition>
+      disputeReasonUserBIsNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(const FilterCondition.isNull(
+        property: r'disputeReasonUserB',
+      ));
+    });
+  }
+
+  QueryBuilder<Contract, Contract, QAfterFilterCondition>
+      disputeReasonUserBIsNotNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(const FilterCondition.isNotNull(
+        property: r'disputeReasonUserB',
+      ));
+    });
+  }
+
+  QueryBuilder<Contract, Contract, QAfterFilterCondition>
+      disputeReasonUserBEqualTo(
+    String? value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'disputeReasonUserB',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Contract, Contract, QAfterFilterCondition>
+      disputeReasonUserBGreaterThan(
+    String? value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        include: include,
+        property: r'disputeReasonUserB',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Contract, Contract, QAfterFilterCondition>
+      disputeReasonUserBLessThan(
+    String? value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.lessThan(
+        include: include,
+        property: r'disputeReasonUserB',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Contract, Contract, QAfterFilterCondition>
+      disputeReasonUserBBetween(
+    String? lower,
+    String? upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.between(
+        property: r'disputeReasonUserB',
+        lower: lower,
+        includeLower: includeLower,
+        upper: upper,
+        includeUpper: includeUpper,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Contract, Contract, QAfterFilterCondition>
+      disputeReasonUserBStartsWith(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.startsWith(
+        property: r'disputeReasonUserB',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Contract, Contract, QAfterFilterCondition>
+      disputeReasonUserBEndsWith(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.endsWith(
+        property: r'disputeReasonUserB',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Contract, Contract, QAfterFilterCondition>
+      disputeReasonUserBContains(String value, {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.contains(
+        property: r'disputeReasonUserB',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Contract, Contract, QAfterFilterCondition>
+      disputeReasonUserBMatches(String pattern, {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.matches(
+        property: r'disputeReasonUserB',
+        wildcard: pattern,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Contract, Contract, QAfterFilterCondition>
+      disputeReasonUserBIsEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'disputeReasonUserB',
+        value: '',
+      ));
+    });
+  }
+
+  QueryBuilder<Contract, Contract, QAfterFilterCondition>
+      disputeReasonUserBIsNotEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        property: r'disputeReasonUserB',
+        value: '',
+      ));
+    });
+  }
+
+  QueryBuilder<Contract, Contract, QAfterFilterCondition> disputeStateIsNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(const FilterCondition.isNull(
+        property: r'disputeState',
+      ));
+    });
+  }
+
+  QueryBuilder<Contract, Contract, QAfterFilterCondition>
+      disputeStateIsNotNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(const FilterCondition.isNotNull(
+        property: r'disputeState',
+      ));
+    });
+  }
+
+  QueryBuilder<Contract, Contract, QAfterFilterCondition> disputeStateEqualTo(
+    String? value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'disputeState',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Contract, Contract, QAfterFilterCondition>
+      disputeStateGreaterThan(
+    String? value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        include: include,
+        property: r'disputeState',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Contract, Contract, QAfterFilterCondition> disputeStateLessThan(
+    String? value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.lessThan(
+        include: include,
+        property: r'disputeState',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Contract, Contract, QAfterFilterCondition> disputeStateBetween(
+    String? lower,
+    String? upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.between(
+        property: r'disputeState',
+        lower: lower,
+        includeLower: includeLower,
+        upper: upper,
+        includeUpper: includeUpper,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Contract, Contract, QAfterFilterCondition>
+      disputeStateStartsWith(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.startsWith(
+        property: r'disputeState',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Contract, Contract, QAfterFilterCondition> disputeStateEndsWith(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.endsWith(
+        property: r'disputeState',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Contract, Contract, QAfterFilterCondition> disputeStateContains(
+      String value,
+      {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.contains(
+        property: r'disputeState',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Contract, Contract, QAfterFilterCondition> disputeStateMatches(
+      String pattern,
+      {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.matches(
+        property: r'disputeState',
+        wildcard: pattern,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Contract, Contract, QAfterFilterCondition>
+      disputeStateIsEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'disputeState',
+        value: '',
+      ));
+    });
+  }
+
+  QueryBuilder<Contract, Contract, QAfterFilterCondition>
+      disputeStateIsNotEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        property: r'disputeState',
+        value: '',
+      ));
+    });
+  }
+
+  QueryBuilder<Contract, Contract, QAfterFilterCondition>
+      disputedAtUserAIsNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(const FilterCondition.isNull(
+        property: r'disputedAtUserA',
+      ));
+    });
+  }
+
+  QueryBuilder<Contract, Contract, QAfterFilterCondition>
+      disputedAtUserAIsNotNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(const FilterCondition.isNotNull(
+        property: r'disputedAtUserA',
+      ));
+    });
+  }
+
+  QueryBuilder<Contract, Contract, QAfterFilterCondition>
+      disputedAtUserAEqualTo(DateTime? value) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'disputedAtUserA',
+        value: value,
+      ));
+    });
+  }
+
+  QueryBuilder<Contract, Contract, QAfterFilterCondition>
+      disputedAtUserAGreaterThan(
+    DateTime? value, {
+    bool include = false,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        include: include,
+        property: r'disputedAtUserA',
+        value: value,
+      ));
+    });
+  }
+
+  QueryBuilder<Contract, Contract, QAfterFilterCondition>
+      disputedAtUserALessThan(
+    DateTime? value, {
+    bool include = false,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.lessThan(
+        include: include,
+        property: r'disputedAtUserA',
+        value: value,
+      ));
+    });
+  }
+
+  QueryBuilder<Contract, Contract, QAfterFilterCondition>
+      disputedAtUserABetween(
+    DateTime? lower,
+    DateTime? upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.between(
+        property: r'disputedAtUserA',
+        lower: lower,
+        includeLower: includeLower,
+        upper: upper,
+        includeUpper: includeUpper,
+      ));
+    });
+  }
+
+  QueryBuilder<Contract, Contract, QAfterFilterCondition>
+      disputedAtUserBIsNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(const FilterCondition.isNull(
+        property: r'disputedAtUserB',
+      ));
+    });
+  }
+
+  QueryBuilder<Contract, Contract, QAfterFilterCondition>
+      disputedAtUserBIsNotNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(const FilterCondition.isNotNull(
+        property: r'disputedAtUserB',
+      ));
+    });
+  }
+
+  QueryBuilder<Contract, Contract, QAfterFilterCondition>
+      disputedAtUserBEqualTo(DateTime? value) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'disputedAtUserB',
+        value: value,
+      ));
+    });
+  }
+
+  QueryBuilder<Contract, Contract, QAfterFilterCondition>
+      disputedAtUserBGreaterThan(
+    DateTime? value, {
+    bool include = false,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        include: include,
+        property: r'disputedAtUserB',
+        value: value,
+      ));
+    });
+  }
+
+  QueryBuilder<Contract, Contract, QAfterFilterCondition>
+      disputedAtUserBLessThan(
+    DateTime? value, {
+    bool include = false,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.lessThan(
+        include: include,
+        property: r'disputedAtUserB',
+        value: value,
+      ));
+    });
+  }
+
+  QueryBuilder<Contract, Contract, QAfterFilterCondition>
+      disputedAtUserBBetween(
+    DateTime? lower,
+    DateTime? upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.between(
+        property: r'disputedAtUserB',
+        lower: lower,
+        includeLower: includeLower,
+        upper: upper,
+        includeUpper: includeUpper,
+      ));
+    });
+  }
+
   QueryBuilder<Contract, Contract, QAfterFilterCondition> disputedByIsNull() {
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(const FilterCondition.isNull(
@@ -1351,6 +2090,152 @@ extension ContractQueryFilter
     });
   }
 
+  QueryBuilder<Contract, Contract, QAfterFilterCondition> hashIsNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(const FilterCondition.isNull(
+        property: r'hash',
+      ));
+    });
+  }
+
+  QueryBuilder<Contract, Contract, QAfterFilterCondition> hashIsNotNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(const FilterCondition.isNotNull(
+        property: r'hash',
+      ));
+    });
+  }
+
+  QueryBuilder<Contract, Contract, QAfterFilterCondition> hashEqualTo(
+    String? value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'hash',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Contract, Contract, QAfterFilterCondition> hashGreaterThan(
+    String? value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        include: include,
+        property: r'hash',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Contract, Contract, QAfterFilterCondition> hashLessThan(
+    String? value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.lessThan(
+        include: include,
+        property: r'hash',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Contract, Contract, QAfterFilterCondition> hashBetween(
+    String? lower,
+    String? upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.between(
+        property: r'hash',
+        lower: lower,
+        includeLower: includeLower,
+        upper: upper,
+        includeUpper: includeUpper,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Contract, Contract, QAfterFilterCondition> hashStartsWith(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.startsWith(
+        property: r'hash',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Contract, Contract, QAfterFilterCondition> hashEndsWith(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.endsWith(
+        property: r'hash',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Contract, Contract, QAfterFilterCondition> hashContains(
+      String value,
+      {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.contains(
+        property: r'hash',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Contract, Contract, QAfterFilterCondition> hashMatches(
+      String pattern,
+      {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.matches(
+        property: r'hash',
+        wildcard: pattern,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Contract, Contract, QAfterFilterCondition> hashIsEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'hash',
+        value: '',
+      ));
+    });
+  }
+
+  QueryBuilder<Contract, Contract, QAfterFilterCondition> hashIsNotEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        property: r'hash',
+        value: '',
+      ));
+    });
+  }
+
   QueryBuilder<Contract, Contract, QAfterFilterCondition> idEqualTo(Id value) {
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(FilterCondition.equalTo(
@@ -1528,6 +2413,531 @@ extension ContractQueryFilter
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(FilterCondition.greaterThan(
         property: r'price',
+        value: '',
+      ));
+    });
+  }
+
+  QueryBuilder<Contract, Contract, QAfterFilterCondition>
+      resolutionNoteIsNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(const FilterCondition.isNull(
+        property: r'resolutionNote',
+      ));
+    });
+  }
+
+  QueryBuilder<Contract, Contract, QAfterFilterCondition>
+      resolutionNoteIsNotNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(const FilterCondition.isNotNull(
+        property: r'resolutionNote',
+      ));
+    });
+  }
+
+  QueryBuilder<Contract, Contract, QAfterFilterCondition> resolutionNoteEqualTo(
+    String? value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'resolutionNote',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Contract, Contract, QAfterFilterCondition>
+      resolutionNoteGreaterThan(
+    String? value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        include: include,
+        property: r'resolutionNote',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Contract, Contract, QAfterFilterCondition>
+      resolutionNoteLessThan(
+    String? value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.lessThan(
+        include: include,
+        property: r'resolutionNote',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Contract, Contract, QAfterFilterCondition> resolutionNoteBetween(
+    String? lower,
+    String? upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.between(
+        property: r'resolutionNote',
+        lower: lower,
+        includeLower: includeLower,
+        upper: upper,
+        includeUpper: includeUpper,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Contract, Contract, QAfterFilterCondition>
+      resolutionNoteStartsWith(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.startsWith(
+        property: r'resolutionNote',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Contract, Contract, QAfterFilterCondition>
+      resolutionNoteEndsWith(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.endsWith(
+        property: r'resolutionNote',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Contract, Contract, QAfterFilterCondition>
+      resolutionNoteContains(String value, {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.contains(
+        property: r'resolutionNote',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Contract, Contract, QAfterFilterCondition> resolutionNoteMatches(
+      String pattern,
+      {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.matches(
+        property: r'resolutionNote',
+        wildcard: pattern,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Contract, Contract, QAfterFilterCondition>
+      resolutionNoteIsEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'resolutionNote',
+        value: '',
+      ));
+    });
+  }
+
+  QueryBuilder<Contract, Contract, QAfterFilterCondition>
+      resolutionNoteIsNotEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        property: r'resolutionNote',
+        value: '',
+      ));
+    });
+  }
+
+  QueryBuilder<Contract, Contract, QAfterFilterCondition>
+      resolutionOutcomeIsNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(const FilterCondition.isNull(
+        property: r'resolutionOutcome',
+      ));
+    });
+  }
+
+  QueryBuilder<Contract, Contract, QAfterFilterCondition>
+      resolutionOutcomeIsNotNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(const FilterCondition.isNotNull(
+        property: r'resolutionOutcome',
+      ));
+    });
+  }
+
+  QueryBuilder<Contract, Contract, QAfterFilterCondition>
+      resolutionOutcomeEqualTo(
+    String? value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'resolutionOutcome',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Contract, Contract, QAfterFilterCondition>
+      resolutionOutcomeGreaterThan(
+    String? value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        include: include,
+        property: r'resolutionOutcome',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Contract, Contract, QAfterFilterCondition>
+      resolutionOutcomeLessThan(
+    String? value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.lessThan(
+        include: include,
+        property: r'resolutionOutcome',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Contract, Contract, QAfterFilterCondition>
+      resolutionOutcomeBetween(
+    String? lower,
+    String? upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.between(
+        property: r'resolutionOutcome',
+        lower: lower,
+        includeLower: includeLower,
+        upper: upper,
+        includeUpper: includeUpper,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Contract, Contract, QAfterFilterCondition>
+      resolutionOutcomeStartsWith(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.startsWith(
+        property: r'resolutionOutcome',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Contract, Contract, QAfterFilterCondition>
+      resolutionOutcomeEndsWith(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.endsWith(
+        property: r'resolutionOutcome',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Contract, Contract, QAfterFilterCondition>
+      resolutionOutcomeContains(String value, {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.contains(
+        property: r'resolutionOutcome',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Contract, Contract, QAfterFilterCondition>
+      resolutionOutcomeMatches(String pattern, {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.matches(
+        property: r'resolutionOutcome',
+        wildcard: pattern,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Contract, Contract, QAfterFilterCondition>
+      resolutionOutcomeIsEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'resolutionOutcome',
+        value: '',
+      ));
+    });
+  }
+
+  QueryBuilder<Contract, Contract, QAfterFilterCondition>
+      resolutionOutcomeIsNotEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        property: r'resolutionOutcome',
+        value: '',
+      ));
+    });
+  }
+
+  QueryBuilder<Contract, Contract, QAfterFilterCondition> resolvedAtIsNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(const FilterCondition.isNull(
+        property: r'resolvedAt',
+      ));
+    });
+  }
+
+  QueryBuilder<Contract, Contract, QAfterFilterCondition>
+      resolvedAtIsNotNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(const FilterCondition.isNotNull(
+        property: r'resolvedAt',
+      ));
+    });
+  }
+
+  QueryBuilder<Contract, Contract, QAfterFilterCondition> resolvedAtEqualTo(
+      DateTime? value) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'resolvedAt',
+        value: value,
+      ));
+    });
+  }
+
+  QueryBuilder<Contract, Contract, QAfterFilterCondition> resolvedAtGreaterThan(
+    DateTime? value, {
+    bool include = false,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        include: include,
+        property: r'resolvedAt',
+        value: value,
+      ));
+    });
+  }
+
+  QueryBuilder<Contract, Contract, QAfterFilterCondition> resolvedAtLessThan(
+    DateTime? value, {
+    bool include = false,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.lessThan(
+        include: include,
+        property: r'resolvedAt',
+        value: value,
+      ));
+    });
+  }
+
+  QueryBuilder<Contract, Contract, QAfterFilterCondition> resolvedAtBetween(
+    DateTime? lower,
+    DateTime? upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.between(
+        property: r'resolvedAt',
+        lower: lower,
+        includeLower: includeLower,
+        upper: upper,
+        includeUpper: includeUpper,
+      ));
+    });
+  }
+
+  QueryBuilder<Contract, Contract, QAfterFilterCondition> resolvedByIsNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(const FilterCondition.isNull(
+        property: r'resolvedBy',
+      ));
+    });
+  }
+
+  QueryBuilder<Contract, Contract, QAfterFilterCondition>
+      resolvedByIsNotNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(const FilterCondition.isNotNull(
+        property: r'resolvedBy',
+      ));
+    });
+  }
+
+  QueryBuilder<Contract, Contract, QAfterFilterCondition> resolvedByEqualTo(
+    String? value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'resolvedBy',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Contract, Contract, QAfterFilterCondition> resolvedByGreaterThan(
+    String? value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        include: include,
+        property: r'resolvedBy',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Contract, Contract, QAfterFilterCondition> resolvedByLessThan(
+    String? value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.lessThan(
+        include: include,
+        property: r'resolvedBy',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Contract, Contract, QAfterFilterCondition> resolvedByBetween(
+    String? lower,
+    String? upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.between(
+        property: r'resolvedBy',
+        lower: lower,
+        includeLower: includeLower,
+        upper: upper,
+        includeUpper: includeUpper,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Contract, Contract, QAfterFilterCondition> resolvedByStartsWith(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.startsWith(
+        property: r'resolvedBy',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Contract, Contract, QAfterFilterCondition> resolvedByEndsWith(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.endsWith(
+        property: r'resolvedBy',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Contract, Contract, QAfterFilterCondition> resolvedByContains(
+      String value,
+      {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.contains(
+        property: r'resolvedBy',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Contract, Contract, QAfterFilterCondition> resolvedByMatches(
+      String pattern,
+      {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.matches(
+        property: r'resolvedBy',
+        wildcard: pattern,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Contract, Contract, QAfterFilterCondition> resolvedByIsEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'resolvedBy',
+        value: '',
+      ));
+    });
+  }
+
+  QueryBuilder<Contract, Contract, QAfterFilterCondition>
+      resolvedByIsNotEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        property: r'resolvedBy',
         value: '',
       ));
     });
@@ -2872,6 +4282,68 @@ extension ContractQuerySortBy on QueryBuilder<Contract, Contract, QSortBy> {
     });
   }
 
+  QueryBuilder<Contract, Contract, QAfterSortBy> sortByDisputeReasonUserA() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'disputeReasonUserA', Sort.asc);
+    });
+  }
+
+  QueryBuilder<Contract, Contract, QAfterSortBy>
+      sortByDisputeReasonUserADesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'disputeReasonUserA', Sort.desc);
+    });
+  }
+
+  QueryBuilder<Contract, Contract, QAfterSortBy> sortByDisputeReasonUserB() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'disputeReasonUserB', Sort.asc);
+    });
+  }
+
+  QueryBuilder<Contract, Contract, QAfterSortBy>
+      sortByDisputeReasonUserBDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'disputeReasonUserB', Sort.desc);
+    });
+  }
+
+  QueryBuilder<Contract, Contract, QAfterSortBy> sortByDisputeState() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'disputeState', Sort.asc);
+    });
+  }
+
+  QueryBuilder<Contract, Contract, QAfterSortBy> sortByDisputeStateDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'disputeState', Sort.desc);
+    });
+  }
+
+  QueryBuilder<Contract, Contract, QAfterSortBy> sortByDisputedAtUserA() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'disputedAtUserA', Sort.asc);
+    });
+  }
+
+  QueryBuilder<Contract, Contract, QAfterSortBy> sortByDisputedAtUserADesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'disputedAtUserA', Sort.desc);
+    });
+  }
+
+  QueryBuilder<Contract, Contract, QAfterSortBy> sortByDisputedAtUserB() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'disputedAtUserB', Sort.asc);
+    });
+  }
+
+  QueryBuilder<Contract, Contract, QAfterSortBy> sortByDisputedAtUserBDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'disputedAtUserB', Sort.desc);
+    });
+  }
+
   QueryBuilder<Contract, Contract, QAfterSortBy> sortByDisputedBy() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'disputedBy', Sort.asc);
@@ -2896,6 +4368,18 @@ extension ContractQuerySortBy on QueryBuilder<Contract, Contract, QSortBy> {
     });
   }
 
+  QueryBuilder<Contract, Contract, QAfterSortBy> sortByHash() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'hash', Sort.asc);
+    });
+  }
+
+  QueryBuilder<Contract, Contract, QAfterSortBy> sortByHashDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'hash', Sort.desc);
+    });
+  }
+
   QueryBuilder<Contract, Contract, QAfterSortBy> sortByPrice() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'price', Sort.asc);
@@ -2905,6 +4389,54 @@ extension ContractQuerySortBy on QueryBuilder<Contract, Contract, QSortBy> {
   QueryBuilder<Contract, Contract, QAfterSortBy> sortByPriceDesc() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'price', Sort.desc);
+    });
+  }
+
+  QueryBuilder<Contract, Contract, QAfterSortBy> sortByResolutionNote() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'resolutionNote', Sort.asc);
+    });
+  }
+
+  QueryBuilder<Contract, Contract, QAfterSortBy> sortByResolutionNoteDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'resolutionNote', Sort.desc);
+    });
+  }
+
+  QueryBuilder<Contract, Contract, QAfterSortBy> sortByResolutionOutcome() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'resolutionOutcome', Sort.asc);
+    });
+  }
+
+  QueryBuilder<Contract, Contract, QAfterSortBy> sortByResolutionOutcomeDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'resolutionOutcome', Sort.desc);
+    });
+  }
+
+  QueryBuilder<Contract, Contract, QAfterSortBy> sortByResolvedAt() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'resolvedAt', Sort.asc);
+    });
+  }
+
+  QueryBuilder<Contract, Contract, QAfterSortBy> sortByResolvedAtDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'resolvedAt', Sort.desc);
+    });
+  }
+
+  QueryBuilder<Contract, Contract, QAfterSortBy> sortByResolvedBy() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'resolvedBy', Sort.asc);
+    });
+  }
+
+  QueryBuilder<Contract, Contract, QAfterSortBy> sortByResolvedByDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'resolvedBy', Sort.desc);
     });
   }
 
@@ -3115,6 +4647,68 @@ extension ContractQuerySortThenBy
     });
   }
 
+  QueryBuilder<Contract, Contract, QAfterSortBy> thenByDisputeReasonUserA() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'disputeReasonUserA', Sort.asc);
+    });
+  }
+
+  QueryBuilder<Contract, Contract, QAfterSortBy>
+      thenByDisputeReasonUserADesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'disputeReasonUserA', Sort.desc);
+    });
+  }
+
+  QueryBuilder<Contract, Contract, QAfterSortBy> thenByDisputeReasonUserB() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'disputeReasonUserB', Sort.asc);
+    });
+  }
+
+  QueryBuilder<Contract, Contract, QAfterSortBy>
+      thenByDisputeReasonUserBDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'disputeReasonUserB', Sort.desc);
+    });
+  }
+
+  QueryBuilder<Contract, Contract, QAfterSortBy> thenByDisputeState() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'disputeState', Sort.asc);
+    });
+  }
+
+  QueryBuilder<Contract, Contract, QAfterSortBy> thenByDisputeStateDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'disputeState', Sort.desc);
+    });
+  }
+
+  QueryBuilder<Contract, Contract, QAfterSortBy> thenByDisputedAtUserA() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'disputedAtUserA', Sort.asc);
+    });
+  }
+
+  QueryBuilder<Contract, Contract, QAfterSortBy> thenByDisputedAtUserADesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'disputedAtUserA', Sort.desc);
+    });
+  }
+
+  QueryBuilder<Contract, Contract, QAfterSortBy> thenByDisputedAtUserB() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'disputedAtUserB', Sort.asc);
+    });
+  }
+
+  QueryBuilder<Contract, Contract, QAfterSortBy> thenByDisputedAtUserBDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'disputedAtUserB', Sort.desc);
+    });
+  }
+
   QueryBuilder<Contract, Contract, QAfterSortBy> thenByDisputedBy() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'disputedBy', Sort.asc);
@@ -3139,6 +4733,18 @@ extension ContractQuerySortThenBy
     });
   }
 
+  QueryBuilder<Contract, Contract, QAfterSortBy> thenByHash() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'hash', Sort.asc);
+    });
+  }
+
+  QueryBuilder<Contract, Contract, QAfterSortBy> thenByHashDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'hash', Sort.desc);
+    });
+  }
+
   QueryBuilder<Contract, Contract, QAfterSortBy> thenById() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'id', Sort.asc);
@@ -3160,6 +4766,54 @@ extension ContractQuerySortThenBy
   QueryBuilder<Contract, Contract, QAfterSortBy> thenByPriceDesc() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'price', Sort.desc);
+    });
+  }
+
+  QueryBuilder<Contract, Contract, QAfterSortBy> thenByResolutionNote() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'resolutionNote', Sort.asc);
+    });
+  }
+
+  QueryBuilder<Contract, Contract, QAfterSortBy> thenByResolutionNoteDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'resolutionNote', Sort.desc);
+    });
+  }
+
+  QueryBuilder<Contract, Contract, QAfterSortBy> thenByResolutionOutcome() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'resolutionOutcome', Sort.asc);
+    });
+  }
+
+  QueryBuilder<Contract, Contract, QAfterSortBy> thenByResolutionOutcomeDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'resolutionOutcome', Sort.desc);
+    });
+  }
+
+  QueryBuilder<Contract, Contract, QAfterSortBy> thenByResolvedAt() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'resolvedAt', Sort.asc);
+    });
+  }
+
+  QueryBuilder<Contract, Contract, QAfterSortBy> thenByResolvedAtDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'resolvedAt', Sort.desc);
+    });
+  }
+
+  QueryBuilder<Contract, Contract, QAfterSortBy> thenByResolvedBy() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'resolvedBy', Sort.asc);
+    });
+  }
+
+  QueryBuilder<Contract, Contract, QAfterSortBy> thenByResolvedByDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'resolvedBy', Sort.desc);
     });
   }
 
@@ -3350,6 +5004,41 @@ extension ContractQueryWhereDistinct
     });
   }
 
+  QueryBuilder<Contract, Contract, QDistinct> distinctByDisputeReasonUserA(
+      {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addDistinctBy(r'disputeReasonUserA',
+          caseSensitive: caseSensitive);
+    });
+  }
+
+  QueryBuilder<Contract, Contract, QDistinct> distinctByDisputeReasonUserB(
+      {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addDistinctBy(r'disputeReasonUserB',
+          caseSensitive: caseSensitive);
+    });
+  }
+
+  QueryBuilder<Contract, Contract, QDistinct> distinctByDisputeState(
+      {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addDistinctBy(r'disputeState', caseSensitive: caseSensitive);
+    });
+  }
+
+  QueryBuilder<Contract, Contract, QDistinct> distinctByDisputedAtUserA() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addDistinctBy(r'disputedAtUserA');
+    });
+  }
+
+  QueryBuilder<Contract, Contract, QDistinct> distinctByDisputedAtUserB() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addDistinctBy(r'disputedAtUserB');
+    });
+  }
+
   QueryBuilder<Contract, Contract, QDistinct> distinctByDisputedBy(
       {bool caseSensitive = true}) {
     return QueryBuilder.apply(this, (query) {
@@ -3364,10 +5053,46 @@ extension ContractQueryWhereDistinct
     });
   }
 
+  QueryBuilder<Contract, Contract, QDistinct> distinctByHash(
+      {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addDistinctBy(r'hash', caseSensitive: caseSensitive);
+    });
+  }
+
   QueryBuilder<Contract, Contract, QDistinct> distinctByPrice(
       {bool caseSensitive = true}) {
     return QueryBuilder.apply(this, (query) {
       return query.addDistinctBy(r'price', caseSensitive: caseSensitive);
+    });
+  }
+
+  QueryBuilder<Contract, Contract, QDistinct> distinctByResolutionNote(
+      {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addDistinctBy(r'resolutionNote',
+          caseSensitive: caseSensitive);
+    });
+  }
+
+  QueryBuilder<Contract, Contract, QDistinct> distinctByResolutionOutcome(
+      {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addDistinctBy(r'resolutionOutcome',
+          caseSensitive: caseSensitive);
+    });
+  }
+
+  QueryBuilder<Contract, Contract, QDistinct> distinctByResolvedAt() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addDistinctBy(r'resolvedAt');
+    });
+  }
+
+  QueryBuilder<Contract, Contract, QDistinct> distinctByResolvedBy(
+      {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addDistinctBy(r'resolvedBy', caseSensitive: caseSensitive);
     });
   }
 
@@ -3491,6 +5216,40 @@ extension ContractQueryProperty
     });
   }
 
+  QueryBuilder<Contract, String?, QQueryOperations>
+      disputeReasonUserAProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'disputeReasonUserA');
+    });
+  }
+
+  QueryBuilder<Contract, String?, QQueryOperations>
+      disputeReasonUserBProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'disputeReasonUserB');
+    });
+  }
+
+  QueryBuilder<Contract, String?, QQueryOperations> disputeStateProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'disputeState');
+    });
+  }
+
+  QueryBuilder<Contract, DateTime?, QQueryOperations>
+      disputedAtUserAProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'disputedAtUserA');
+    });
+  }
+
+  QueryBuilder<Contract, DateTime?, QQueryOperations>
+      disputedAtUserBProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'disputedAtUserB');
+    });
+  }
+
   QueryBuilder<Contract, String?, QQueryOperations> disputedByProperty() {
     return QueryBuilder.apply(this, (query) {
       return query.addPropertyName(r'disputedBy');
@@ -3503,9 +5262,40 @@ extension ContractQueryProperty
     });
   }
 
+  QueryBuilder<Contract, String?, QQueryOperations> hashProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'hash');
+    });
+  }
+
   QueryBuilder<Contract, String, QQueryOperations> priceProperty() {
     return QueryBuilder.apply(this, (query) {
       return query.addPropertyName(r'price');
+    });
+  }
+
+  QueryBuilder<Contract, String?, QQueryOperations> resolutionNoteProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'resolutionNote');
+    });
+  }
+
+  QueryBuilder<Contract, String?, QQueryOperations>
+      resolutionOutcomeProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'resolutionOutcome');
+    });
+  }
+
+  QueryBuilder<Contract, DateTime?, QQueryOperations> resolvedAtProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'resolvedAt');
+    });
+  }
+
+  QueryBuilder<Contract, String?, QQueryOperations> resolvedByProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'resolvedBy');
     });
   }
 

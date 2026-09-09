@@ -25,6 +25,7 @@ class _ContractsScreenState extends State<ContractsScreen> {
   final _searchController = TextEditingController();
   Stream<List<Contract>>? _contractsStream;
   Timer? _filterDebounce;
+  Timer? _searchDebounce;
   bool _isRefreshing = false;
   bool _filtering = false;
   String _query = '';
@@ -33,6 +34,7 @@ class _ContractsScreenState extends State<ContractsScreen> {
   @override
   void dispose() {
     _filterDebounce?.cancel();
+    _searchDebounce?.cancel();
     _searchController.dispose();
     super.dispose();
   }
@@ -225,7 +227,18 @@ class _ContractsScreenState extends State<ContractsScreen> {
                   const SizedBox(height: 24),
                   TextField(
                     controller: _searchController,
-                    onChanged: (value) => setState(() => _query = value),
+                    // F-51: debounce the query so the per-keystroke filter pass
+                    // (title/description/names across every contract) only runs
+                    // once the user settles.
+                    onChanged: (value) {
+                      _searchDebounce?.cancel();
+                      _searchDebounce = Timer(
+                        const Duration(milliseconds: 250),
+                        () {
+                          if (mounted) setState(() => _query = value);
+                        },
+                      );
+                    },
                     textInputAction: TextInputAction.search,
                     decoration: InputDecoration(
                       labelText: TranslationHandler.get('search_contracts'),
@@ -236,6 +249,7 @@ class _ContractsScreenState extends State<ContractsScreen> {
                           : IconButton(
                               tooltip: TranslationHandler.get('clear'),
                               onPressed: () {
+                                _searchDebounce?.cancel();
                                 _searchController.clear();
                                 setState(() => _query = '');
                               },

@@ -52,6 +52,22 @@ class Contract {
   String? disputeReason;
   String? disputedBy;
 
+  // F-32: per-party dispute/reason/timeline and resolution state compatible
+  // with the backend ContractSchema, populated from ContractListItem. The
+  // legacy derived strings above remain for existing screens.
+  String? disputeReasonUserA;
+  String? disputeReasonUserB;
+  DateTime? disputedAtUserA;
+  DateTime? disputedAtUserB;
+  String? disputeState;
+  String? resolutionOutcome;
+  String? resolutionNote;
+  DateTime? resolvedAt;
+  String? resolvedBy;
+
+  // F-60: join/details hash parsed from the API but never persisted locally.
+  String? hash;
+
   // Timestamps
   late DateTime createdAt;
   DateTime? updatedAt;

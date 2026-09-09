@@ -32,6 +32,18 @@ Future<Contract> saveContractToIsar({
   bool userBSigned = false,
   String? disputeReason,
   String? disputedBy,
+  // F-32: per-party dispute/reason/timeline and resolution state.
+  String? disputeReasonUserA,
+  String? disputeReasonUserB,
+  DateTime? disputedAtUserA,
+  DateTime? disputedAtUserB,
+  String? disputeState,
+  String? resolutionOutcome,
+  String? resolutionNote,
+  DateTime? resolvedAt,
+  String? resolvedBy,
+  // F-60: join/details hash persisted for the local verify workflow.
+  String? hash,
   DateTime? createdAt,
   DateTime? updatedAt,
 }) async {
@@ -59,6 +71,16 @@ Future<Contract> saveContractToIsar({
       existing.userBSigned = userBSigned;
       existing.disputeReason = disputeReason;
       existing.disputedBy = disputedBy;
+      existing.disputeReasonUserA = disputeReasonUserA;
+      existing.disputeReasonUserB = disputeReasonUserB;
+      existing.disputedAtUserA = disputedAtUserA;
+      existing.disputedAtUserB = disputedAtUserB;
+      existing.disputeState = disputeState;
+      existing.resolutionOutcome = resolutionOutcome;
+      existing.resolutionNote = resolutionNote;
+      existing.resolvedAt = resolvedAt;
+      existing.resolvedBy = resolvedBy;
+      existing.hash = hash;
       if (createdAt != null) existing.createdAt = createdAt;
       existing.updatedAt = updatedAt ?? DateTime.now();
       await isar.contracts.put(existing);
@@ -84,6 +106,16 @@ Future<Contract> saveContractToIsar({
       ..userBSigned = userBSigned
       ..disputeReason = disputeReason
       ..disputedBy = disputedBy
+      ..disputeReasonUserA = disputeReasonUserA
+      ..disputeReasonUserB = disputeReasonUserB
+      ..disputedAtUserA = disputedAtUserA
+      ..disputedAtUserB = disputedAtUserB
+      ..disputeState = disputeState
+      ..resolutionOutcome = resolutionOutcome
+      ..resolutionNote = resolutionNote
+      ..resolvedAt = resolvedAt
+      ..resolvedBy = resolvedBy
+      ..hash = hash
       ..createdAt = createdAt ?? DateTime.now()
       ..updatedAt = updatedAt;
 
@@ -144,6 +176,16 @@ Future<Contract> saveContractFromListItem(
     disputedBy: item.disputedUserA
         ? userAId
         : (item.disputedUserB ? userBId : null),
+    disputeReasonUserA: item.disputeReasonUserA,
+    disputeReasonUserB: item.disputeReasonUserB,
+    disputedAtUserA: item.disputedAtUserA,
+    disputedAtUserB: item.disputedAtUserB,
+    disputeState: item.disputeState,
+    resolutionOutcome: item.resolutionOutcome,
+    resolutionNote: item.resolutionNote,
+    resolvedAt: item.resolvedAt,
+    resolvedBy: item.resolvedBy,
+    hash: item.hash,
     createdAt: item.createdAt,
     updatedAt: item.updatedAt,
   );
@@ -399,11 +441,12 @@ Future<MediaFile> saveMediaToIsar({
   String? mimeType,
   DateTime? createdAt,
 }) async {
-  // Check if media already exists by external ID
-  final allMedia = await isar.mediaFiles.where().findAll();
-  final existing = allMedia
-      .where((m) => m.externalId == externalId)
-      .firstOrNull;
+  // F-51: index-backed dedup on the unique externalId instead of a full
+  // collection scan per insert (was O(n²) over the whole media set).
+  final existing = await isar.mediaFiles
+      .filter()
+      .externalIdEqualTo(externalId)
+      .findFirst();
 
   if (existing != null) {
     return existing;

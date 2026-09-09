@@ -1,5 +1,35 @@
+import 'dart:typed_data';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:yack/logic/services/contract/contract_list_service.dart';
+import 'package:yack/logic/services/network/http_handler.dart';
+
+class _FakeHttpHandler implements HttpHandler {
+  _FakeHttpHandler(this.onGet);
+
+  final Future<dynamic> Function(String endpoint) onGet;
+
+  @override
+  Future<dynamic> get(String endpoint) => onGet(endpoint);
+
+  @override
+  Future<dynamic> post(String endpoint, {Map<String, dynamic>? body}) =>
+      throw UnimplementedError();
+
+  @override
+  Future<dynamic> put(String endpoint, {Map<String, dynamic>? body}) =>
+      throw UnimplementedError();
+
+  @override
+  Future<dynamic> patch(String endpoint, {Map<String, dynamic>? body}) =>
+      throw UnimplementedError();
+
+  @override
+  Future<dynamic> delete(String endpoint) => throw UnimplementedError();
+
+  @override
+  Future<Uint8List> fetchBytes(String url) => throw UnimplementedError();
+}
 
 void main() {
   group('ContractListItem', () {
@@ -261,6 +291,58 @@ void main() {
         expect(item.disputedUserB, true);
         expect(item.status, 'disputed');
       });
+
+      test('parses F-32 dispute/resolution fields and F-60 hash', () {
+        final json = {
+          '_id': 'contract123',
+          'title': 'title',
+          'description': 'desc',
+          'price': 'price',
+          'status': 'disputed',
+          'disputeReasonUserA': 'They never delivered',
+          'disputeReasonUserB': 'The goods were wrong',
+          'disputedAtUserA': '2025-01-12T10:00:00.000Z',
+          'disputedAtUserB': '2025-01-13T10:00:00.000Z',
+          'disputeState': 'open',
+          'resolutionOutcome': 'resume',
+          'resolutionNote': 'Both parties will proceed.',
+          'resolvedAt': '2025-01-14T10:00:00.000Z',
+          'resolvedBy': 'admin-1',
+          'hash': 'qr_hash',
+        };
+
+        final item = ContractListItem.fromJson(json);
+
+        expect(item.disputeReasonUserA, 'They never delivered');
+        expect(item.disputeReasonUserB, 'The goods were wrong');
+        expect(item.disputedAtUserA?.year, 2025);
+        expect(item.disputedAtUserB?.year, 2025);
+        expect(item.disputeState, 'open');
+        expect(item.resolutionOutcome, 'resume');
+        expect(item.resolutionNote, 'Both parties will proceed.');
+        expect(item.resolvedAt?.year, 2025);
+        expect(item.resolvedBy, 'admin-1');
+        expect(item.hash, 'qr_hash');
+      });
+
+      test('keeps empty strings for backend dispute reason defaults', () {
+        final json = {
+          '_id': 'contract123',
+          'title': 'title',
+          'description': 'desc',
+          'price': 'price',
+          'status': 'active',
+          'disputeReasonUserA': '',
+          'disputeReasonUserB': '',
+        };
+
+        final item = ContractListItem.fromJson(json);
+
+        expect(item.disputeReasonUserA, '');
+        expect(item.disputeReasonUserB, '');
+        expect(item.disputeState, isNull);
+        expect(item.resolutionOutcome, isNull);
+      });
     });
 
     group('toJson', () {
@@ -313,6 +395,39 @@ void main() {
         expect(json['updatedAt'], updatedAt.toIso8601String());
       });
 
+      test('serializes F-32/F-60 fields', () {
+        final item = ContractListItem(
+          id: 'contract123',
+          title: 'title',
+          description: 'desc',
+          price: 'price',
+          status: 'disputed',
+          disputeReasonUserA: 'Reason A',
+          disputeReasonUserB: 'Reason B',
+          disputedAtUserA: DateTime(2025, 1, 12),
+          disputedAtUserB: DateTime(2025, 1, 13),
+          disputeState: 'open',
+          resolutionOutcome: 'resume',
+          resolutionNote: 'Note',
+          resolvedAt: DateTime(2025, 1, 14),
+          resolvedBy: 'admin-1',
+          hash: 'qr_hash',
+        );
+
+        final json = item.toJson();
+
+        expect(json['disputeReasonUserA'], 'Reason A');
+        expect(json['disputeReasonUserB'], 'Reason B');
+        expect(json['disputedAtUserA'], '2025-01-12T00:00:00.000');
+        expect(json['disputedAtUserB'], '2025-01-13T00:00:00.000');
+        expect(json['disputeState'], 'open');
+        expect(json['resolutionOutcome'], 'resume');
+        expect(json['resolutionNote'], 'Note');
+        expect(json['resolvedAt'], '2025-01-14T00:00:00.000');
+        expect(json['resolvedBy'], 'admin-1');
+        expect(json['hash'], 'qr_hash');
+      });
+
       test('handles null optional fields', () {
         final item = ContractListItem(
           id: 'contract123',
@@ -328,6 +443,14 @@ void main() {
         expect(json['otherUserId'], isNull);
         expect(json['otherUserName'], isNull);
         expect(json['otherUserPublicKey'], isNull);
+        expect(json['disputeReasonUserA'], isNull);
+        expect(json['disputeReasonUserB'], isNull);
+        expect(json['disputedAtUserA'], isNull);
+        expect(json['disputedAtUserB'], isNull);
+        expect(json['disputeState'], isNull);
+        expect(json['resolutionOutcome'], isNull);
+        expect(json['resolvedAt'], isNull);
+        expect(json['resolvedBy'], isNull);
         expect(json['hash'], isNull);
         expect(json['createdAt'], isNull);
         expect(json['updatedAt'], isNull);
@@ -386,6 +509,57 @@ void main() {
         final item = ContractListItem.fromJson(json);
         expect(item.status, 'disputed');
       });
+    });
+  });
+
+  group('ContractListService.fetch', () {
+    test('fetches and parses a single contract (F-51)', () async {
+      var requestedPath = '';
+      final service = ContractListService(
+        httpHandler: _FakeHttpHandler((endpoint) async {
+          requestedPath = endpoint;
+          return {
+            'success': true,
+            'contract': {
+              '_id': 'contract123',
+              'title': 'encrypted_title',
+              'description': 'desc',
+              'price': 'price',
+              'status': 'disputed',
+              'disputeState': 'open',
+              'hash': 'qr_hash',
+              'isUserA': true,
+            },
+          };
+        }),
+      );
+
+      final item = await service.fetch('contract123');
+
+      expect(requestedPath, '/contracts/contract123');
+      expect(item, isNotNull);
+      expect(item!.id, 'contract123');
+      expect(item.title, 'encrypted_title');
+      expect(item.disputeState, 'open');
+      expect(item.hash, 'qr_hash');
+    });
+
+    test('returns null when the contract is not present', () async {
+      final service = ContractListService(
+        httpHandler: _FakeHttpHandler((endpoint) async {
+          return {'success': true, 'contract': null};
+        }),
+      );
+
+      expect(await service.fetch('contract123'), isNull);
+    });
+
+    test('returns null when the response is not a map', () async {
+      final service = ContractListService(
+        httpHandler: _FakeHttpHandler((endpoint) async => <Object>[]),
+      );
+
+      expect(await service.fetch('contract123'), isNull);
     });
   });
 }

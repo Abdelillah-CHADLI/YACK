@@ -1,3 +1,5 @@
+import 'dart:typed_data';
+
 import 'package:hive/hive.dart';
 import 'package:yack/data/repositories/isar_adapter.dart';
 import 'package:yack/logic/services/contract/contract_list_service.dart';
@@ -49,10 +51,7 @@ class ContractSyncService {
     try {
       logDebug('[ContractSyncService] Starting contract sync...');
 
-      // Get current user ID and the process-memory private key.
-      final userBox = await Hive.openBox('user');
-      final currentUserId = userBox.get('userId')?.toString();
-
+      // Get the process-memory private key.
       final privateKeyBytes = DecryptedKeyCache.value;
 
       if (privateKeyBytes == null) {
@@ -77,76 +76,9 @@ class ContractSyncService {
       int syncedCount = 0;
       for (final contract in contracts) {
         try {
-          // Decrypt contract fields using private key
-          String title = contract.title;
-          String description = contract.description;
-          String price = contract.price;
-
-          try {
-            title = CryptoService.decryptWithPrivateKey(
-              ciphertextBase64: contract.title,
-              privateKeyBytes: privateKeyBytes,
-            );
-          } catch (e) {
-            title = 'ERROR';
-            logDebug(
-              '[ContractSyncService] Failed to decrypt title for ${contract.id}: $e',
-            );
-            // Keep original value (may be encrypted or empty)
+          if (await _decryptAndSave(contract, privateKeyBytes)) {
+            syncedCount++;
           }
-
-          try {
-            description = CryptoService.decryptWithPrivateKey(
-              ciphertextBase64: contract.description,
-              privateKeyBytes: privateKeyBytes,
-            );
-          } catch (e) {
-            description = 'ERROR';
-            logDebug(
-              '[ContractSyncService] Failed to decrypt description for ${contract.id}: $e',
-            );
-          }
-
-          try {
-            price = CryptoService.decryptWithPrivateKey(
-              ciphertextBase64: contract.price,
-              privateKeyBytes: privateKeyBytes,
-            );
-          } catch (e) {
-            price = 'ERROR';
-            logDebug(
-              '[ContractSyncService] Failed to decrypt price for ${contract.id}: $e',
-            );
-          }
-
-          // Create item with DECRYPTED values for storage
-          final decryptedItem = ContractListItem(
-            id: contract.id,
-            title: title,
-            description: description,
-            price: price,
-            detailsHash: contract.detailsHash,
-            otherUserId: contract.otherUserId,
-            otherUserName: contract.otherUserName,
-            otherUserPublicKey: contract.otherUserPublicKey,
-            isUserA: contract.isUserA,
-            status: contract.status,
-            userASigned: contract.userASigned,
-            userBSigned: contract.userBSigned,
-            agreedUserA: contract.agreedUserA,
-            agreedUserB: contract.agreedUserB,
-            disputedUserA: contract.disputedUserA,
-            disputedUserB: contract.disputedUserB,
-            hash: contract.hash,
-            createdAt: contract.createdAt,
-            updatedAt: contract.updatedAt,
-          );
-
-          await saveContractFromListItem(
-            decryptedItem,
-            currentUserId: currentUserId,
-          );
-          syncedCount++;
         } catch (e) {
           logDebug(
             '[ContractSyncService] Failed to sync contract ${contract.id}: $e',
@@ -166,13 +98,123 @@ class ContractSyncService {
     }
   }
 
-  /// Sync a single contract by ID
+  /// Decrypts a single list item with the unlocked key and persists it.
+  /// Returns whether the contract was successfully stored.
+  Future<bool> _decryptAndSave(
+    ContractListItem contract,
+    Uint8List privateKeyBytes,
+  ) async {
+    // Decrypt contract fields using private key
+    String title = contract.title;
+    String description = contract.description;
+    String price = contract.price;
+
+    try {
+      title = CryptoService.decryptWithPrivateKey(
+        ciphertextBase64: contract.title,
+        privateKeyBytes: privateKeyBytes,
+      );
+    } catch (e) {
+      title = 'ERROR';
+      logDebug(
+        '[ContractSyncService] Failed to decrypt title for ${contract.id}: $e',
+      );
+      // Keep original value (may be encrypted or empty)
+    }
+
+    try {
+      description = CryptoService.decryptWithPrivateKey(
+        ciphertextBase64: contract.description,
+        privateKeyBytes: privateKeyBytes,
+      );
+    } catch (e) {
+      description = 'ERROR';
+      logDebug(
+        '[ContractSyncService] Failed to decrypt description for ${contract.id}: $e',
+      );
+    }
+
+    try {
+      price = CryptoService.decryptWithPrivateKey(
+        ciphertextBase64: contract.price,
+        privateKeyBytes: privateKeyBytes,
+      );
+    } catch (e) {
+      price = 'ERROR';
+      logDebug(
+        '[ContractSyncService] Failed to decrypt price for ${contract.id}: $e',
+      );
+    }
+
+    // Create item with DECRYPTED values for storage
+    final decryptedItem = ContractListItem(
+      id: contract.id,
+      title: title,
+      description: description,
+      price: price,
+      detailsHash: contract.detailsHash,
+      otherUserId: contract.otherUserId,
+      otherUserName: contract.otherUserName,
+      otherUserPublicKey: contract.otherUserPublicKey,
+      isUserA: contract.isUserA,
+      status: contract.status,
+      userASigned: contract.userASigned,
+      userBSigned: contract.userBSigned,
+      agreedUserA: contract.agreedUserA,
+      agreedUserB: contract.agreedUserB,
+      disputedUserA: contract.disputedUserA,
+      disputedUserB: contract.disputedUserB,
+      disputeReasonUserA: contract.disputeReasonUserA,
+      disputeReasonUserB: contract.disputeReasonUserB,
+      disputedAtUserA: contract.disputedAtUserA,
+      disputedAtUserB: contract.disputedAtUserB,
+      disputeState: contract.disputeState,
+      resolutionOutcome: contract.resolutionOutcome,
+      resolutionNote: contract.resolutionNote,
+      resolvedAt: contract.resolvedAt,
+      resolvedBy: contract.resolvedBy,
+      hash: contract.hash,
+      createdAt: contract.createdAt,
+      updatedAt: contract.updatedAt,
+    );
+
+    final currentUserBox = await Hive.openBox('user');
+    final currentUserId = currentUserBox.get('userId')?.toString();
+    await saveContractFromListItem(
+      decryptedItem,
+      currentUserId: currentUserId,
+    );
+    return true;
+  }
+
+  /// Sync a single contract by ID (F-51): fetches just that contract instead
+  /// of re-running the whole list.
   Future<bool> syncSingleContract(String contractId) async {
     try {
-      // For now, we sync all contracts
-      // TODO: Add endpoint to fetch single contract
-      await syncContracts();
-      return true;
+      final privateKeyBytes = DecryptedKeyCache.value;
+      if (privateKeyBytes == null) {
+        logDebug(
+          '[ContractSyncService] No decrypted private key found. User must unlock account first.',
+        );
+        return false;
+      }
+
+      final contract = await _listService.fetch(contractId);
+      if (contract == null) {
+        logDebug(
+          '[ContractSyncService] Contract $contractId not found for this user.',
+        );
+        return false;
+      }
+
+      final synced = await _decryptAndSave(contract, privateKeyBytes);
+      if (synced) {
+        _lastSyncTime = DateTime.now();
+        logDebug(
+          '[ContractSyncService] Synced contract $contractId.',
+        );
+      }
+      return synced;
     } catch (e) {
       logDebug(
         '[ContractSyncService] Failed to sync single contract $contractId: $e',
