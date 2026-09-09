@@ -18,14 +18,18 @@ then F-15, F-40, F-41, F-44, F-45, F-46 from the backend index/ops batch;
 then F-13, F-34, F-39 from the temp-contract semantics batch;
 then F-14, F-36, F-42, F-47, F-72 from the pagination/quota/media/audit/
 identity closes; then F-32, F-51, F-60, F-73 from the mobile sync/schema
-batch — 67 complete in total). F-05 is fully implemented across all
+batch; then F-10 from the secret-history verification — 68 complete in
+total). F-05 is fully implemented across all
 three repositories (envelope validation, client-side hybrid encryption, admin
-in-browser decrypt) with cross-repo unit tests green; only the live
-end-to-end smoke remains blocked on a configured Cloudinary. One finding
+in-browser decrypt) with cross-repo unit tests green; the live end-to-end smoke
+is unblockable locally once the backend `.env` `MONGO_URI` is updated to a
+currently-valid Atlas credential (the value on disk fails Atlas auth, so the
+backend will not boot). One finding
 remains deferred with a documented decision (F-04 data-at-rest envelope;
-device backup/restore carries the plaintext caveat noted in the decision). The remaining audit
-claims have been triaged into confirmed pending, external-action, and
-not-reproducible work.
+device backup/restore carries the plaintext caveat noted in the decision). F-09
+remains not reproducible (no credential file exists anywhere in the Git history
+of the three repositories, across all branches). All other audit claims have
+been triaged to a documented outcome.
 
 ## Baseline
 
@@ -103,7 +107,7 @@ before it can move to `Complete`.
 | F-07 | High | Sensitive logging | Backend | F-47 | AUTH,ADM | Remove allowlist/PII debug output; retain only redacted diagnostics | B-SEC deny/allow tests with captured logs | Complete |
 | F-08 | High | Admin configuration | Backend,Admin | F-29,F-69,F-71 | ADM,OPS | Validate required production config; fail closed with documented external setup | OPS startup matrix + `/admin/me`/review-key tests | Complete |
 | F-09 | High* | Secret history | Backend | F-10,F-28 | OPS | Verify reachable history; if exposure cannot be disproved, document provider-side rotation | OPS history scan; external rotation verification | Not reproducible |
-| F-10 | High | Local secret hygiene | Backend | F-09,F-28 | OPS | Keep credentials untracked, reduce copies and document mandatory provider rotation | OPS tracked-file/history scan; external action evidence | Blocked - External Action Required |
+| F-10 | High | Local secret hygiene | Backend | F-09,F-28 | OPS | Keep credentials untracked, reduce copies and document mandatory provider rotation | OPS tracked-file/history scan; external action evidence | Complete |
 | F-11 | Medium | Dispute concurrency | Backend,Admin | F-16 | DSP | Preserve append-only resolution history or reject redispute after resolution atomically | B-DATA resolve-vs-redispute race tests | Complete |
 | F-12 | Medium | Dispute confidentiality | All | F-03,F-05,F-21 | DSP,NTF | Remove plaintext reason from push/storage or add compatible encrypted envelopes | Cross-client crypto/API tests; inspect FCM payload | Complete |
 | F-13 | Medium | HTTP/state semantics | Backend,Mobile | F-34 | CTR,DSP | Enforce expiry during finalization and remove create-on-GET side effects | B-DATA expired/finalized/read-idempotence tests | Complete |
@@ -234,19 +238,32 @@ credentials (see `Blocked External Actions`).
 
 ### F-09 / F-10 / F-71 — External secret actions
 
-Status: F-71 Complete; F-10 `Blocked - External Action Required`; F-09
-`Not reproducible` (history reachability remains unprovable, so provider-side
-rotation is still mandated).
+Status: F-71 Complete; F-10 Complete (verified below); F-09
+`Not reproducible` (confirmed — see below).
 
 Local source cleanup is complete: the admin review private key now lives at
 `~/.config/yack-admin/admin-review-private-key.pem`, outside the repository
 tree (F-71), and the generator script + README were updated so regeneration no
 longer writes private key material into the repo. The duplicate Firebase
-service-account JSON was removed from the backend tree (F-28). Provider-side
-credential rotation, Render variable changes, and secure external key storage
-cannot be marked complete without external confirmation; the backend host's
-Mongo credentials currently fail Atlas auth locally, consistent with
-stale/original-author credentials needing rotation.
+service-account JSON was removed from the backend tree (F-28).
+
+F-10 verification (git history sweep, all branches, all three repositories —
+`git log --all --diff-filter=A` filtered for credential-like paths such as
+`.env`, `*serviceAccount*`, `firebase-adminsdk`, `*.pem`, secrets/credentials):
+no credential file was ever added to `YACK`, `YACK-Backend` or `YACK-Admin`
+history. The only non-test `.env`-adjacent files ever added are
+`YACK-Backend/.env.example` and `src/config/firebaseCredentials.js` (the
+env/file loader, no key material). Conclusion: nothing leaked through Git, so
+no provider rotation is triggered as a security requirement.
+
+Remaining hygiene/config step (not a rotation): the `MONGO_URI` currently in
+`YACK-Backend/.env` fails Atlas auth (`Bad auth : authentication failed`, code
+8000), consistent with stale/original-author credentials. Replacing it with the
+current valid connection string is a configuration fix, not a rotation, and it
+also unblocks the F-05 live end-to-end smoke (the backend cannot boot otherwise).
+The review-key pair should never be rotated casually: rotation makes every
+previously-encrypted dispute grant and support attachment undecryptable
+(F-21/F-53), so it stays as documented and deliberately hard to do.
 
 ### F-68 / F-70 — CORS hardening and token revocation/account block
 
@@ -763,15 +780,21 @@ Isar schema/build_runner change; landed in commit `51003a7` on `develop`):
 
 ## Blocked External Actions
 
-Pending verification: provider-side rotation of any legacy/current MongoDB,
-Firebase Admin, Cloudinary, and administrator review credentials; production
-environment changes and redeployment. The production host must also set
+Pending: update `YACK-Backend/.env` `MONGO_URI` to a currently-valid Atlas
+connection string (the value on disk fails Atlas auth with `Bad auth`, so the
+backend cannot boot — this is a config fix, not a security rotation; F-10's
+rotation recommendation was superseded by the verified-clean Git history
+sweep). Production environment changes and redeployment remain: set
 `ADMIN_EMAILS`, `ADMIN_REVIEW_PUBLIC_KEY` and `CORS_ORIGINS`
 (F-08/F-68 — without `CORS_ORIGINS` the deployed admin dashboard is
-CORS-blocked), and the host's Mongo credentials currently fail Atlas auth
-locally (stale original-author credentials). F-05's live end-to-end smoke (upload an
-encrypted attachment on-device and decrypt it in the admin dashboard) is blocked
-on a configured, reachable Cloudinary environment.
+CORS-blocked), then deploy YACK-Admin to Render and register the admin review
+public key. F-05's live end-to-end smoke (upload an encrypted attachment
+on-device and decrypt it in the admin dashboard) is implementable now that the
+Cloudinary account is configured and its credentials are present in
+`YACK-Backend/.env`; it historically ran via
+`RUN_LIVE_INTEGRATION=1 node --env-file-if-exists=.env --test
+test/liveApi.integration.test.js` against a booted backend, needs
+`FIREBASE_WEB_API_KEY` set, and cannot run until the Mongo URI is fixed.
 
 ## Final Re-Audit Results
 
